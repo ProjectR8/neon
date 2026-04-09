@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>NEON MESSENGER | облачный чат</title>
+    <!-- Firebase SDK -->
+    <script type="module">
+        // Твои данные из Firebase (скопированы из твоего сообщения)
+        const firebaseConfig = {
+            apiKey: "AIzaSyA9gA_Nvei89csa7_YrmbnbnxFngb0UKoM",
+            authDomain: "neon-messenger-83ed4.firebaseapp.com",
+            projectId: "neon-messenger-83ed4",
+            storageBucket: "neon-messenger-83ed4.firebasestorage.app",
+            messagingSenderId: "954172505610",
+            appId: "1:954172505610:web:03f56a8a5b89f2d402a9f3"
+        };
+        window.firebaseConfig = firebaseConfig;
+    </script>
+    <script type="importmap">
+        {
+            "imports": {
+                "firebase/app": "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js",
+                "firebase/auth": "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js",
+                "firebase/firestore": "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"
+            }
+        }
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+        }
+        body {
+            background: radial-gradient(circle at 20% 30%, #0a0f1f, #03050b);
+            min-height: 100vh;
+        }
+        .glass {
+            background: rgba(15, 25, 45, 0.45);
+            backdrop-filter: blur(16px) saturate(180%);
+            border-radius: 32px;
+            border: 1px solid rgba(0, 255, 255, 0.35);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 0 18px rgba(0, 255, 255, 0.2);
+            transition: all 0.3s;
+        }
+        .glass:hover {
+            border-color: #0ff;
+            box-shadow: 0 0 28px rgba(0, 255, 255, 0.5);
+        }
+        .neon-input {
+            background: rgba(10, 20, 40, 0.7);
+            border: 1px solid #0ff;
+            border-radius: 60px;
+            padding: 14px 20px;
+            color: #0ff;
+            font-size: 16px;
+            outline: none;
+            width: 100%;
+        }
+        .neon-input:focus {
+            box-shadow: 0 0 14px #0ff;
+        }
+        .neon-btn {
+            background: linear-gradient(135deg, #0ff1, #f0f1);
+            border: 1px solid #0ff;
+            border-radius: 60px;
+            padding: 12px 24px;
+            font-weight: bold;
+            color: #0ff;
+            cursor: pointer;
+            transition: 0.2s;
+            text-transform: uppercase;
+        }
+        .neon-btn:hover {
+            background: #0ff;
+            color: black;
+            box-shadow: 0 0 20px #0ff;
+        }
+        .bottom-nav {
+            position: fixed;
+            bottom: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: calc(100% - 32px);
+            max-width: 480px;
+            background: rgba(5, 10, 25, 0.85);
+            backdrop-filter: blur(20px);
+            border-radius: 60px;
+            display: flex;
+            justify-content: space-around;
+            padding: 8px 12px;
+            border: 1px solid #0ff;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+            z-index: 100;
+        }
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            color: #88aaff;
+            background: none;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 40px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .nav-item.active {
+            background: rgba(0, 255, 255, 0.2);
+            color: #0ff;
+            text-shadow: 0 0 5px #0ff;
+            box-shadow: 0 0 8px #0ff;
+        }
+        .nav-icon { font-size: 26px; }
+        .page { display: none; animation: fade 0.3s; }
+        .page.active-page { display: block; }
+        @keyframes fade {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .chat-item {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 14px;
+            border-radius: 28px;
+            cursor: pointer;
+            border-bottom: 1px solid rgba(0, 255, 255, 0.2);
+            transition: 0.2s;
+        }
+        .chat-item:hover {
+            background: rgba(0, 255, 255, 0.1);
+            transform: translateX(5px);
+        }
+        .avatar {
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #0ff, #f0f);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            box-shadow: 0 0 8px cyan;
+        }
+        .badge {
+            background: #f0f;
+            color: black;
+            border-radius: 40px;
+            padding: 2px 10px;
+            font-size: 11px;
+            margin-left: 8px;
+        }
+        .message {
+            max-width: 75%;
+            padding: 10px 18px;
+            border-radius: 24px;
+            margin-bottom: 8px;
+        }
+        .message.out {
+            align-self: flex-end;
+            background: #0a2a3a;
+            border: 1px solid #0ff;
+            color: #0ff;
+        }
+        .message.in {
+            align-self: flex-start;
+            background: #1a1a2e;
+            border: 1px solid #88f;
+            color: #ccd;
+        }
+        .messages-area {
+            height: calc(100vh - 170px);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            padding: 16px;
+        }
+        .wall-post {
+            background: rgba(10, 15, 30, 0.6);
+            backdrop-filter: blur(12px);
+            border-radius: 28px;
+            padding: 18px;
+            margin-bottom: 18px;
+            border: 1px solid #0ff;
+        }
+        @media (max-width: 768px) {
+            .avatar { width: 44px; height: 44px; font-size: 24px; }
+            .message { max-width: 85%; }
+        }
+        .loading {
+            text-align: center;
+            color: #0ff;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+<div id="root"><div class="loading">✨ Загрузка неонового мессенджера...</div></div>
+
+<script type="module">
+    import { initializeApp } from 'firebase/app';
+    import { getAuth, signInWithPhoneNumber, RecaptchaVerifier, onAuthStateChanged, signOut } from 'firebase/auth';
+    import { getFirestore, collection, doc, setDoc, getDoc, getDocs, query, where, orderBy, onSnapshot, addDoc, updateDoc, arrayUnion, serverTimestamp, deleteDoc } from 'firebase/firestore';
+
+    // Инициализация Firebase из твоих ключей
+    const app = initializeApp(window.firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    let currentUser = null;
+
+    // Функция для логина/регистрации по номеру телефона
+    async function loginWithPhone(phoneNumber, recaptchaContainer) {
+        try {
+            const recaptcha = new RecaptchaVerifier(auth, recaptchaContainer, {
+                size: 'invisible',
+                callback: () => {}
+            });
+            const confirmation = await signInWithPhoneNumber(auth, phoneNumber, recaptcha);
+            const code = prompt('Введите код из SMS:');
+            const result = await confirmation.confirm(code);
+            return result.user;
+        } catch (error) {
+            console.error(error);
+            alert('Ошибка: ' + error.message);
+            return null;
+        }
+    }
+
+    // Сохраняем/обновляем профиль пользователя в Firestore
+    async function updateUserProfile(user, username, avatar) {
+        const userRef = doc(db, 'users', user.uid);
+        const userSnap = await getDoc(userRef);
+        if (!userSnap.exists()) {
+            await setDoc(userRef, {
+                phone: user.phoneNumber,
+                username: username,
+                avatar: avatar || '👤',
+                isSubscribed: false,
+                createdAt: serverTimestamp()
+            });
+        } else {
+            if (username) await updateDoc(userRef, { username, avatar });
+        }
+        return {
+            uid: user.uid,
+            phoneNumber: user.phoneNumber,
+            displayName: username || userSnap.data()?.username,
+            photoURL: avatar || userSnap.data()?.avatar
+        };
+    }
+
+    // Получить список чатов пользователя
+    async function loadChats() {
+        const chatsRef = collection(db, 'chats');
+        const q = query(chatsRef, where('members', 'array-contains', currentUser.uid));
+        const snapshot = await getDocs(q);
+        const chats = [];
+        for (const docSnap of snapshot.docs) {
+            const data = docSnap.data();
+            let name = data.name;
+            let avatar = '👤';
+            if (data.type === 'direct') {
+                const otherId = data.members.find(m => m !== currentUser.uid);
+                if (otherId) {
+                    const userRef = doc(db, 'users', otherId);
+                    const userSnap = await getDoc(userRef);
+                    if (userSnap.exists()) {
+                        name = userSnap.data().username;
+                        avatar = userSnap.data().avatar;
+                    }
+                }
+            }
+            // Последнее сообщение
+            let lastMessage = '';
+            const messagesRef = collection(db, 'chats', docSnap.id, 'messages');
+            const lastMsgQuery = query(messagesRef, orderBy('timestamp', 'desc'));
+            const lastMsgSnap = await getDocs(lastMsgQuery);
+            if (!lastMsgSnap.empty) {
+                lastMessage = lastMsgSnap.docs[0].data().text;
+            }
+            chats.push({
+                id: docSnap.id,
+                name: name || 'Чат',
+                avatar: avatar,
+                lastMessage: lastMessage,
+                unread: 0,
+                members: data.members
+            });
+        }
+        return chats;
+    }
+
+    function renderChatsList(chats, onChatSelect) {
+        const container = document.getElementById('chatsList');
+        if (!container) return;
+        container.innerHTML = '';
+        if (chats.length === 0) {
+            container.innerHTML = '<div class="loading">✨ Нет чатов. Нажмите + чтобы создать новый.</div>';
+            return;
+        }
+        chats.forEach(chat => {
+            const div = document.createElement('div');
+            div.className = 'chat-item';
+            div.innerHTML = `<div class="avatar">${chat.avatar}</div><div><div class="chat-name">${chat.name} ${chat.unread>0 ? `<span class="badge">${chat.unread}</span>` : ''}</div><div class="last-msg">${chat.lastMessage}</div></div>`;
+            div.onclick = () => onChatSelect(chat.id, chat.name, chat.avatar);
+            container.appendChild(div);
+        });
+    }
+
+    function openChat(chatId, chatName, chatAvatar) {
+        const chatsPage = document.getElementById('chatsPage');
+        chatsPage.innerHTML = `
+            <div class="glass" style="padding:12px; height:calc(100vh - 120px); display:flex; flex-direction:column;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:12px;"><button id="backToChatsBtn" style="background:none; font-size:28px; color:cyan;">←</button><h3>${chatName}</h3><div></div></div>
+                <div id="chatMessagesArea" class="messages-area" style="flex:1;"></div>
+                <div style="display:flex; gap:8px;"><input type="text" id="messageInput" class="neon-input" style="flex:1;" placeholder="Сообщение..."><button id="sendMsgBtn" class="neon-btn">➤</button></div>
+            </div>
+        `;
+        const messagesContainer = document.getElementById('chatMessagesArea');
+        const messagesRef = collection(db, 'chats', chatId, 'messages');
+        const q = query(messagesRef, orderBy('timestamp', 'asc'));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            messagesContainer.innerHTML = '';
+            snapshot.forEach(doc => {
+                const msg = doc.data();
+                const isOut = msg.userId === currentUser.uid;
+                const div = document.createElement('div');
+                div.className = `message ${isOut ? 'out' : 'in'}`;
+                const time = msg.timestamp ? new Date(msg.timestamp.toDate()).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '';
+                div.innerHTML = `<div>${msg.text}</div><div style="font-size:10px;">${time}</div>`;
+                messagesContainer.appendChild(div);
+            });
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        });
+        document.getElementById('backToChatsBtn').onclick = () => {
+            unsubscribe();
+            renderMainApp();
+        };
+        document.getElementById('sendMsgBtn').onclick = async () => {
+            const input = document.getElementById('messageInput');
+            const text = input.value.trim();
+            if (!text) return;
+            await addDoc(messagesRef, {
+                text: text,
+                userId: currentUser.uid,
+                timestamp: serverTimestamp()
+            });
+            input.value = '';
+        };
+    }
+
+    // Создание нового чата (поиск пользователей)
+    async function createNewChat() {
+        const usersRef = collection(db, 'users');
+        const snapshot = await getDocs(usersRef);
+        const users = [];
+        snapshot.forEach(doc => {
+            if (doc.id !== currentUser.uid) {
+                users.push({ id: doc.id, name: doc.data().username, avatar: doc.data().avatar });
+            }
+        });
+        if (users.length === 0) {
+            alert('Нет других пользователей для чата');
+            return;
+        }
+        const userList = users.map((u, idx) => `${idx+1}. ${u.name} ${u.avatar}`).join('\n');
+        const choice = prompt(`Выберите пользователя для чата:\n${userList}\n\nВведите номер:`);
+        const selected = users[parseInt(choice)-1];
+        if (!selected) return;
+        // Проверяем, существует ли уже чат
+        const chatsRef = collection(db, 'chats');
+        const q = query(chatsRef, where('members', 'array-contains', currentUser.uid));
+        const existing = await getDocs(q);
+        let chatExists = false;
+        existing.forEach(doc => {
+            const data = doc.data();
+            if (data.type === 'direct' && data.members.includes(selected.id)) {
+                chatExists = true;
+                alert('Чат с этим пользователем уже существует');
+            }
+        });
+        if (chatExists) return;
+        // Создаём новый чат
+        const newChatRef = doc(collection(db, 'chats'));
+        await setDoc(newChatRef, {
+            type: 'direct',
+            members: [currentUser.uid, selected.id],
+            createdAt: serverTimestamp()
+        });
+        alert('Чат создан!');
+        renderMainApp();
+    }
+
+    // Стена
+    async function loadWallPosts() {
+        const postsRef = collection(db, 'wall');
+        const q = query(postsRef, orderBy('timestamp', 'desc'));
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    }
+
+    function renderWallPosts(posts, onLike, onComment) {
+        const container = document.getElementById('wallPostsContainer');
+        if (!container) return;
+        container.innerHTML = '';
+        if (posts.length === 0) {
+            container.innerHTML = '<div class="loading">📡 Ещё нет постов. Напиши первый!</div>';
+            return;
+        }
+        posts.forEach(post => {
+            const div = document.createElement('div');
+            div.className = 'wall-post';
+            div.innerHTML = `
+                <div class="post-header" style="display:flex; gap:12px;">
+                    <div class="avatar" style="width:44px; height:44px; font-size:24px;">${post.avatar}</div>
+                    <strong>${post.author}</strong>
+                </div>
+                <div>${post.content}</div>
+                <div style="display:flex; gap:16px; margin-top:12px;">
+                    <button class="like-btn" data-id="${post.id}">❤️ ${post.likesCount || 0}</button>
+                    <button class="comment-btn" data-id="${post.id}">💬 ${post.comments?.length || 0}</button>
+                </div>
+                <div id="comments-${post.id}" style="margin-top:12px;">
+                    ${(post.comments || []).map(c => `<div style="background:rgba(0,255,255,0.1); border-radius:20px; padding:6px 12px;">💬 ${c}</div>`).join('')}
+                </div>
+            `;
+            container.appendChild(div);
+        });
+        document.querySelectorAll('.like-btn').forEach(btn => {
+            btn.onclick = () => onLike(btn.dataset.id);
+        });
+        document.querySelectorAll('.comment-btn').forEach(btn => {
+            btn.onclick = () => {
+                const comment = prompt('Ваш комментарий:');
+                if (comment) onComment(btn.dataset.id, comment);
+            };
+        });
+    }
+
+    async function publishPost(content) {
+        const postsRef = collection(db, 'wall');
+        await addDoc(postsRef, {
+            author: currentUser.displayName,
+            avatar: currentUser.photoURL,
+            content: content,
+            likesCount: 0,
+            comments: [],
+            timestamp: serverTimestamp(),
+            userId: currentUser.uid
+        });
+    }
+
+    async function likePost(postId) {
+        const postRef = doc(db, 'wall', postId);
+        const snap = await getDoc(postRef);
+        if (snap.exists()) {
+            const newLikes = (snap.data().likesCount || 0) + 1;
+            await updateDoc(postRef, { likesCount: newLikes });
+        }
+    }
+
+    async function commentPost(postId, comment) {
+        const postRef = doc(db, 'wall', postId);
+        await updateDoc(postRef, {
+            comments: arrayUnion(comment)
+        });
+    }
+
+    // Основной рендер приложения (после логина)
+    async function renderMainApp() {
+        const root = document.getElementById('root');
+        root.innerHTML = `
+            <div style="max-width:1300px; margin:0 auto; padding:16px; padding-bottom:80px;">
+                <div id="chatsPage" class="page active-page">
+                    <div class="glass" style="padding:18px;">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:20px;">
+                            <h2 style="text-shadow:0 0 5px #0ff;">💬 NEON CHATS</h2>
+                            <button id="newChatBtn" style="background:none; font-size:28px; border:1px solid cyan; border-radius:40px; padding:4px 16px;">+</button>
+                        </div>
+                        <div id="chatsList"><div class="loading">Загрузка чатов...</div></div>
+                    </div>
+                </div>
+                <div id="wallPage" class="page">
+                    <div class="glass" style="padding:18px;">
+                        <h2 style="margin-bottom:20px; text-shadow:0 0 5px #0ff;">📡 КИБЕР-СТЕНА</h2>
+                        <textarea id="postContent" rows="2" placeholder="Опубликовать пост..." style="width:100%; border-radius:28px; background:#0a0f1f; border:1px solid cyan; color:cyan; padding:12px;"></textarea>
+                        <div style="display:flex; justify-content:flex-end; margin-top:10px;"><button id="publishPostBtn" class="neon-btn">⚡ ЗАПУСТИТЬ</button></div>
+                        <div id="wallPostsContainer"><div class="loading">Загрузка постов...</div></div>
+                    </div>
+                </div>
+                <div id="profilePage" class="page">
+                    <div class="glass" style="padding:28px; text-align:center;">
+                        <div id="profileAvatar" style="width:100px; height:100px; border-radius:50%; margin:0 auto 20px; background:linear-gradient(135deg, cyan, magenta); display:flex; align-items:center; justify-content:center; font-size:48px;">${currentUser.photoURL}</div>
+                        <h3 id="profileUsername" style="font-size:26px;">${currentUser.displayName}</h3>
+                        <p style="color:#99f;">${currentUser.phoneNumber}</p>
+                        <hr style="margin:24px 0; border-color:cyan;">
+                        <div style="display:flex; justify-content:space-between;"><span>💎 NEON PREMIUM</span><span id="subStatus" class="badge" style="background:#0ff;">НЕАКТИВНА</span></div>
+                        <button id="manageSubBtn" class="neon-btn" style="margin-top:24px; width:100%;">🔓 Активировать (49₽/мес)</button>
+                        <button id="logoutBtn" style="background:none; border:1px solid magenta; color:magenta; margin-top:20px; width:100%; padding:10px; border-radius:40px;">ВЫЙТИ</button>
+                    </div>
+                </div>
+            </div>
+            <div class="bottom-nav">
+                <button class="nav-item active" data-page="chats"><span class="nav-icon">💬</span><span>ЧАТЫ</span></button>
+                <button class="nav-item" data-page="wall"><span class="nav-icon">📡</span><span>СТЕНА</span></button>
+                <button class="nav-item" data-page="profile"><span class="nav-icon">👾</span><span>ПРОФИЛЬ</span></button>
+            </div>
+        `;
+
+        // Загружаем чаты
+        let chats = await loadChats();
+        renderChatsList(chats, (chatId, name, avatar) => openChat(chatId, name, avatar));
+
+        // Загружаем стену
+        let wallPosts = await loadWallPosts();
+        renderWallPosts(wallPosts, async (postId) => {
+            await likePost(postId);
+            wallPosts = await loadWallPosts();
+            renderWallPosts(wallPosts, likePost, commentPost);
+        }, async (postId, comment) => {
+            await commentPost(postId, comment);
+            wallPosts = await loadWallPosts();
+            renderWallPosts(wallPosts, likePost, commentPost);
+        });
+
+        // Навигация
+        const pages = { chats: document.getElementById('chatsPage'), wall: document.getElementById('wallPage'), profile: document.getElementById('profilePage') };
+        document.querySelectorAll('.nav-item').forEach(btn => {
+            btn.onclick = () => {
+                const pageId = btn.dataset.page;
+                Object.values(pages).forEach(p => p.classList.remove('active-page'));
+                pages[pageId].classList.add('active-page');
+                document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                if (pageId === 'wall') {
+                    renderWallPosts(wallPosts, likePost, commentPost);
+                }
+                if (pageId === 'profile') {
+                    document.getElementById('profileUsername').innerText = currentUser.displayName;
+                    document.getElementById('profileAvatar').innerHTML = currentUser.photoURL;
+                }
+            };
+        });
+
+        document.getElementById('newChatBtn').onclick = () => createNewChat();
+        document.getElementById('publishPostBtn').onclick = async () => {
+            const content = document.getElementById('postContent').value.trim();
+            if (!content) return;
+            await publishPost(content);
+            document.getElementById('postContent').value = '';
+            wallPosts = await loadWallPosts();
+            renderWallPosts(wallPosts, likePost, commentPost);
+        };
+        document.getElementById('manageSubBtn').onclick = () => {
+            alert('💳 Подписка 49₽/мес. Реквизиты: 40817810099910004312 (демо). Спишется автоматически.');
+        };
+        document.getElementById('logoutBtn').onclick = async () => {
+            await signOut(auth);
+            currentUser = null;
+            renderLogin();
+        };
+    }
+
+    // Страница логина
+    function renderLogin() {
+        const root = document.getElementById('root');
+        root.innerHTML = `
+            <div class="glass" style="max-width: 500px; margin: 50px auto; padding: 32px;">
+                <h1 style="text-align:center; color:#0ff;">🔮 NEON LOGIN</h1>
+                <input type="tel" id="phoneInput" placeholder="Номер телефона (например, +79991234567)" class="neon-input" style="margin-bottom:16px;">
+                <input type="text" id="usernameInput" placeholder="Ваше имя" class="neon-input" style="margin-bottom:16px;">
+                <div id="recaptcha-container"></div>
+                <button id="loginBtn" class="neon-btn" style="width:100%;">Войти / Регистрация</button>
+            </div>
+        `;
+        document.getElementById('loginBtn').onclick = async () => {
+            const phone = document.getElementById('phoneInput').value.trim();
+            const username = document.getElementById('usernameInput').value.trim();
+            if (!phone || !username) {
+                alert('Введите номер телефона и имя');
+                return;
+            }
+            const container = document.getElementById('recaptcha-container');
+            const user = await loginWithPhone(phone, container);
+            if (user) {
+                const userData = await updateUserProfile(user, username, '👤');
+                currentUser = {
+                    uid: userData.uid,
+                    phoneNumber: userData.phone,
+                    displayName: userData.displayName,
+                    photoURL: userData.photoURL
+                };
+                renderMainApp();
+            } else {
+                renderLogin();
+            }
+        };
+    }
+
+    // Слушаем изменения аутентификации
+    onAuthStateChanged(auth, async (user) => {
+        if (user) {
+            const userRef = doc(db, 'users', user.uid);
+            const userSnap = await getDoc(userRef);
+            if (userSnap.exists()) {
+                currentUser = {
+                    uid: user.uid,
+                    phoneNumber: user.phoneNumber,
+                    displayName: userSnap.data().username,
+                    photoURL: userSnap.data().avatar
+                };
+                renderMainApp();
+            } else {
+                // Нет профиля — просим имя
+                const newName = prompt('Добро пожаловать! Введите ваше имя:');
+                if (newName) {
+                    await updateUserProfile(user, newName, '👤');
+                    currentUser = {
+                        uid: user.uid,
+                        phoneNumber: user.phoneNumber,
+                        displayName: newName,
+                        photoURL: '👤'
+                    };
+                    renderMainApp();
+                } else {
+                    await signOut(auth);
+                    renderLogin();
+                }
+            }
+        } else {
+            renderLogin();
+        }
+    });
+</script>
+</body>
+</html>
