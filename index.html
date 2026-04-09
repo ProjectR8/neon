@@ -216,11 +216,14 @@
 
     // Функция для логина/регистрации по номеру телефона
     async function loginWithPhone(phoneNumber, recaptchaContainer) {
-        try {
-            const recaptcha = new RecaptchaVerifier(auth, recaptchaContainer, {
-                size: 'invisible',
-                callback: () => {}
-            });
+    try {
+        // Отключаем капчу для тестирования
+        auth.settings.appVerificationDisabledForTesting = true;
+        
+        const recaptcha = new RecaptchaVerifier(auth, recaptchaContainer, {
+            size: 'invisible',
+            callback: () => {}
+        });
             const confirmation = await signInWithPhoneNumber(auth, phoneNumber, recaptcha);
             const code = prompt('Введите код из SMS:');
             const result = await confirmation.confirm(code);
