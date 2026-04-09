@@ -217,7 +217,6 @@
     // Функция для логина/регистрации по номеру телефона
     async function loginWithPhone(phoneNumber, recaptchaContainer) {
         try {
-            auth.settings.appVerificationDisabledForTesting = true;
             const recaptcha = new RecaptchaVerifier(auth, recaptchaContainer, {
                 size: 'invisible',
                 callback: () => {}
