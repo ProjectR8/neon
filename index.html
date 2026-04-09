@@ -217,7 +217,7 @@
                 size: 'invisible',
                 callback: () => {}
             });
-            const confirmation = await signInWithPhoneNumber(auth, phoneNumber, recaptcha);
+            const confirmation = await signInWithPhoneNumber(auth, phoneNumber,);
             const code = prompt('Введите код из SMS:');
             const result = await confirmation.confirm(code);
             return result.user;
