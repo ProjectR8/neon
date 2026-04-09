@@ -223,7 +223,7 @@
         const recaptcha = new RecaptchaVerifier(auth, recaptchaContainer, {
             size: 'invisible',
             callback: () => {}
-          });
+            });
             const confirmation = await signInWithPhoneNumber(auth, phoneNumber, recaptcha);
             const code = prompt('Введите код из SMS:');
             const result = await confirmation.confirm(code);
