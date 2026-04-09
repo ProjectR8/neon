@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>NEON MESSENGER | облачный чат</title>
-    <!-- Firebase SDK -->
     <script type="module">
-        // Твои данные из Firebase (скопированы из твоего сообщения)
         const firebaseConfig = {
             apiKey: "AIzaSyA9gA_Nvei89csa7_YrmbnbnxFngb0UKoM",
             authDomain: "neon-messenger-83ed4.firebaseapp.com",
@@ -205,16 +203,14 @@
 <script type="module">
     import { initializeApp } from 'firebase/app';
     import { getAuth, signInWithPhoneNumber, RecaptchaVerifier, onAuthStateChanged, signOut } from 'firebase/auth';
-    import { getFirestore, collection, doc, setDoc, getDoc, getDocs, query, where, orderBy, onSnapshot, addDoc, updateDoc, arrayUnion, serverTimestamp, deleteDoc } from 'firebase/firestore';
+    import { getFirestore, collection, doc, setDoc, getDoc, getDocs, query, where, orderBy, onSnapshot, addDoc, updateDoc, arrayUnion, serverTimestamp } from 'firebase/firestore';
 
-    // Инициализация Firebase из твоих ключей
     const app = initializeApp(window.firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
 
     let currentUser = null;
 
-    // Функция для логина/регистрации по номеру телефона
     async function loginWithPhone(phoneNumber, recaptchaContainer) {
         try {
             const recaptcha = new RecaptchaVerifier(auth, recaptchaContainer, {
@@ -232,7 +228,6 @@
         }
     }
 
-    // Сохраняем/обновляем профиль пользователя в Firestore
     async function updateUserProfile(user, username, avatar) {
         const userRef = doc(db, 'users', user.uid);
         const userSnap = await getDoc(userRef);
@@ -255,7 +250,6 @@
         };
     }
 
-    // Получить список чатов пользователя
     async function loadChats() {
         const chatsRef = collection(db, 'chats');
         const q = query(chatsRef, where('members', 'array-contains', currentUser.uid));
@@ -276,7 +270,6 @@
                     }
                 }
             }
-            // Последнее сообщение
             let lastMessage = '';
             const messagesRef = collection(db, 'chats', docSnap.id, 'messages');
             const lastMsgQuery = query(messagesRef, orderBy('timestamp', 'desc'));
@@ -355,7 +348,6 @@
         };
     }
 
-    // Создание нового чата (поиск пользователей)
     async function createNewChat() {
         const usersRef = collection(db, 'users');
         const snapshot = await getDocs(usersRef);
@@ -373,7 +365,6 @@
         const choice = prompt(`Выберите пользователя для чата:\n${userList}\n\nВведите номер:`);
         const selected = users[parseInt(choice)-1];
         if (!selected) return;
-        // Проверяем, существует ли уже чат
         const chatsRef = collection(db, 'chats');
         const q = query(chatsRef, where('members', 'array-contains', currentUser.uid));
         const existing = await getDocs(q);
@@ -386,7 +377,6 @@
             }
         });
         if (chatExists) return;
-        // Создаём новый чат
         const newChatRef = doc(collection(db, 'chats'));
         await setDoc(newChatRef, {
             type: 'direct',
@@ -397,7 +387,6 @@
         renderMainApp();
     }
 
-    // Стена
     async function loadWallPosts() {
         const postsRef = collection(db, 'wall');
         const q = query(postsRef, orderBy('timestamp', 'desc'));
@@ -472,7 +461,6 @@
         });
     }
 
-    // Основной рендер приложения (после логина)
     async function renderMainApp() {
         const root = document.getElementById('root');
         root.innerHTML = `
@@ -513,11 +501,9 @@
             </div>
         `;
 
-        // Загружаем чаты
         let chats = await loadChats();
         renderChatsList(chats, (chatId, name, avatar) => openChat(chatId, name, avatar));
 
-        // Загружаем стену
         let wallPosts = await loadWallPosts();
         renderWallPosts(wallPosts, async (postId) => {
             await likePost(postId);
@@ -529,7 +515,6 @@
             renderWallPosts(wallPosts, likePost, commentPost);
         });
 
-        // Навигация
         const pages = { chats: document.getElementById('chatsPage'), wall: document.getElementById('wallPage'), profile: document.getElementById('profilePage') };
         document.querySelectorAll('.nav-item').forEach(btn => {
             btn.onclick = () => {
@@ -558,7 +543,7 @@
             renderWallPosts(wallPosts, likePost, commentPost);
         };
         document.getElementById('manageSubBtn').onclick = () => {
-            alert('💳 Подписка 49₽/мес. Реквизиты: 40817810099910004312 (демо). Спишется автоматически.');
+            alert('💳 Подписка 49₽/мес. Реквизиты: 40817810099910004312 (демо).');
         };
         document.getElementById('logoutBtn').onclick = async () => {
             await signOut(auth);
@@ -567,7 +552,6 @@
         };
     }
 
-    // Страница логина
     function renderLogin() {
         const root = document.getElementById('root');
         root.innerHTML = `
@@ -603,7 +587,6 @@
         };
     }
 
-    // Слушаем изменения аутентификации
     onAuthStateChanged(auth, async (user) => {
         if (user) {
             const userRef = doc(db, 'users', user.uid);
@@ -617,7 +600,6 @@
                 };
                 renderMainApp();
             } else {
-                // Нет профиля — просим имя
                 const newName = prompt('Добро пожаловать! Введите ваше имя:');
                 if (newName) {
                     await updateUserProfile(user, newName, '👤');
@@ -638,3 +620,5 @@
         }
     });
 </script>
+</body>
+</html>
