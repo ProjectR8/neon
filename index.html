@@ -213,34 +213,63 @@
 
     let currentUser = null;
 
-    // ==================== ФУНКЦИЯ ЛОГИНА (ИСПРАВЛЕННАЯ) ====================
-    async function loginWithPhone(phoneNumber, recaptchaContainer) {
+    // ==================== ИСПРАВЛЕННАЯ ФУНКЦИЯ ЛОГИНА ====================
+    async function loginWithPhone(phoneNumber, recaptchaContainerId) {
         try {
-            // Очищаем предыдущий verifier, если есть
+            // Получаем контейнер
+            const container = document.getElementById(recaptchaContainerId);
+            if (!container) throw new Error('Контейнер для reCAPTCHA не найден');
+
+            // Очищаем предыдущий verifier
             if (window.recaptchaVerifier) {
-                await window.recaptchaVerifier.clear();
+                try {
+                    await window.recaptchaVerifier.clear();
+                } catch (e) {}
                 window.recaptchaVerifier = null;
             }
+
+            // Очищаем содержимое контейнера от возможных остатков
+            container.innerHTML = '';
+
             // Создаём новый verifier
-            const verifier = new RecaptchaVerifier(auth, recaptchaContainer, {
+            const verifier = new RecaptchaVerifier(auth, container, {
                 size: 'invisible',
-                callback: () => {}
+                callback: () => {
+                    // можно оставить пустым
+                }
             });
             window.recaptchaVerifier = verifier;
+
             // Отправляем SMS
             const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, verifier);
             window.confirmationResult = confirmationResult;
+
             const code = prompt('Введите код из SMS:');
             if (!code) throw new Error('Код не введён');
+
             const userCredential = await confirmationResult.confirm(code);
-            return userCredential.user;
-        } catch (error) {
-            console.error(error);
-            alert('Ошибка: ' + error.message);
+            
+            // После успешного входа очищаем verifier
             if (window.recaptchaVerifier) {
                 await window.recaptchaVerifier.clear();
                 window.recaptchaVerifier = null;
             }
+            return userCredential.user;
+        } catch (error) {
+            console.error('Ошибка авторизации:', error);
+            alert('Ошибка: ' + error.message);
+            
+            // В случае ошибки тоже очищаем
+            if (window.recaptchaVerifier) {
+                try {
+                    await window.recaptchaVerifier.clear();
+                } catch (e) {}
+                window.recaptchaVerifier = null;
+            }
+            // Очищаем контейнер
+            const container = document.getElementById(recaptchaContainerId);
+            if (container) container.innerHTML = '';
+            
             return null;
         }
     }
@@ -269,9 +298,6 @@
     }
 
     // ==================== ВСЕ ОСТАЛЬНЫЕ ФУНКЦИИ (НЕ МЕНЯЕМ) ====================
-    // Они полностью рабочие, просто скопированы из твоего последнего рабочего варианта
-    // (я их не трогаю, только вставил)
-
     async function loadChats() {
         const chatsRef = collection(db, 'chats');
         const q = query(chatsRef, where('members', 'array-contains', currentUser.uid));
@@ -579,7 +605,7 @@
         };
     }
 
-    // Рендер логина (с правильным контейнером для капчи)
+    // Рендер логина (исправлен)
     function renderLogin() {
         const root = document.getElementById('root');
         root.innerHTML = `
@@ -591,6 +617,15 @@
                 <button id="loginBtn" class="neon-btn" style="width:100%;">Войти / Регистрация</button>
             </div>
         `;
+        
+        // Очищаем возможный старый verifier и контейнер
+        if (window.recaptchaVerifier) {
+            window.recaptchaVerifier.clear().catch(console.warn);
+            window.recaptchaVerifier = null;
+        }
+        const container = document.getElementById('recaptcha-container');
+        if (container) container.innerHTML = '';
+
         document.getElementById('loginBtn').onclick = async () => {
             const phone = document.getElementById('phoneInput').value.trim();
             const username = document.getElementById('usernameInput').value.trim();
@@ -598,7 +633,17 @@
                 alert('Введите номер телефона и имя');
                 return;
             }
+            
+            // Отключаем кнопку на время запроса
+            const btn = document.getElementById('loginBtn');
+            btn.disabled = true;
+            btn.textContent = 'Отправка кода...';
+            
             const user = await loginWithPhone(phone, 'recaptcha-container');
+            
+            btn.disabled = false;
+            btn.textContent = 'Войти / Регистрация';
+            
             if (user) {
                 const userData = await updateUserProfile(user, username, '👤');
                 currentUser = {
@@ -610,14 +655,10 @@
                 localStorage.setItem('neon_user', JSON.stringify(currentUser));
                 renderMainApp();
             } else {
-                renderLogin();
+                // Если ошибка, оставляем форму логина
+                // но контейнер уже очищен в loginWithPhone
             }
         };
-    }
-
-    function renderRegister() {
-        // Упрощённо — используем renderLogin для регистрации (она сама создаст пользователя)
-        renderLogin();
     }
 
     // Старт
@@ -635,6 +676,7 @@
                 localStorage.setItem('neon_user', JSON.stringify(currentUser));
                 renderMainApp();
             } else {
+                // Пользователь есть в Auth, но нет в Firestore — просим заполнить имя
                 renderLogin();
             }
         } else {
