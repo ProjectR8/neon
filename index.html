@@ -1,688 +1,827 @@
-<!DOCTYPE html>
+
+    <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>NEON MESSENGER</title>
-    <style>
-        /* ТВОЙ ДИЗАЙН — ПОЛНОСТЬЮ, КАК БЫЛО */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-        }
-        body {
-            background: radial-gradient(circle at 20% 30%, #0a0f1f, #03050b);
-            min-height: 100vh;
-        }
-        .glass {
-            background: rgba(15, 25, 45, 0.45);
-            backdrop-filter: blur(16px) saturate(180%);
-            border-radius: 32px;
-            border: 1px solid rgba(0, 255, 255, 0.35);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 0 18px rgba(0, 255, 255, 0.2);
-            transition: all 0.3s;
-        }
-        .glass:hover {
-            border-color: #0ff;
-            box-shadow: 0 0 28px rgba(0, 255, 255, 0.5);
-        }
-        .neon-input {
-            background: rgba(10, 20, 40, 0.7);
-            border: 1px solid #0ff;
-            border-radius: 60px;
-            padding: 14px 20px;
-            color: #0ff;
-            font-size: 16px;
-            outline: none;
-            width: 100%;
-        }
-        .neon-input:focus {
-            box-shadow: 0 0 14px #0ff;
-        }
-        .neon-btn {
-            background: linear-gradient(135deg, #0ff1, #f0f1);
-            border: 1px solid #0ff;
-            border-radius: 60px;
-            padding: 12px 24px;
-            font-weight: bold;
-            color: #0ff;
-            cursor: pointer;
-            transition: 0.2s;
-            text-transform: uppercase;
-        }
-        .neon-btn:hover {
-            background: #0ff;
-            color: black;
-            box-shadow: 0 0 20px #0ff;
-        }
-        .bottom-nav {
-            position: fixed;
-            bottom: 16px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: calc(100% - 32px);
-            max-width: 480px;
-            background: rgba(5, 10, 25, 0.85);
-            backdrop-filter: blur(20px);
-            border-radius: 60px;
-            display: flex;
-            justify-content: space-around;
-            padding: 8px 12px;
-            border: 1px solid #0ff;
-            box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
-            z-index: 100;
-        }
-        .nav-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 4px;
-            font-size: 11px;
-            color: #88aaff;
-            background: none;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 40px;
-            cursor: pointer;
-            font-weight: 600;
-        }
-        .nav-item.active {
-            background: rgba(0, 255, 255, 0.2);
-            color: #0ff;
-            text-shadow: 0 0 5px #0ff;
-            box-shadow: 0 0 8px #0ff;
-        }
-        .nav-icon { font-size: 26px; }
-        .page { display: none; animation: fade 0.3s; }
-        .page.active-page { display: block; }
-        @keyframes fade {
-            from { opacity: 0; transform: translateY(8px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .chat-item {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            padding: 14px;
-            border-radius: 28px;
-            cursor: pointer;
-            border-bottom: 1px solid rgba(0, 255, 255, 0.2);
-            transition: 0.2s;
-        }
-        .chat-item:hover {
-            background: rgba(0, 255, 255, 0.1);
-            transform: translateX(5px);
-        }
-        .avatar {
-            width: 52px;
-            height: 52px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #0ff, #f0f);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 28px;
-            box-shadow: 0 0 8px cyan;
-        }
-        .badge {
-            background: #f0f;
-            color: black;
-            border-radius: 40px;
-            padding: 2px 10px;
-            font-size: 11px;
-            margin-left: 8px;
-        }
-        .message {
-            max-width: 75%;
-            padding: 10px 18px;
-            border-radius: 24px;
-            margin-bottom: 8px;
-        }
-        .message.out {
-            align-self: flex-end;
-            background: #0a2a3a;
-            border: 1px solid #0ff;
-            color: #0ff;
-        }
-        .message.in {
-            align-self: flex-start;
-            background: #1a1a2e;
-            border: 1px solid #88f;
-            color: #ccd;
-        }
-        .messages-area {
-            height: calc(100vh - 170px);
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            padding: 16px;
-        }
-        .wall-post {
-            background: rgba(10, 15, 30, 0.6);
-            backdrop-filter: blur(12px);
-            border-radius: 28px;
-            padding: 18px;
-            margin-bottom: 18px;
-            border: 1px solid #0ff;
-        }
-        @media (max-width: 768px) {
-            .avatar { width: 44px; height: 44px; font-size: 24px; }
-            .message { max-width: 85%; }
-        }
-        .loading {
-            text-align: center;
-            color: #0ff;
-            padding: 20px;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>NEON MESSENGER | Жидкое стекло</title>
+  <!-- Шрифт Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Inter', sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+      background: radial-gradient(circle at 20% 30%, #0b1425, #03050f);
+      background-attachment: fixed;
+      color: #e3f2ff;
+    }
+
+    /* Жидкое стекло */
+    .glass-card {
+      background: rgba(18, 30, 55, 0.35);
+      backdrop-filter: blur(16px) saturate(180%);
+      -webkit-backdrop-filter: blur(16px) saturate(180%);
+      border-radius: 32px;
+      border: 1px solid rgba(0, 255, 255, 0.4);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4), 0 0 18px rgba(0, 255, 255, 0.2);
+      transition: all 0.25s ease;
+    }
+
+    .glass-card:hover {
+      border-color: #0ff;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5), 0 0 28px #0ff7;
+    }
+
+    /* Неоновые инпуты */
+    .neon-input {
+      background: rgba(8, 20, 40, 0.7);
+      border: 1.5px solid #0ff;
+      border-radius: 60px;
+      padding: 14px 22px;
+      color: #b0f0ff;
+      font-size: 16px;
+      outline: none;
+      width: 100%;
+      transition: 0.2s;
+    }
+
+    .neon-input:focus {
+      box-shadow: 0 0 16px #0ff, inset 0 0 6px #0ff3;
+      border-color: #a0f0ff;
+      background: rgba(10, 25, 50, 0.8);
+    }
+
+    .neon-input::placeholder {
+      color: #6a8faa;
+    }
+
+    /* Неоновые кнопки */
+    .neon-btn {
+      background: linear-gradient(145deg, #0ff2, #80f2);
+      border: 1.5px solid #0ff;
+      border-radius: 60px;
+      padding: 12px 28px;
+      font-weight: 700;
+      color: #0ff;
+      text-shadow: 0 0 5px #0ff;
+      cursor: pointer;
+      transition: 0.2s;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 0 8px #0ff4;
+    }
+
+    .neon-btn:hover {
+      background: #0ff;
+      color: #03050f;
+      text-shadow: none;
+      box-shadow: 0 0 28px #0ff, 0 4px 12px #0ff6;
+      border-color: #fff;
+      transform: scale(1.02);
+    }
+
+    .neon-btn:active {
+      transform: scale(0.98);
+    }
+
+    .neon-btn:disabled {
+      opacity: 0.5;
+      pointer-events: none;
+      filter: grayscale(0.5);
+    }
+
+    /* Аватар с градиентом */
+    .avatar {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: linear-gradient(145deg, #0ff, #b0f);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      font-weight: 600;
+      box-shadow: 0 0 14px #0ff;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      color: #03101c;
+      text-shadow: 0 0 5px white;
+    }
+
+    .avatar.small {
+      width: 44px;
+      height: 44px;
+      font-size: 22px;
+    }
+
+    /* Навигация */
+    .bottom-nav {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: calc(100% - 32px);
+      max-width: 480px;
+      background: rgba(5, 12, 28, 0.75);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border-radius: 60px;
+      display: flex;
+      justify-content: space-around;
+      padding: 6px 12px;
+      border: 1.5px solid #0ff;
+      box-shadow: 0 0 30px #0ff4, 0 8px 20px #00000040;
+      z-index: 100;
+    }
+
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #8ab3ff;
+      background: transparent;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 40px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .nav-item.active {
+      background: #0ff2;
+      color: #0ff;
+      text-shadow: 0 0 8px #0ff;
+      box-shadow: 0 0 12px #0ff;
+    }
+
+    .nav-icon { font-size: 26px; line-height: 1; }
+
+    /* Страницы */
+    .page {
+      display: none;
+      animation: fadeSlide 0.3s ease;
+    }
+
+    .page.active-page {
+      display: block;
+    }
+
+    @keyframes fadeSlide {
+      0% { opacity: 0; transform: translateY(10px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Чат элемент */
+    .chat-item {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px;
+      border-radius: 28px;
+      cursor: pointer;
+      border-bottom: 1px solid #0ff3;
+      transition: 0.2s;
+      margin-bottom: 4px;
+    }
+
+    .chat-item:hover {
+      background: #0ff1;
+      transform: translateX(6px);
+      border-color: #0ff;
+    }
+
+    .chat-info h4 {
+      font-size: 17px;
+      font-weight: 600;
+      color: #e0f0ff;
+    }
+
+    .chat-info p {
+      font-size: 14px;
+      color: #9bbdf0;
+      opacity: 0.9;
+    }
+
+    /* Сообщения */
+    .message-bubble {
+      max-width: 75%;
+      padding: 12px 18px;
+      border-radius: 24px;
+      margin-bottom: 10px;
+      word-break: break-word;
+      box-shadow: 0 2px 8px #00000030;
+    }
+
+    .message-out {
+      align-self: flex-end;
+      background: linear-gradient(145deg, #0a2e42, #06212e);
+      border: 1px solid #0ff;
+      color: #d0f0ff;
+    }
+
+    .message-in {
+      align-self: flex-start;
+      background: rgba(25, 40, 65, 0.8);
+      backdrop-filter: blur(8px);
+      border: 1px solid #88aaff;
+      color: #e0eaff;
+    }
+
+    .messages-container {
+      height: calc(100vh - 170px);
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      padding: 16px;
+    }
+
+    /* Пост на стене */
+    .post-card {
+      background: rgba(12, 22, 40, 0.5);
+      backdrop-filter: blur(12px);
+      border-radius: 28px;
+      padding: 20px;
+      margin-bottom: 20px;
+      border: 1px solid #0ff6;
+      box-shadow: 0 8px 18px #00000030;
+    }
+
+    .badge-neon {
+      background: #b0f;
+      color: #03050f;
+      border-radius: 40px;
+      padding: 3px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      margin-left: 8px;
+      box-shadow: 0 0 8px #f0f;
+    }
+
+    /* Скроллбар */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #0ff; border-radius: 10px; }
+
+    /* Адаптив */
+    @media (max-width: 600px) {
+      .avatar { width: 46px; height: 46px; font-size: 24px; }
+      .message-bubble { max-width: 85%; }
+    }
+
+    /* Контейнер для reCAPTCHA — скрыт, но существует */
+    #recaptcha-container {
+      margin: 0;
+      padding: 0;
+      width: 0;
+      height: 0;
+      overflow: visible;
+    }
+
+    /* Загрузка */
+    .loading-spinner {
+      text-align: center;
+      padding: 30px;
+      color: #0ff;
+      font-size: 18px;
+    }
+  </style>
 </head>
 <body>
-<div id="root"><div class="loading">✨ Загрузка...</div></div>
+<div id="app-root"><div class="loading-spinner">✨ Инициализация...</div></div>
 
-<!-- Импорт Firebase через importmap -->
+<!-- Firebase -->
 <script type="importmap">
-    {
-        "imports": {
-            "firebase/app": "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js",
-            "firebase/auth": "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js",
-            "firebase/firestore": "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"
-        }
+  {
+    "imports": {
+      "firebase/app": "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js",
+      "firebase/auth": "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js",
+      "firebase/firestore": "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"
     }
+  }
 </script>
 
 <script type="module">
-    import { initializeApp } from 'firebase/app';
-    import { getAuth, signInWithPhoneNumber, RecaptchaVerifier, onAuthStateChanged, signOut } from 'firebase/auth';
-    import { getFirestore, collection, doc, setDoc, getDoc, getDocs, query, where, orderBy, onSnapshot, addDoc, updateDoc, arrayUnion, serverTimestamp } from 'firebase/firestore';
+  import { initializeApp } from 'firebase/app';
+  import { 
+    getAuth, 
+    signInWithPhoneNumber, 
+    RecaptchaVerifier, 
+    onAuthStateChanged, 
+    signOut 
+  } from 'firebase/auth';
+  import { 
+    getFirestore, 
+    collection, 
+    doc, 
+    setDoc, 
+    getDoc, 
+    getDocs, 
+    query, 
+    where, 
+    orderBy, 
+    onSnapshot, 
+    addDoc, 
+    updateDoc, 
+    arrayUnion, 
+    serverTimestamp,
+    limit
+  } from 'firebase/firestore';
 
-    // ==================== ТВОЙ КОНФИГ FIREBASE ====================
-    const firebaseConfig = {
-        apiKey: "AIzaSyA9gA_Nvei89csa7_YrmbnbnxFngb0UKoM",
-        authDomain: "neon-messenger-83ed4.firebaseapp.com",
-        projectId: "neon-messenger-83ed4",
-        storageBucket: "neon-messenger-83ed4.firebasestorage.app",
-        messagingSenderId: "954172505610",
-        appId: "1:954172505610:web:03f56a8a5b89f2d402a9f3"
+  // ==================== КОНФИГУРАЦИЯ FIREBASE ====================
+  const firebaseConfig = {
+    apiKey: "AIzaSyA9gA_Nvei89csa7_YrmbnbnxFngb0UKoM",
+    authDomain: "neon-messenger-83ed4.firebaseapp.com",
+    projectId: "neon-messenger-83ed4",
+    storageBucket: "neon-messenger-83ed4.firebasestorage.app",
+    messagingSenderId: "954172505610",
+    appId: "1:954172505610:web:03f56a8a5b89f2d402a9f3"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  // Глобальное состояние
+  let currentUser = null;
+  let currentChatId = null;
+  let unsubscribeMessages = null;
+
+  // ==================== УТИЛИТЫ RECAPTCHA (БЕЗ КОНФЛИКТОВ) ====================
+  async function clearRecaptcha() {
+    if (window.recaptchaVerifier) {
+      try {
+        await window.recaptchaVerifier.clear();
+      } catch (e) {
+        console.warn('recaptcha clear error:', e);
+      }
+      window.recaptchaVerifier = null;
+    }
+    const container = document.getElementById('recaptcha-container');
+    if (container) container.innerHTML = '';
+  }
+
+  // ==================== АВТОРИЗАЦИЯ ====================
+  async function performLogin(phoneNumber, username) {
+    try {
+      await clearRecaptcha();
+      
+      const container = document.getElementById('recaptcha-container');
+      if (!container) throw new Error('Контейнер reCAPTCHA отсутствует');
+
+      const verifier = new RecaptchaVerifier(auth, container, {
+        size: 'invisible',
+        callback: () => {}
+      });
+      window.recaptchaVerifier = verifier;
+
+      const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, verifier);
+      window.confirmationResult = confirmationResult;
+
+      const code = prompt('📲 Введите код из SMS:');
+      if (!code) {
+        await clearRecaptcha();
+        return null;
+      }
+
+      const userCredential = await confirmationResult.confirm(code);
+      await clearRecaptcha();
+
+      // Сохраняем профиль в Firestore
+      const user = userCredential.user;
+      const userRef = doc(db, 'users', user.uid);
+      const userSnap = await getDoc(userRef);
+      
+      if (!userSnap.exists()) {
+        await setDoc(userRef, {
+          phone: user.phoneNumber,
+          username: username || 'NeonUser',
+          avatar: '👤',
+          isSubscribed: false,
+          createdAt: serverTimestamp()
+        });
+      } else if (username) {
+        await updateDoc(userRef, { username });
+      }
+
+      const profileSnap = await getDoc(userRef);
+      return {
+        uid: user.uid,
+        phoneNumber: user.phoneNumber,
+        displayName: profileSnap.data().username,
+        photoURL: profileSnap.data().avatar
+      };
+    } catch (error) {
+      console.error('Ошибка входа:', error);
+      alert('❌ Ошибка: ' + error.message);
+      await clearRecaptcha();
+      return null;
+    }
+  }
+
+  // ==================== ЗАГРУЗКА ДАННЫХ ====================
+  async function loadChats() {
+    const chatsRef = collection(db, 'chats');
+    const q = query(chatsRef, where('members', 'array-contains', currentUser.uid));
+    const snapshot = await getDocs(q);
+    const chats = [];
+    
+    for (const docSnap of snapshot.docs) {
+      const data = docSnap.data();
+      let name = data.name || 'Чат';
+      let avatar = '👥';
+      
+      if (data.type === 'direct') {
+        const otherId = data.members.find(id => id !== currentUser.uid);
+        if (otherId) {
+          const userRef = doc(db, 'users', otherId);
+          const userSnap = await getDoc(userRef);
+          if (userSnap.exists()) {
+            name = userSnap.data().username;
+            avatar = userSnap.data().avatar;
+          }
+        }
+      }
+      
+      // Последнее сообщение
+      let lastMsg = '';
+      const msgQuery = query(collection(db, 'chats', docSnap.id, 'messages'), orderBy('timestamp', 'desc'), limit(1));
+      const msgSnap = await getDocs(msgQuery);
+      if (!msgSnap.empty) {
+        lastMsg = msgSnap.docs[0].data().text;
+      }
+      
+      chats.push({
+        id: docSnap.id,
+        name,
+        avatar,
+        lastMessage: lastMsg,
+        unread: 0
+      });
+    }
+    return chats;
+  }
+
+  async function loadWallPosts() {
+    const q = query(collection(db, 'wall'), orderBy('timestamp', 'desc'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+  }
+
+  // ==================== РЕНДЕР ИНТЕРФЕЙСА ====================
+  function renderLoginScreen() {
+    const root = document.getElementById('app-root');
+    root.innerHTML = `
+      <div style="max-width:480px; margin:40px auto; padding:16px;">
+        <div class="glass-card" style="padding:36px 28px;">
+          <h1 style="text-align:center; font-size:38px; font-weight:800; background:linear-gradient(135deg, #0ff, #b0f); -webkit-background-clip:text; -webkit-text-fill-color:transparent; margin-bottom:24px;">NEON</h1>
+          <p style="text-align:center; margin-bottom:32px; color:#b0d0ff;">messenger будущего</p>
+          
+          <input type="tel" id="login-phone" class="neon-input" placeholder="+79991234567" value="+7" style="margin-bottom:16px;">
+          <input type="text" id="login-name" class="neon-input" placeholder="Ваше имя" style="margin-bottom:24px;">
+          
+          <div id="recaptcha-container"></div>
+          
+          <button id="login-btn" class="neon-btn" style="width:100%; padding:16px;">🌀 ВОЙТИ / СОЗДАТЬ</button>
+          <p style="text-align:center; margin-top:24px; font-size:13px; color:#7f9fbf;">Вам придёт SMS с кодом</p>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('login-btn').onclick = async () => {
+      const phone = document.getElementById('login-phone').value.trim();
+      const name = document.getElementById('login-name').value.trim();
+      if (!phone || !name) {
+        alert('Введите номер и имя');
+        return;
+      }
+      const btn = document.getElementById('login-btn');
+      btn.disabled = true;
+      btn.textContent = '📡 Отправка кода...';
+      
+      const userData = await performLogin(phone, name);
+      if (userData) {
+        currentUser = userData;
+        localStorage.setItem('neon_user', JSON.stringify(userData));
+        renderMainLayout();
+      } else {
+        btn.disabled = false;
+        btn.textContent = '🌀 ВОЙТИ / СОЗДАТЬ';
+      }
     };
+  }
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
-
-    let currentUser = null;
-
-    // ==================== ИСПРАВЛЕННАЯ ФУНКЦИЯ ЛОГИНА ====================
-    async function loginWithPhone(phoneNumber, recaptchaContainerId) {
-        try {
-            // Получаем контейнер
-            const container = document.getElementById(recaptchaContainerId);
-            if (!container) throw new Error('Контейнер для reCAPTCHA не найден');
-
-            // Очищаем предыдущий verifier
-            if (window.recaptchaVerifier) {
-                try {
-                    await window.recaptchaVerifier.clear();
-                } catch (e) {}
-                window.recaptchaVerifier = null;
-            }
-
-            // Очищаем содержимое контейнера от возможных остатков
-            container.innerHTML = '';
-
-            // Создаём новый verifier
-            const verifier = new RecaptchaVerifier(auth, container, {
-                size: 'invisible',
-                callback: () => {
-                    // можно оставить пустым
-                }
-            });
-            window.recaptchaVerifier = verifier;
-
-            // Отправляем SMS
-            const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, verifier);
-            window.confirmationResult = confirmationResult;
-
-            const code = prompt('Введите код из SMS:');
-            if (!code) throw new Error('Код не введён');
-
-            const userCredential = await confirmationResult.confirm(code);
-            
-            // После успешного входа очищаем verifier
-            if (window.recaptchaVerifier) {
-                await window.recaptchaVerifier.clear();
-                window.recaptchaVerifier = null;
-            }
-            return userCredential.user;
-        } catch (error) {
-            console.error('Ошибка авторизации:', error);
-            alert('Ошибка: ' + error.message);
-            
-            // В случае ошибки тоже очищаем
-            if (window.recaptchaVerifier) {
-                try {
-                    await window.recaptchaVerifier.clear();
-                } catch (e) {}
-                window.recaptchaVerifier = null;
-            }
-            // Очищаем контейнер
-            const container = document.getElementById(recaptchaContainerId);
-            if (container) container.innerHTML = '';
-            
-            return null;
-        }
-    }
-
-    // Сохранение профиля в Firestore
-    async function updateUserProfile(user, username, avatar) {
-        const userRef = doc(db, 'users', user.uid);
-        const userSnap = await getDoc(userRef);
-        if (!userSnap.exists()) {
-            await setDoc(userRef, {
-                phone: user.phoneNumber,
-                username: username,
-                avatar: avatar || '👤',
-                isSubscribed: false,
-                createdAt: serverTimestamp()
-            });
-        } else if (username) {
-            await updateDoc(userRef, { username, avatar });
-        }
-        return {
-            uid: user.uid,
-            phoneNumber: user.phoneNumber,
-            displayName: username || userSnap.data()?.username,
-            photoURL: avatar || userSnap.data()?.avatar
-        };
-    }
-
-    // ==================== ВСЕ ОСТАЛЬНЫЕ ФУНКЦИИ (НЕ МЕНЯЕМ) ====================
-    async function loadChats() {
-        const chatsRef = collection(db, 'chats');
-        const q = query(chatsRef, where('members', 'array-contains', currentUser.uid));
-        const snapshot = await getDocs(q);
-        const chats = [];
-        for (const docSnap of snapshot.docs) {
-            const data = docSnap.data();
-            let name = data.name;
-            let avatar = '👤';
-            if (data.type === 'direct') {
-                const otherId = data.members.find(m => m !== currentUser.uid);
-                if (otherId) {
-                    const userRef = doc(db, 'users', otherId);
-                    const userSnap = await getDoc(userRef);
-                    if (userSnap.exists()) {
-                        name = userSnap.data().username;
-                        avatar = userSnap.data().avatar;
-                    }
-                }
-            }
-            let lastMessage = '';
-            const messagesRef = collection(db, 'chats', docSnap.id, 'messages');
-            const lastMsgQuery = query(messagesRef, orderBy('timestamp', 'desc'));
-            const lastMsgSnap = await getDocs(lastMsgQuery);
-            if (!lastMsgSnap.empty) {
-                lastMessage = lastMsgSnap.docs[0].data().text;
-            }
-            chats.push({
-                id: docSnap.id,
-                name: name || 'Чат',
-                avatar: avatar,
-                lastMessage: lastMessage,
-                unread: 0,
-                members: data.members
-            });
-        }
-        return chats;
-    }
-
-    function renderChatsList(chats, onChatSelect) {
-        const container = document.getElementById('chatsList');
-        if (!container) return;
-        container.innerHTML = '';
-        if (chats.length === 0) {
-            container.innerHTML = '<div class="loading">✨ Нет чатов. Нажмите + чтобы создать новый.</div>';
-            return;
-        }
-        chats.forEach(chat => {
-            const div = document.createElement('div');
-            div.className = 'chat-item';
-            div.innerHTML = `<div class="avatar">${chat.avatar}</div><div><div class="chat-name">${chat.name} ${chat.unread>0 ? `<span class="badge">${chat.unread}</span>` : ''}</div><div class="last-msg">${chat.lastMessage}</div></div>`;
-            div.onclick = () => onChatSelect(chat.id, chat.name, chat.avatar);
-            container.appendChild(div);
-        });
-    }
-
-    function openChat(chatId, chatName, chatAvatar) {
-        const chatsPage = document.getElementById('chatsPage');
-        chatsPage.innerHTML = `
-            <div class="glass" style="padding:12px; height:calc(100vh - 120px); display:flex; flex-direction:column;">
-                <div style="display:flex; justify-content:space-between; margin-bottom:12px;"><button id="backToChatsBtn" style="background:none; font-size:28px; color:cyan;">←</button><h3>${chatName}</h3><div></div></div>
-                <div id="chatMessagesArea" class="messages-area" style="flex:1;"></div>
-                <div style="display:flex; gap:8px;"><input type="text" id="messageInput" class="neon-input" style="flex:1;" placeholder="Сообщение..."><button id="sendMsgBtn" class="neon-btn">➤</button></div>
+  async function renderMainLayout() {
+    const root = document.getElementById('app-root');
+    root.innerHTML = `
+      <div style="max-width:1300px; margin:0 auto; padding:16px 16px 90px;">
+        <!-- Страница Чаты -->
+        <div id="page-chats" class="page active-page">
+          <div class="glass-card" style="padding:20px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+              <h2 style="text-shadow:0 0 8px #0ff;">💬 ЧАТЫ</h2>
+              <button id="new-chat-btn" style="background:none; border:2px solid #0ff; color:#0ff; font-size:28px; width:48px; height:48px; border-radius:30px; cursor:pointer;">+</button>
             </div>
-        `;
-        const messagesContainer = document.getElementById('chatMessagesArea');
-        const messagesRef = collection(db, 'chats', chatId, 'messages');
-        const q = query(messagesRef, orderBy('timestamp', 'asc'));
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            messagesContainer.innerHTML = '';
-            snapshot.forEach(doc => {
-                const msg = doc.data();
-                const isOut = msg.userId === currentUser.uid;
-                const div = document.createElement('div');
-                div.className = `message ${isOut ? 'out' : 'in'}`;
-                const time = msg.timestamp ? new Date(msg.timestamp.toDate()).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '';
-                div.innerHTML = `<div>${msg.text}</div><div style="font-size:10px;">${time}</div>`;
-                messagesContainer.appendChild(div);
-            });
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        });
-        document.getElementById('backToChatsBtn').onclick = () => {
-            unsubscribe();
-            renderMainApp();
-        };
-        document.getElementById('sendMsgBtn').onclick = async () => {
-            const input = document.getElementById('messageInput');
-            const text = input.value.trim();
-            if (!text) return;
-            await addDoc(messagesRef, {
-                text: text,
-                userId: currentUser.uid,
-                timestamp: serverTimestamp()
-            });
-            input.value = '';
-        };
-    }
-
-    async function createNewChat() {
-        const usersRef = collection(db, 'users');
-        const snapshot = await getDocs(usersRef);
-        const users = [];
-        snapshot.forEach(doc => {
-            if (doc.id !== currentUser.uid) {
-                users.push({ id: doc.id, name: doc.data().username, avatar: doc.data().avatar });
-            }
-        });
-        if (users.length === 0) {
-            alert('Нет других пользователей для чата');
-            return;
-        }
-        const userList = users.map((u, idx) => `${idx+1}. ${u.name} ${u.avatar}`).join('\n');
-        const choice = prompt(`Выберите пользователя для чата:\n${userList}\n\nВведите номер:`);
-        const selected = users[parseInt(choice)-1];
-        if (!selected) return;
-        const chatsRef = collection(db, 'chats');
-        const q = query(chatsRef, where('members', 'array-contains', currentUser.uid));
-        const existing = await getDocs(q);
-        let chatExists = false;
-        existing.forEach(doc => {
-            const data = doc.data();
-            if (data.type === 'direct' && data.members.includes(selected.id)) {
-                chatExists = true;
-                alert('Чат с этим пользователем уже существует');
-            }
-        });
-        if (chatExists) return;
-        const newChatRef = doc(collection(db, 'chats'));
-        await setDoc(newChatRef, {
-            type: 'direct',
-            members: [currentUser.uid, selected.id],
-            createdAt: serverTimestamp()
-        });
-        alert('Чат создан!');
-        renderMainApp();
-    }
-
-    async function loadWallPosts() {
-        const postsRef = collection(db, 'wall');
-        const q = query(postsRef, orderBy('timestamp', 'desc'));
-        const snapshot = await getDocs(q);
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    }
-
-    function renderWallPosts(posts, onLike, onComment) {
-        const container = document.getElementById('wallPostsContainer');
-        if (!container) return;
-        container.innerHTML = '';
-        if (posts.length === 0) {
-            container.innerHTML = '<div class="loading">📡 Ещё нет постов. Напиши первый!</div>';
-            return;
-        }
-        posts.forEach(post => {
-            const div = document.createElement('div');
-            div.className = 'wall-post';
-            div.innerHTML = `
-                <div class="post-header" style="display:flex; gap:12px;">
-                    <div class="avatar" style="width:44px; height:44px; font-size:24px;">${post.avatar}</div>
-                    <strong>${post.author}</strong>
-                </div>
-                <div>${post.content}</div>
-                <div style="display:flex; gap:16px; margin-top:12px;">
-                    <button class="like-btn" data-id="${post.id}">❤️ ${post.likesCount || 0}</button>
-                    <button class="comment-btn" data-id="${post.id}">💬 ${post.comments?.length || 0}</button>
-                </div>
-                <div id="comments-${post.id}" style="margin-top:12px;">
-                    ${(post.comments || []).map(c => `<div style="background:rgba(0,255,255,0.1); border-radius:20px; padding:6px 12px;">💬 ${c}</div>`).join('')}
-                </div>
-            `;
-            container.appendChild(div);
-        });
-        document.querySelectorAll('.like-btn').forEach(btn => {
-            btn.onclick = () => onLike(btn.dataset.id);
-        });
-        document.querySelectorAll('.comment-btn').forEach(btn => {
-            btn.onclick = () => {
-                const comment = prompt('Ваш комментарий:');
-                if (comment) onComment(btn.dataset.id, comment);
-            };
-        });
-    }
-
-    async function publishPost(content) {
-        const postsRef = collection(db, 'wall');
-        await addDoc(postsRef, {
-            author: currentUser.displayName,
-            avatar: currentUser.photoURL,
-            content: content,
-            likesCount: 0,
-            comments: [],
-            timestamp: serverTimestamp(),
-            userId: currentUser.uid
-        });
-    }
-
-    async function likePost(postId) {
-        const postRef = doc(db, 'wall', postId);
-        const snap = await getDoc(postRef);
-        if (snap.exists()) {
-            const newLikes = (snap.data().likesCount || 0) + 1;
-            await updateDoc(postRef, { likesCount: newLikes });
-        }
-    }
-
-    async function commentPost(postId, comment) {
-        const postRef = doc(db, 'wall', postId);
-        await updateDoc(postRef, {
-            comments: arrayUnion(comment)
-        });
-    }
-
-    // Рендер главного приложения
-    async function renderMainApp() {
-        const root = document.getElementById('root');
-        root.innerHTML = `
-            <div style="max-width:1300px; margin:0 auto; padding:16px; padding-bottom:80px;">
-                <div id="chatsPage" class="page active-page">
-                    <div class="glass" style="padding:18px;">
-                        <div style="display:flex; justify-content:space-between; margin-bottom:20px;">
-                            <h2 style="text-shadow:0 0 5px #0ff;">💬 NEON CHATS</h2>
-                            <button id="newChatBtn" style="background:none; font-size:28px; border:1px solid cyan; border-radius:40px; padding:4px 16px;">+</button>
-                        </div>
-                        <div id="chatsList"><div class="loading">Загрузка чатов...</div></div>
-                    </div>
-                </div>
-                <div id="wallPage" class="page">
-                    <div class="glass" style="padding:18px;">
-                        <h2 style="margin-bottom:20px; text-shadow:0 0 5px #0ff;">📡 КИБЕР-СТЕНА</h2>
-                        <textarea id="postContent" rows="2" placeholder="Опубликовать пост..." style="width:100%; border-radius:28px; background:#0a0f1f; border:1px solid cyan; color:cyan; padding:12px;"></textarea>
-                        <div style="display:flex; justify-content:flex-end; margin-top:10px;"><button id="publishPostBtn" class="neon-btn">⚡ ЗАПУСТИТЬ</button></div>
-                        <div id="wallPostsContainer"><div class="loading">Загрузка постов...</div></div>
-                    </div>
-                </div>
-                <div id="profilePage" class="page">
-                    <div class="glass" style="padding:28px; text-align:center;">
-                        <div id="profileAvatar" style="width:100px; height:100px; border-radius:50%; margin:0 auto 20px; background:linear-gradient(135deg, cyan, magenta); display:flex; align-items:center; justify-content:center; font-size:48px;">${currentUser.photoURL}</div>
-                        <h3 id="profileUsername" style="font-size:26px;">${currentUser.displayName}</h3>
-                        <p style="color:#99f;">${currentUser.phoneNumber}</p>
-                        <hr style="margin:24px 0; border-color:cyan;">
-                        <div style="display:flex; justify-content:space-between;"><span>💎 NEON PREMIUM</span><span id="subStatus" class="badge" style="background:#0ff;">НЕАКТИВНА</span></div>
-                        <button id="manageSubBtn" class="neon-btn" style="margin-top:24px; width:100%;">🔓 Активировать (49₽/мес)</button>
-                        <button id="logoutBtn" style="background:none; border:1px solid magenta; color:magenta; margin-top:20px; width:100%; padding:10px; border-radius:40px;">ВЫЙТИ</button>
-                    </div>
-                </div>
-            </div>
-            <div class="bottom-nav">
-                <button class="nav-item active" data-page="chats"><span class="nav-icon">💬</span><span>ЧАТЫ</span></button>
-                <button class="nav-item" data-page="wall"><span class="nav-icon">📡</span><span>СТЕНА</span></button>
-                <button class="nav-item" data-page="profile"><span class="nav-icon">👾</span><span>ПРОФИЛЬ</span></button>
-            </div>
-        `;
-
-        // Загружаем чаты
-        let chats = await loadChats();
-        renderChatsList(chats, (chatId, name, avatar) => openChat(chatId, name, avatar));
-
-        // Загружаем стену
-        let wallPosts = await loadWallPosts();
-        renderWallPosts(wallPosts, async (postId) => {
-            await likePost(postId);
-            wallPosts = await loadWallPosts();
-            renderWallPosts(wallPosts, likePost, commentPost);
-        }, async (postId, comment) => {
-            await commentPost(postId, comment);
-            wallPosts = await loadWallPosts();
-            renderWallPosts(wallPosts, likePost, commentPost);
-        });
-
-        // Навигация
-        const pages = { chats: document.getElementById('chatsPage'), wall: document.getElementById('wallPage'), profile: document.getElementById('profilePage') };
-        document.querySelectorAll('.nav-item').forEach(btn => {
-            btn.onclick = () => {
-                const pageId = btn.dataset.page;
-                Object.values(pages).forEach(p => p.classList.remove('active-page'));
-                pages[pageId].classList.add('active-page');
-                document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                if (pageId === 'wall') {
-                    renderWallPosts(wallPosts, likePost, commentPost);
-                }
-                if (pageId === 'profile') {
-                    document.getElementById('profileUsername').innerText = currentUser.displayName;
-                    document.getElementById('profileAvatar').innerHTML = currentUser.photoURL;
-                }
-            };
-        });
-
-        document.getElementById('newChatBtn').onclick = () => createNewChat();
-        document.getElementById('publishPostBtn').onclick = async () => {
-            const content = document.getElementById('postContent').value.trim();
-            if (!content) return;
-            await publishPost(content);
-            document.getElementById('postContent').value = '';
-            wallPosts = await loadWallPosts();
-            renderWallPosts(wallPosts, likePost, commentPost);
-        };
-        document.getElementById('manageSubBtn').onclick = () => {
-            alert('💳 Подписка 49₽/мес. Реквизиты: 40817810099910004312 (демо).');
-        };
-        document.getElementById('logoutBtn').onclick = async () => {
-            await signOut(auth);
-            currentUser = null;
-            localStorage.removeItem('neon_user');
-            renderLogin();
-        };
-    }
-
-    // Рендер логина (исправлен)
-    function renderLogin() {
-        const root = document.getElementById('root');
-        root.innerHTML = `
-            <div class="glass" style="max-width: 500px; margin: 50px auto; padding: 32px;">
-                <h1 style="text-align:center; color:#0ff;">🔮 NEON LOGIN</h1>
-                <input type="tel" id="phoneInput" placeholder="Номер телефона (например, +79991234567)" class="neon-input" style="margin-bottom:16px;">
-                <input type="text" id="usernameInput" placeholder="Ваше имя" class="neon-input" style="margin-bottom:16px;">
-                <div id="recaptcha-container"></div>
-                <button id="loginBtn" class="neon-btn" style="width:100%;">Войти / Регистрация</button>
-            </div>
-        `;
+            <div id="chats-list-container">${'<div class="loading-spinner">Загрузка чатов...</div>'}</div>
+          </div>
+        </div>
         
-        // Очищаем возможный старый verifier и контейнер
-        if (window.recaptchaVerifier) {
-            window.recaptchaVerifier.clear().catch(console.warn);
-            window.recaptchaVerifier = null;
-        }
-        const container = document.getElementById('recaptcha-container');
-        if (container) container.innerHTML = '';
+        <!-- Страница Стена -->
+        <div id="page-wall" class="page">
+          <div class="glass-card" style="padding:20px;">
+            <h2 style="margin-bottom:20px; text-shadow:0 0 8px #0ff;">📡 КИБЕР-СТЕНА</h2>
+            <textarea id="post-input" rows="2" class="neon-input" placeholder="Что нового?" style="border-radius:24px; margin-bottom:12px;"></textarea>
+            <div style="display:flex; justify-content:flex-end;">
+              <button id="publish-post-btn" class="neon-btn">⚡ ОПУБЛИКОВАТЬ</button>
+            </div>
+            <div id="wall-posts-container" style="margin-top:24px;">${'<div class="loading-spinner">Загрузка...</div>'}</div>
+          </div>
+        </div>
+        
+        <!-- Страница Профиль -->
+        <div id="page-profile" class="page">
+          <div class="glass-card" style="padding:32px; text-align:center;">
+            <div id="profile-avatar" class="avatar" style="width:100px; height:100px; font-size:48px; margin:0 auto 20px;">${currentUser.photoURL}</div>
+            <h3 id="profile-name" style="font-size:28px;">${currentUser.displayName}</h3>
+            <p style="color:#aac8ff;">${currentUser.phoneNumber}</p>
+            <hr style="margin:28px 0; border-color:#0ff4;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:20px;">
+              <span>💎 NEON PREMIUM</span>
+              <span class="badge-neon">НЕАКТИВНА</span>
+            </div>
+            <button id="upgrade-sub-btn" class="neon-btn" style="width:100%;">🔓 Активировать (49₽/мес)</button>
+            <button id="logout-btn" style="background:none; border:2px solid #f0f; color:#f0f; margin-top:24px; width:100%; padding:14px; border-radius:60px; font-weight:bold;">ВЫЙТИ</button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Нижняя навигация -->
+      <div class="bottom-nav">
+        <button class="nav-item active" data-page="chats"><span class="nav-icon">💬</span><span>ЧАТЫ</span></button>
+        <button class="nav-item" data-page="wall"><span class="nav-icon">🌐</span><span>СТЕНА</span></button>
+        <button class="nav-item" data-page="profile"><span class="nav-icon">👤</span><span>ПРОФИЛЬ</span></button>
+      </div>
+    `;
 
-        document.getElementById('loginBtn').onclick = async () => {
-            const phone = document.getElementById('phoneInput').value.trim();
-            const username = document.getElementById('usernameInput').value.trim();
-            if (!phone || !username) {
-                alert('Введите номер телефона и имя');
-                return;
-            }
-            
-            // Отключаем кнопку на время запроса
-            const btn = document.getElementById('loginBtn');
-            btn.disabled = true;
-            btn.textContent = 'Отправка кода...';
-            
-            const user = await loginWithPhone(phone, 'recaptcha-container');
-            
-            btn.disabled = false;
-            btn.textContent = 'Войти / Регистрация';
-            
-            if (user) {
-                const userData = await updateUserProfile(user, username, '👤');
-                currentUser = {
-                    uid: userData.uid,
-                    phoneNumber: userData.phone,
-                    displayName: userData.displayName,
-                    photoURL: userData.photoURL
-                };
-                localStorage.setItem('neon_user', JSON.stringify(currentUser));
-                renderMainApp();
-            } else {
-                // Если ошибка, оставляем форму логина
-                // но контейнер уже очищен в loginWithPhone
-            }
-        };
+    // Загружаем чаты
+    const chats = await loadChats();
+    renderChatsList(chats);
+    
+    // Загружаем стену
+    let posts = await loadWallPosts();
+    renderWallPosts(posts);
+    
+    // Навигация
+    setupNavigation();
+    
+    // Обработчики
+    document.getElementById('new-chat-btn').onclick = () => createNewChat();
+    document.getElementById('publish-post-btn').onclick = async () => {
+      const content = document.getElementById('post-input').value.trim();
+      if (!content) return;
+      await addDoc(collection(db, 'wall'), {
+        author: currentUser.displayName,
+        avatar: currentUser.photoURL,
+        content,
+        likesCount: 0,
+        comments: [],
+        timestamp: serverTimestamp(),
+        userId: currentUser.uid
+      });
+      document.getElementById('post-input').value = '';
+      posts = await loadWallPosts();
+      renderWallPosts(posts);
+    };
+    
+    document.getElementById('logout-btn').onclick = async () => {
+      await signOut(auth);
+      localStorage.removeItem('neon_user');
+      currentUser = null;
+      if (unsubscribeMessages) unsubscribeMessages();
+      renderLoginScreen();
+    };
+    
+    document.getElementById('upgrade-sub-btn').onclick = () => {
+      alert('💳 Демо-подписка. Реквизиты: 40817810099910004312');
+    };
+  }
+
+  function renderChatsList(chats) {
+    const container = document.getElementById('chats-list-container');
+    if (!container) return;
+    if (chats.length === 0) {
+      container.innerHTML = '<div class="loading-spinner">✨ Нет чатов. Нажмите +</div>';
+      return;
     }
-
-    // Старт
-    onAuthStateChanged(auth, async (user) => {
-        if (user) {
-            const userRef = doc(db, 'users', user.uid);
-            const userSnap = await getDoc(userRef);
-            if (userSnap.exists()) {
-                currentUser = {
-                    uid: user.uid,
-                    phoneNumber: user.phoneNumber,
-                    displayName: userSnap.data().username,
-                    photoURL: userSnap.data().avatar
-                };
-                localStorage.setItem('neon_user', JSON.stringify(currentUser));
-                renderMainApp();
-            } else {
-                // Пользователь есть в Auth, но нет в Firestore — просим заполнить имя
-                renderLogin();
-            }
-        } else {
-            renderLogin();
-        }
+    container.innerHTML = '';
+    chats.forEach(chat => {
+      const div = document.createElement('div');
+      div.className = 'chat-item';
+      div.innerHTML = `
+        <div class="avatar small">${chat.avatar}</div>
+        <div class="chat-info" style="flex:1;">
+          <h4>${chat.name} ${chat.unread ? '<span class="badge-neon">'+chat.unread+'</span>' : ''}</h4>
+          <p>${chat.lastMessage || 'Нет сообщений'}</p>
+        </div>
+      `;
+      div.onclick = () => openChat(chat.id, chat.name, chat.avatar);
+      container.appendChild(div);
     });
+  }
+
+  function openChat(chatId, chatName, chatAvatar) {
+    currentChatId = chatId;
+    const pageChats = document.getElementById('page-chats');
+    pageChats.innerHTML = `
+      <div class="glass-card" style="padding:12px; height:calc(100vh - 130px); display:flex; flex-direction:column;">
+        <div style="display:flex; align-items:center; gap:12px; padding:8px; border-bottom:1px solid #0ff4;">
+          <button id="back-to-chats" style="background:none; border:none; font-size:28px; color:#0ff; cursor:pointer;">←</button>
+          <div class="avatar small">${chatAvatar}</div>
+          <h3>${chatName}</h3>
+        </div>
+        <div id="chat-messages" class="messages-container"></div>
+        <div style="display:flex; gap:8px; padding:12px 0;">
+          <input type="text" id="msg-input" class="neon-input" placeholder="Сообщение..." style="flex:1;">
+          <button id="send-msg-btn" class="neon-btn" style="padding:12px 22px;">➤</button>
+        </div>
+      </div>
+    `;
+    
+    const messagesDiv = document.getElementById('chat-messages');
+    const msgRef = collection(db, 'chats', chatId, 'messages');
+    const q = query(msgRef, orderBy('timestamp', 'asc'));
+    
+    if (unsubscribeMessages) unsubscribeMessages();
+    unsubscribeMessages = onSnapshot(q, (snapshot) => {
+      messagesDiv.innerHTML = '';
+      snapshot.forEach(doc => {
+        const msg = doc.data();
+        const isOut = msg.userId === currentUser.uid;
+        const div = document.createElement('div');
+        div.className = `message-bubble ${isOut ? 'message-out' : 'message-in'}`;
+        const time = msg.timestamp ? new Date(msg.timestamp.toDate()).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '';
+        div.innerHTML = `${msg.text}<div style="font-size:10px; margin-top:6px; opacity:0.7;">${time}</div>`;
+        messagesDiv.appendChild(div);
+      });
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    });
+    
+    document.getElementById('back-to-chats').onclick = () => {
+      if (unsubscribeMessages) { unsubscribeMessages(); unsubscribeMessages = null; }
+      renderMainLayout();
+    };
+    document.getElementById('send-msg-btn').onclick = async () => {
+      const input = document.getElementById('msg-input');
+      const text = input.value.trim();
+      if (!text) return;
+      await addDoc(msgRef, {
+        text,
+        userId: currentUser.uid,
+        timestamp: serverTimestamp()
+      });
+      input.value = '';
+    };
+  }
+
+  async function createNewChat() {
+    const usersSnap = await getDocs(collection(db, 'users'));
+    const users = [];
+    usersSnap.forEach(d => { if (d.id !== currentUser.uid) users.push({ id: d.id, ...d.data() }); });
+    if (users.length === 0) return alert('Нет пользователей');
+    const list = users.map((u,i) => `${i+1}. ${u.username} ${u.avatar}`).join('\n');
+    const choice = prompt('Выберите номер:\n' + list);
+    const idx = parseInt(choice)-1;
+    if (isNaN(idx) || !users[idx]) return;
+    const target = users[idx];
+    
+    // Проверка существующего чата
+    const q = query(collection(db, 'chats'), where('members', 'array-contains', currentUser.uid));
+    const existing = await getDocs(q);
+    let exists = false;
+    existing.forEach(doc => {
+      const data = doc.data();
+      if (data.type === 'direct' && data.members.includes(target.id)) exists = true;
+    });
+    if (exists) return alert('Чат уже есть');
+    
+    const chatRef = doc(collection(db, 'chats'));
+    await setDoc(chatRef, {
+      type: 'direct',
+      members: [currentUser.uid, target.id],
+      createdAt: serverTimestamp()
+    });
+    renderMainLayout();
+  }
+
+  function renderWallPosts(posts) {
+    const container = document.getElementById('wall-posts-container');
+    if (!container) return;
+    container.innerHTML = '';
+    if (posts.length === 0) {
+      container.innerHTML = '<div class="loading-spinner">📡 Пока нет постов</div>';
+      return;
+    }
+    posts.forEach(post => {
+      const div = document.createElement('div');
+      div.className = 'post-card';
+      div.innerHTML = `
+        <div style="display:flex; gap:14px; margin-bottom:14px;">
+          <div class="avatar small">${post.avatar}</div>
+          <strong style="font-size:18px;">${post.author}</strong>
+        </div>
+        <div style="margin-bottom:16px; font-size:16px;">${post.content}</div>
+        <div style="display:flex; gap:24px;">
+          <button class="like-btn" data-id="${post.id}" style="background:none; border:none; color:#0ff; cursor:pointer; font-size:18px;">❤️ ${post.likesCount || 0}</button>
+          <button class="comment-btn" data-id="${post.id}" style="background:none; border:none; color:#b0f; cursor:pointer; font-size:18px;">💬 ${post.comments?.length || 0}</button>
+        </div>
+        <div class="comments-section" id="comments-${post.id}" style="margin-top:16px;">
+          ${(post.comments || []).map(c => `<div style="background:#0ff1; border-radius:20px; padding:8px 16px; margin-top:6px;">💬 ${c}</div>`).join('')}
+        </div>
+      `;
+      container.appendChild(div);
+    });
+    
+    document.querySelectorAll('.like-btn').forEach(btn => {
+      btn.onclick = async (e) => {
+        const id = btn.dataset.id;
+        const ref = doc(db, 'wall', id);
+        const snap = await getDoc(ref);
+        if (snap.exists()) {
+          await updateDoc(ref, { likesCount: (snap.data().likesCount||0) + 1 });
+          const newPosts = await loadWallPosts();
+          renderWallPosts(newPosts);
+        }
+      };
+    });
+    document.querySelectorAll('.comment-btn').forEach(btn => {
+      btn.onclick = async () => {
+        const id = btn.dataset.id;
+        const text = prompt('Комментарий:');
+        if (text) {
+          await updateDoc(doc(db, 'wall', id), { comments: arrayUnion(text) });
+          const newPosts = await loadWallPosts();
+          renderWallPosts(newPosts);
+        }
+      };
+    });
+  }
+
+  function setupNavigation() {
+    const pages = {
+      chats: document.getElementById('page-chats'),
+      wall: document.getElementById('page-wall'),
+      profile: document.getElementById('page-profile')
+    };
+    document.querySelectorAll('.nav-item').forEach(btn => {
+      btn.onclick = () => {
+        const page = btn.dataset.page;
+        Object.values(pages).forEach(p => p.classList.remove('active-page'));
+        pages[page].classList.add('active-page');
+        document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        if (page === 'wall') {
+          loadWallPosts().then(p => renderWallPosts(p));
+        }
+        if (page === 'profile') {
+          document.getElementById('profile-name').innerText = currentUser.displayName;
+          document.getElementById('profile-avatar').innerHTML = currentUser.photoURL;
+        }
+      };
+    });
+  }
+
+  // ==================== ИНИЦИАЛИЗАЦИЯ ====================
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      const userRef = doc(db, 'users', user.uid);
+      const snap = await getDoc(userRef);
+      if (snap.exists()) {
+        currentUser = {
+          uid: user.uid,
+          phoneNumber: user.phoneNumber,
+          displayName: snap.data().username,
+          photoURL: snap.data().avatar
+        };
+        localStorage.setItem('neon_user', JSON.stringify(currentUser));
+        renderMainLayout();
+      } else {
+        // есть auth, но нет профиля -> показываем логин для заполнения
+        renderLoginScreen();
+      }
+    } else {
+      renderLoginScreen();
+    }
+  });
 </script>
 </body>
 </html>
