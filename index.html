@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>NEON Messenger | Чаты + Стена</title>
+    <title>NEON Messenger | Стена, Чаты, Пользователи</title>
     <style>
         * {
             margin: 0;
@@ -71,13 +71,18 @@
             padding: 20px;
         }
 
-        textarea, button, input {
-            outline: none;
-            border-radius: 6px;
+        .messages-area {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            height: calc(100vh - 150px);
+            overflow-y: auto;
         }
 
         textarea {
             resize: none;
+            border-radius: 10px;
+            box-shadow: 0 0 6px rgba(0, 255, 255, 0.3);
         }
 
     </style>
@@ -87,11 +92,11 @@
 
 <script type="importmap">
 {
-    "imports": {
-        "firebase/app": "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js",
-        "firebase/auth": "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js",
-        "firebase/firestore": "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"
-    }
+  "imports": {
+    "firebase/app": "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js",
+    "firebase/auth": "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js",
+    "firebase/firestore": "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"
+  }
 }
 </script>
 
@@ -107,23 +112,27 @@ import {
 import { 
     getFirestore, 
     collection, 
-    doc,
-    setDoc,
-    getDoc,
-    query,
-    where,
+    doc, 
+    setDoc, 
+    getDoc, 
+    addDoc,
+    updateDoc,
+    getDocs,
     onSnapshot,
-    serverTimestamp 
+    serverTimestamp,
+    query,
+    orderBy,
+    where
 } from 'firebase/firestore';
 
-// ===== Firebase Configuration =====
+// Firebase config
 const firebaseConfig = {
-    apiKey: "AIzaSy...Вашключ...",
-    authDomain: "YOUR_PROJECT.firebaseapp.com",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_APPID",
-    messagingSenderId: "12345678998120",
-    appId: "ВАШ_APP_ID"
+    apiKey: "ВАШ_API_KEY",
+    authDomain: "ВАШ_DOMAIN.firebaseapp.com",
+    projectId: "ВАШ_PROJECT_ID",
+    storageBucket: "project.appspot.com",
+    messagingSenderId: "1234567890",
+    appId: "APP_ID"
 };
 
 // Инициализация Firebase
@@ -131,119 +140,66 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-auth.languageCode = 'ru';
+auth.languageCode = 'ru'; // Установка локализации
 
+// Переменная текущего пользователя
 let currentUser = null;
-let recaptchaVerifier;
 
-// --- Reset and Initialize Captcha ---
-function resetCaptcha() {
-    if (recaptchaVerifier) {
-        recaptchaVerifier.clear();
-        recaptchaVerifier = null;
-    }
+// === Функция для отображения чатов ===
+async function loadChats() {
+    const chatsRef = collection(db, 'chats');
+    const q = query(chatsRef, where('members', 'array-contains', currentUser.uid));
+    const chatSnapshots = await getDocs(q);
 
-    const container = document.getElementById('recaptcha-container');
-    if (container) {
-        container.innerHTML = '';
-    }
+    let chatsHTML = '';
+    chatSnapshots.forEach(doc => {
+        const chat = doc.data();
+        chatsHTML += `
+            <div>
+                <strong>${chat?.name || 'Без имени'}</strong>
+            </div>
+        `;
+    });
+    return chatsHTML || '<p>У вас пока нет чатов.</p>';
 }
 
-async function createCaptcha(containerId) {
-    resetCaptcha();
+// === Функция для загрузки стены ===
+async function loadWallPosts() {
+    const postsRef = collection(db, 'wall');
+    const q = query(postsRef, orderBy('timestamp', 'desc'));
+    const postSnapshots = await getDocs(q);
 
-    recaptchaVerifier = new RecaptchaVerifier(containerId, {
-        size: 'normal',
-        callback: () => console.log('reCAPTCHA passed'),
-        'expired-callback': () => console.error('reCAPTCHA expired')
-    }, auth);
+    let wallHTML = '';
+    postSnapshots.forEach(doc => {
+        const post = doc.data();
+        wallHTML += `
+            <div>
+                <p>${post?.content}</p>
+            </div>
+        `;
+    });
 
-    await recaptchaVerifier.render();
+    return wallHTML || '<p>Пока ни одного поста.</p>';
 }
 
-// --- User Authentication ---
-async function loginWithPhone(phone, containerId) {
-    await createCaptcha(containerId);
-
-    try {
-        const confirmationResult = await signInWithPhoneNumber(auth, phone, recaptchaVerifier);
-        const code = prompt('Введите код из SMS.');
-
-        if (!code) {
-            throw new Error('Код не введён');
-        }
-
-        const userCredentials = await confirmationResult.confirm(code);
-        return userCredentials.user;
-    } catch (error) {
-        console.error('Ошибка при входе:', error);
-        resetCaptcha();
-        throw error;
-    }
-}
-
-// --- Firebase User Initialization ---
-async function setUpUser(user, username) {
-    const userRef = doc(db, 'users', user.uid);
-    const docSnapshot = await getDoc(userRef);
-
-    if (!docSnapshot.exists()) {
-        await setDoc(userRef, {
-            username: username || 'Аноним',
-            phoneNumber: user.phoneNumber,
-            createdAt: serverTimestamp()
-        });
-    }
-}
-
-// --- Render Login Screen ---
-function renderLogin() {
+// === Рендер главного приложения ===
+async function renderMainApp() {
     document.getElementById('root').innerHTML = `
-        <div class="glass" style="max-width:500px; margin:60px auto; padding:30px">
-            <h2 style="color:#0ff; text-align:center">🔮 Вход в NEON</h2>
-
-            <input id="phone" type="text" class="neon-input" placeholder="+79991234567" style="margin-top:16px;">
-            <input id="username" type="text" class="neon-input" placeholder="Ваше имя">
-
-            <div id="recaptcha-container"></div>
-
-            <button id="login" class="neon-btn" style="width:100%; margin-top:16px;">Войти</button>
+        <div class="glass" style="">
+           <h2>🔥 NEON Стена</h2>
+           <div>${await loadWallPosts()}</div>
         </div>
     `;
-
-    document.getElementById('login').addEventListener('click', async () => {
-        const phone = document.getElementById('phone').value.trim();
-        const username = document.getElementById('username').value.trim();
-
-        if (!phone || !username) {
-            alert('Пожалуйста, заполните все поля.');
-            return;
-        }
-
-        try {
-            const firebaseUser = await loginWithPhone(phone, 'recaptcha-container');
-            await setUpUser(firebaseUser, username);
-
-            currentUser = firebaseUser;
-            alert('Вход успешно выполнен!');
-            console.log('Пользователь:', currentUser);
-        } catch (error) {
-            console.error('Ошибка входа:', error);
-            alert('Ошибка входа. Пожалуйста, повторите попытку.');
-        }
-    });
 }
 
-// --- Observe Authentication State ---
+// === Аутентификация ==
+
 onAuthStateChanged(auth, (user) => {
-    if (user) {
-        currentUser = user;
-        console.log('Пользователь авторизован:', currentUser);
-        renderMainApp();
-    } else {
-        renderLogin();
-    }
-});
+  if (user) renderMainApp();
+  else alert("🔓 Пожалуйста, войдите");
+})
+
+
 </script>
 </body>
 </html>
