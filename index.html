@@ -826,6 +826,8 @@
     }
 
     auth.onAuthStateChanged(async (user) => {
+      console.log('AUTH STATE:', user);
+
       if (user) {
         const userSnap = await db.collection('users').doc(user.uid).get();
 
