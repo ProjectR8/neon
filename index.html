@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>NEON MESSENGER | чаты + стена</title>
-
+    <title>NEON Messenger | Чаты + Стена</title>
     <style>
         * {
             margin: 0;
@@ -32,6 +31,7 @@
             border-color: #0ff;
             box-shadow: 0 0 28px rgba(0, 255, 255, 0.5);
         }
+
         .neon-input {
             background: rgba(10, 20, 40, 0.7);
             border: 1px solid #0ff;
@@ -71,14 +71,15 @@
             padding: 20px;
         }
 
-        textarea {
-            resize: vertical;
+        textarea, button, input {
             outline: none;
+            border-radius: 6px;
         }
 
-        button {
-            outline: none;
+        textarea {
+            resize: none;
         }
+
     </style>
 </head>
 <body>
@@ -106,27 +107,26 @@ import {
 import { 
     getFirestore, 
     collection, 
-    doc, 
-    setDoc, 
-    getDoc, 
-    query, 
-    where, 
-    onSnapshot, 
-    addDoc, 
-    updateDoc, 
+    doc,
+    setDoc,
+    getDoc,
+    query,
+    where,
+    onSnapshot,
     serverTimestamp 
 } from 'firebase/firestore';
 
-// ===== FIREBASE CONFIG =====
+// ===== Firebase Configuration =====
 const firebaseConfig = {
-    apiKey: "AIzaSyA9gA_Nvei89csa7_YrmbnbnxFngb0UKoM",
-    authDomain: "neon-messenger-83ed4.firebaseapp.com",
-    projectId: "neon-messenger-83ed4",
-    storageBucket: "neon-messenger-83ed4.appspot.com",
-    messagingSenderId: "954172505610",
-    appId: "1:954172505610:web:03f56a8a5b89f2d402a9f3"
+    apiKey: "AIzaSy...Вашключ...",
+    authDomain: "YOUR_PROJECT.firebaseapp.com",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_APPID",
+    messagingSenderId: "12345678998120",
+    appId: "ВАШ_APP_ID"
 };
 
+// Инициализация Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
@@ -134,9 +134,9 @@ const db = getFirestore(app);
 auth.languageCode = 'ru';
 
 let currentUser = null;
-let recaptchaVerifier = null;
+let recaptchaVerifier;
 
-// ===== HELPER FUNCTIONS =====
+// --- Reset and Initialize Captcha ---
 function resetCaptcha() {
     if (recaptchaVerifier) {
         recaptchaVerifier.clear();
@@ -152,97 +152,94 @@ function resetCaptcha() {
 async function createCaptcha(containerId) {
     resetCaptcha();
 
-    const container = document.getElementById(containerId);
     recaptchaVerifier = new RecaptchaVerifier(containerId, {
         size: 'normal',
-        callback: () => console.log('reCAPTCHA solved'),
-        'expired-callback': () => resetCaptcha()
+        callback: () => console.log('reCAPTCHA passed'),
+        'expired-callback': () => console.error('reCAPTCHA expired')
     }, auth);
 
     await recaptchaVerifier.render();
 }
 
-// ===== LOGIN =====
+// --- User Authentication ---
 async function loginWithPhone(phone, containerId) {
     await createCaptcha(containerId);
 
     try {
-        const confirmation = await signInWithPhoneNumber(auth, phone, recaptchaVerifier);
-        const code = prompt('Введите код из SMS:');
-        if (!code) throw new Error('Код не введён');
-        const userCredential = await confirmation.confirm(code); 
-        return userCredential.user;
+        const confirmationResult = await signInWithPhoneNumber(auth, phone, recaptchaVerifier);
+        const code = prompt('Введите код из SMS.');
+
+        if (!code) {
+            throw new Error('Код не введён');
+        }
+
+        const userCredentials = await confirmationResult.confirm(code);
+        return userCredentials.user;
     } catch (error) {
-        console.error('Login error:', error);
+        console.error('Ошибка при входе:', error);
         resetCaptcha();
         throw error;
     }
 }
 
-// ===== USER INITIALIZATION =====
+// --- Firebase User Initialization ---
 async function setUpUser(user, username) {
     const userRef = doc(db, 'users', user.uid);
-    const docSnap = await getDoc(userRef);
+    const docSnapshot = await getDoc(userRef);
 
-    if (!docSnap.exists()) {
+    if (!docSnapshot.exists()) {
         await setDoc(userRef, {
-            username,
-            phone: user.phoneNumber || '',
-            avatar: '👤',
-            createdAt: serverTimestamp(),
+            username: username || 'Аноним',
+            phoneNumber: user.phoneNumber,
+            createdAt: serverTimestamp()
         });
     }
-    return {
-        uid: user.uid,
-        phoneNumber: user.phoneNumber,
-        displayName: username,
-        photoURL: '👤'
-    };
 }
 
-// ===== RENDER LOGIN =====
+// --- Render Login Screen ---
 function renderLogin() {
-    const root = document.getElementById('root');
-    root.innerHTML = `
+    document.getElementById('root').innerHTML = `
         <div class="glass" style="max-width:500px; margin:60px auto; padding:30px">
-            <h2 style="color:#0ff; text-align:center">🔮 NEON LOGIN</h2>
+            <h2 style="color:#0ff; text-align:center">🔮 Вход в NEON</h2>
 
-            <input id="phone" class="neon-input" placeholder="Номер телефона (+79991234567)" style="margin-top:16px;">
-            <input id="name" class="neon-input" placeholder="Ваше имя" style="margin-top:10px;">
+            <input id="phone" type="text" class="neon-input" placeholder="+79991234567" style="margin-top:16px;">
+            <input id="username" type="text" class="neon-input" placeholder="Ваше имя">
 
             <div id="recaptcha-container"></div>
 
-            <button id="login" class="neon-btn" style="width:100%; margin-top:10px">Войти / Регистрация</button>
+            <button id="login" class="neon-btn" style="width:100%; margin-top:16px;">Войти</button>
         </div>
     `;
 
-    document.getElementById('login').onclick = async () => {
+    document.getElementById('login').addEventListener('click', async () => {
         const phone = document.getElementById('phone').value.trim();
-        const username = document.getElementById('name').value.trim();
+        const username = document.getElementById('username').value.trim();
 
         if (!phone || !username) {
-            alert('Введите номер телефона и имя.');
+            alert('Пожалуйста, заполните все поля.');
             return;
         }
 
         try {
             const firebaseUser = await loginWithPhone(phone, 'recaptcha-container');
-            currentUser = await setUpUser(firebaseUser, username);
-            console.log('User setup complete:', currentUser);
-            // Render main app logic can be added here
+            await setUpUser(firebaseUser, username);
+
+            currentUser = firebaseUser;
+            alert('Вход успешно выполнен!');
+            console.log('Пользователь:', currentUser);
         } catch (error) {
-            alert(`Ошибка входа: ${error.message}`);
-            renderLogin();
+            console.error('Ошибка входа:', error);
+            alert('Ошибка входа. Пожалуйста, повторите попытку.');
         }
-    };
+    });
 }
 
-// ===== AUTH STATE =====
-onAuthStateChanged(auth, async (user) => {
+// --- Observe Authentication State ---
+onAuthStateChanged(auth, (user) => {
     if (user) {
         currentUser = user;
-        console.log('User signed in:', currentUser);
-        // Render logic for app's UI...
+        console.log('Пользователь авторизован:', currentUser);
+        renderMainApp();
     } else {
         renderLogin();
     }
