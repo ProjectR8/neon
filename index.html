@@ -229,42 +229,11 @@
 <body>
   <div id="root"><div class="loading">✨ Загрузка...</div></div>
 
-  <script type="importmap">
-  {
-    "imports": {
-      "firebase/app": "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js",
-      "firebase/auth": "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js",
-      "firebase/firestore": "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"
-    }
-  }
-  </script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
 
-  <script type="module">
-    import { initializeApp } from 'firebase/app';
-    import {
-      getAuth,
-      signInWithPhoneNumber,
-      RecaptchaVerifier,
-      onAuthStateChanged,
-      signOut
-    } from 'firebase/auth';
-    import {
-      getFirestore,
-      collection,
-      doc,
-      setDoc,
-      getDoc,
-      getDocs,
-      query,
-      where,
-      orderBy,
-      onSnapshot,
-      addDoc,
-      updateDoc,
-      arrayUnion,
-      serverTimestamp
-    } from 'firebase/firestore';
-
+  <script>
     const firebaseConfig = {
       apiKey: "AIzaSyA9gA_Nvei89csa7_YrmbnbnxFngb0UKoM",
       authDomain: "neon-messenger-83ed4.firebaseapp.com",
@@ -274,10 +243,9 @@
       appId: "1:954172505610:web:03f56a8a5b89f2d402a9f3"
     };
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
-
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
     auth.languageCode = 'ru';
 
     let currentUser = null;
@@ -286,7 +254,7 @@
 
     function resetCaptcha() {
       try {
-        if (recaptchaVerifier && typeof recaptchaVerifier.clear === 'function') {
+        if (recaptchaVerifier) {
           recaptchaVerifier.clear();
         }
       } catch (e) {
@@ -300,25 +268,27 @@
     async function createCaptcha(containerId) {
       resetCaptcha();
       try {
-        recaptchaVerifier = new RecaptchaVerifier(containerId, {
+        recaptchaVerifier = new firebase.auth.RecaptchaVerifier(containerId, {
           size: 'normal',
           callback: () => console.log('reCAPTCHA решена'),
-          'expired-callback': () => console.log('reCAPTCHA истекла')
-        }, auth);
+          'expired-callback': () => {
+            console.log('reCAPTCHA истекла');
+            resetCaptcha();
+          }
+        });
         await recaptchaVerifier.render();
         return recaptchaVerifier;
       } catch (err) {
         console.error('Ошибка при создании капчи:', err);
+        alert('Ошибка инициализации reCAPTCHA. Проверьте консоль.');
         throw err;
       }
     }
 
     async function loginWithPhone(phone, containerId) {
-      let verifier;
       try {
-        verifier = await createCaptcha(containerId);
-        const appVerifier = verifier;
-        const confirmation = await signInWithPhoneNumber(auth, phone, appVerifier);
+        const verifier = await createCaptcha(containerId);
+        const confirmation = await auth.signInWithPhoneNumber(phone, verifier);
         const code = prompt('Введите код из SMS:');
         if (!code) {
           resetCaptcha();
@@ -335,25 +305,25 @@
     }
 
     async function updateUserProfile(user, username, avatar) {
-      const userRef = doc(db, 'users', user.uid);
-      const snap = await getDoc(userRef);
+      const userRef = db.collection('users').doc(user.uid);
+      const snap = await userRef.get();
 
-      if (!snap.exists()) {
-        await setDoc(userRef, {
+      if (!snap.exists) {
+        await userRef.set({
           phone: user.phoneNumber || '',
           username: username || 'Без имени',
           avatar: avatar || '👤',
           isSubscribed: false,
-          createdAt: serverTimestamp()
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
       } else {
-        await updateDoc(userRef, {
+        await userRef.update({
           username: username || snap.data().username || 'Без имени',
           avatar: avatar || snap.data().avatar || '👤'
         });
       }
 
-      const freshSnap = await getDoc(userRef);
+      const freshSnap = await userRef.get();
       const data = freshSnap.data() || {};
 
       return {
@@ -366,9 +336,9 @@
 
     async function loadChats() {
       try {
-        const chatsRef = collection(db, 'chats');
-        const q = query(chatsRef, where('members', 'array-contains', currentUser.uid));
-        const snapshot = await getDocs(q);
+        const snapshot = await db.collection('chats')
+          .where('members', 'array-contains', currentUser.uid)
+          .get();
         const chats = [];
 
         for (const docSnap of snapshot.docs) {
@@ -379,9 +349,8 @@
           if (data.type === 'direct') {
             const otherId = (data.members || []).find(m => m !== currentUser.uid);
             if (otherId) {
-              const userRef = doc(db, 'users', otherId);
-              const userSnap = await getDoc(userRef);
-              if (userSnap.exists()) {
+              const userSnap = await db.collection('users').doc(otherId).get();
+              if (userSnap.exists) {
                 name = userSnap.data().username || 'Пользователь';
                 avatar = userSnap.data().avatar || '👤';
               }
@@ -389,9 +358,12 @@
           }
 
           let lastMessage = '';
-          const messagesRef = collection(db, 'chats', docSnap.id, 'messages');
-          const lastMsgQuery = query(messagesRef, orderBy('timestamp', 'desc'));
-          const lastMsgSnap = await getDocs(lastMsgQuery);
+          const lastMsgSnap = await db.collection('chats')
+            .doc(docSnap.id)
+            .collection('messages')
+            .orderBy('timestamp', 'desc')
+            .limit(1)
+            .get();
 
           if (!lastMsgSnap.empty) {
             lastMessage = lastMsgSnap.docs[0].data().text || '';
@@ -478,33 +450,35 @@
       `;
 
       const messagesContainer = document.getElementById('chatMessagesArea');
-      const messagesRef = collection(db, 'chats', chatId, 'messages');
-      const q = query(messagesRef, orderBy('timestamp', 'asc'));
 
       if (activeChatUnsubscribe) activeChatUnsubscribe();
 
-      activeChatUnsubscribe = onSnapshot(q, (snapshot) => {
-        messagesContainer.innerHTML = '';
-        snapshot.forEach(docSnap => {
-          const msg = docSnap.data();
-          const isOut = msg.userId === currentUser.uid;
+      activeChatUnsubscribe = db.collection('chats')
+        .doc(chatId)
+        .collection('messages')
+        .orderBy('timestamp', 'asc')
+        .onSnapshot((snapshot) => {
+          messagesContainer.innerHTML = '';
+          snapshot.forEach(docSnap => {
+            const msg = docSnap.data();
+            const isOut = msg.userId === currentUser.uid;
 
-          const div = document.createElement('div');
-          div.className = `message ${isOut ? 'out' : 'in'}`;
+            const div = document.createElement('div');
+            div.className = `message ${isOut ? 'out' : 'in'}`;
 
-          const time = msg.timestamp && msg.timestamp.toDate
-            ? new Date(msg.timestamp.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            : '';
+            const time = msg.timestamp
+              ? new Date(msg.timestamp.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              : '';
 
-          div.innerHTML = `
-            <div>${escapeHtml(msg.text || '')}</div>
-            <div style="font-size:10px; opacity:0.7; margin-top:4px;">${time}</div>
-          `;
-          messagesContainer.appendChild(div);
+            div.innerHTML = `
+              <div>${escapeHtml(msg.text || '')}</div>
+              <div style="font-size:10px; opacity:0.7; margin-top:4px;">${time}</div>
+            `;
+            messagesContainer.appendChild(div);
+          });
+
+          messagesContainer.scrollTop = messagesContainer.scrollHeight;
         });
-
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-      });
 
       document.getElementById('backToChatsBtn').onclick = () => {
         if (activeChatUnsubscribe) activeChatUnsubscribe();
@@ -516,11 +490,14 @@
         const text = input.value.trim();
         if (!text) return;
 
-        await addDoc(messagesRef, {
-          text,
-          userId: currentUser.uid,
-          timestamp: serverTimestamp()
-        });
+        await db.collection('chats')
+          .doc(chatId)
+          .collection('messages')
+          .add({
+            text,
+            userId: currentUser.uid,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+          });
 
         input.value = '';
       };
@@ -534,8 +511,7 @@
     }
 
     async function createNewChat() {
-      const usersRef = collection(db, 'users');
-      const snapshot = await getDocs(usersRef);
+      const snapshot = await db.collection('users').get();
       const users = [];
 
       snapshot.forEach(userDoc => {
@@ -559,9 +535,9 @@
       const selected = users[index];
       if (!selected) return;
 
-      const chatsRef = collection(db, 'chats');
-      const q = query(chatsRef, where('members', 'array-contains', currentUser.uid));
-      const existing = await getDocs(q);
+      const existing = await db.collection('chats')
+        .where('members', 'array-contains', currentUser.uid)
+        .get();
 
       let chatExists = false;
       existing.forEach(docSnap => {
@@ -576,11 +552,10 @@
         return;
       }
 
-      const newChatRef = doc(collection(db, 'chats'));
-      await setDoc(newChatRef, {
+      await db.collection('chats').add({
         type: 'direct',
         members: [currentUser.uid, selected.id],
-        createdAt: serverTimestamp()
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
 
       alert('Чат создан!');
@@ -588,9 +563,9 @@
     }
 
     async function loadWallPosts() {
-      const postsRef = collection(db, 'wall');
-      const q = query(postsRef, orderBy('timestamp', 'desc'));
-      const snapshot = await getDocs(q);
+      const snapshot = await db.collection('wall')
+        .orderBy('timestamp', 'desc')
+        .get();
       return snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
     }
 
@@ -649,32 +624,31 @@
     }
 
     async function publishPost(content) {
-      const postsRef = collection(db, 'wall');
-      await addDoc(postsRef, {
+      await db.collection('wall').add({
         author: currentUser.displayName || 'Без имени',
         avatar: currentUser.photoURL || '👤',
         content,
         likesCount: 0,
         comments: [],
-        timestamp: serverTimestamp(),
+        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
         userId: currentUser.uid
       });
     }
 
     async function likePost(postId) {
-      const postRef = doc(db, 'wall', postId);
-      const snap = await getDoc(postRef);
+      const postRef = db.collection('wall').doc(postId);
+      const snap = await postRef.get();
 
-      if (snap.exists()) {
+      if (snap.exists) {
         const newLikes = (snap.data().likesCount || 0) + 1;
-        await updateDoc(postRef, { likesCount: newLikes });
+        await postRef.update({ likesCount: newLikes });
       }
     }
 
     async function commentPost(postId, comment) {
-      const postRef = doc(db, 'wall', postId);
-      await updateDoc(postRef, {
-        comments: arrayUnion(comment)
+      const postRef = db.collection('wall').doc(postId);
+      await postRef.update({
+        comments: firebase.firestore.FieldValue.arrayUnion(comment)
       });
     }
 
@@ -789,7 +763,7 @@
       };
 
       document.getElementById('logoutBtn').onclick = async () => {
-        await signOut(auth);
+        await auth.signOut();
         currentUser = null;
         localStorage.removeItem('neon_user');
         renderLogin();
@@ -851,21 +825,20 @@
       };
     }
 
-    onAuthStateChanged(auth, async (user) => {
+    auth.onAuthStateChanged(async (user) => {
       if (user) {
-        const userRef = doc(db, 'users', user.uid);
-        const snap = await getDoc(userRef);
+        const userSnap = await db.collection('users').doc(user.uid).get();
 
-        if (!snap.exists()) {
+        if (!userSnap.exists) {
           renderLogin();
           return;
         }
 
         currentUser = {
           uid: user.uid,
-          phoneNumber: user.phoneNumber || snap.data().phone || '',
-          displayName: snap.data().username || 'Без имени',
-          photoURL: snap.data().avatar || '👤'
+          phoneNumber: user.phoneNumber || userSnap.data().phone || '',
+          displayName: userSnap.data().username || 'Без имени',
+          photoURL: userSnap.data().avatar || '👤'
         };
 
         localStorage.setItem('neon_user', JSON.stringify(currentUser));
