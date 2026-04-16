@@ -286,54 +286,49 @@
 
     function resetCaptcha() {
       try {
-        if (recaptchaVerifier) {
+        if (recaptchaVerifier && typeof recaptchaVerifier.clear === 'function') {
           recaptchaVerifier.clear();
-          recaptchaVerifier = null;
         }
       } catch (e) {
-        console.error('Error clearing captcha:', e);
+        console.error('Ошибка при очистке капчи:', e);
       }
-
+      recaptchaVerifier = null;
       const container = document.getElementById('recaptcha-container');
-      if (container) {
-        container.innerHTML = '';
-      }
+      if (container) container.innerHTML = '';
     }
 
     async function createCaptcha(containerId) {
       resetCaptcha();
-
-      recaptchaVerifier = new RecaptchaVerifier(containerId, {
-        size: 'normal',
-        callback: () => {
-          console.log('reCAPTCHA solved');
-        },
-        'expired-callback': () => {
-          console.log('reCAPTCHA expired');
-        }
-      }, auth);
-
-      await recaptchaVerifier.render();
-      return recaptchaVerifier;
+      try {
+        recaptchaVerifier = new RecaptchaVerifier(containerId, {
+          size: 'normal',
+          callback: () => console.log('reCAPTCHA решена'),
+          'expired-callback': () => console.log('reCAPTCHA истекла')
+        }, auth);
+        await recaptchaVerifier.render();
+        return recaptchaVerifier;
+      } catch (err) {
+        console.error('Ошибка при создании капчи:', err);
+        throw err;
+      }
     }
 
     async function loginWithPhone(phone, containerId) {
+      let verifier;
       try {
-        const verifier = await createCaptcha(containerId);
-
-        const confirmation = await signInWithPhoneNumber(auth, phone, verifier);
-        
+        verifier = await createCaptcha(containerId);
+        const appVerifier = verifier;
+        const confirmation = await signInWithPhoneNumber(auth, phone, appVerifier);
         const code = prompt('Введите код из SMS:');
         if (!code) {
           resetCaptcha();
           throw new Error('Код не введён');
         }
-
         const userCred = await confirmation.confirm(code);
         resetCaptcha();
         return userCred.user;
       } catch (err) {
-        console.error('loginWithPhone error:', err);
+        console.error('Ошибка входа:', err);
         resetCaptcha();
         throw err;
       }
@@ -359,7 +354,7 @@
       }
 
       const freshSnap = await getDoc(userRef);
-      const data = freshSnap.data();
+      const data = freshSnap.data() || {};
 
       return {
         uid: user.uid,
@@ -370,48 +365,53 @@
     }
 
     async function loadChats() {
-      const chatsRef = collection(db, 'chats');
-      const q = query(chatsRef, where('members', 'array-contains', currentUser.uid));
-      const snapshot = await getDocs(q);
-      const chats = [];
+      try {
+        const chatsRef = collection(db, 'chats');
+        const q = query(chatsRef, where('members', 'array-contains', currentUser.uid));
+        const snapshot = await getDocs(q);
+        const chats = [];
 
-      for (const docSnap of snapshot.docs) {
-        const data = docSnap.data();
-        let name = data.name || 'Чат';
-        let avatar = '👤';
+        for (const docSnap of snapshot.docs) {
+          const data = docSnap.data();
+          let name = data.name || 'Чат';
+          let avatar = '👤';
 
-        if (data.type === 'direct') {
-          const otherId = (data.members || []).find(m => m !== currentUser.uid);
-          if (otherId) {
-            const userRef = doc(db, 'users', otherId);
-            const userSnap = await getDoc(userRef);
-            if (userSnap.exists()) {
-              name = userSnap.data().username || 'Пользователь';
-              avatar = userSnap.data().avatar || '👤';
+          if (data.type === 'direct') {
+            const otherId = (data.members || []).find(m => m !== currentUser.uid);
+            if (otherId) {
+              const userRef = doc(db, 'users', otherId);
+              const userSnap = await getDoc(userRef);
+              if (userSnap.exists()) {
+                name = userSnap.data().username || 'Пользователь';
+                avatar = userSnap.data().avatar || '👤';
+              }
             }
           }
+
+          let lastMessage = '';
+          const messagesRef = collection(db, 'chats', docSnap.id, 'messages');
+          const lastMsgQuery = query(messagesRef, orderBy('timestamp', 'desc'));
+          const lastMsgSnap = await getDocs(lastMsgQuery);
+
+          if (!lastMsgSnap.empty) {
+            lastMessage = lastMsgSnap.docs[0].data().text || '';
+          }
+
+          chats.push({
+            id: docSnap.id,
+            name,
+            avatar,
+            lastMessage,
+            unread: 0,
+            members: data.members || []
+          });
         }
 
-        let lastMessage = '';
-        const messagesRef = collection(db, 'chats', docSnap.id, 'messages');
-        const lastMsgQuery = query(messagesRef, orderBy('timestamp', 'desc'));
-        const lastMsgSnap = await getDocs(lastMsgQuery);
-
-        if (!lastMsgSnap.empty) {
-          lastMessage = lastMsgSnap.docs[0].data().text || '';
-        }
-
-        chats.push({
-          id: docSnap.id,
-          name,
-          avatar,
-          lastMessage,
-          unread: 0,
-          members: data.members || []
-        });
+        return chats;
+      } catch (err) {
+        console.error('Ошибка при загрузке чатов:', err);
+        return [];
       }
-
-      return chats;
     }
 
     function renderChatsList(chats, onChatSelect) {
@@ -842,7 +842,7 @@
           renderMainApp();
         } catch (err) {
           console.error(err);
-          alert('Ошибка входа: ' + (err?.message || err));
+          alert('Ошибка входа: ' + (err?.message || 'Неизвестная ошибка'));
           renderLogin();
         } finally {
           btn.disabled = false;
