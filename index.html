@@ -270,10 +270,19 @@
       appId: "1:954172505610:web:03f56a8a5b89f2d402a9f3"
     };
 
-    const app = initializeApp(firebaseConfig);
+        const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
-    const db = getFirestore(app);
+
+    // --- ВРЕМЕННОЕ РЕШЕНИЕ ДЛЯ ОШИБКИ 'appVerificationDisabledForTesting' ---
+    // Убедимся, что auth.settings всегда является объектом, если по какой-то причине он undefined.
+    if (!auth.settings) {
+        auth.settings = {};
+    }
+    // --- КОНЕЦ ВРЕМЕННОГО РЕШЕНИЯ ---
+
+    const db = initializeFirestore(app, {}, 'neon');
     auth.languageCode = "ru";
+
 
     const state = {
       user: null,
