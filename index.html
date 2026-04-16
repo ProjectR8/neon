@@ -235,7 +235,6 @@
   <div id="root"><div class="loading">✨ Загрузка...</div></div>
 
   <script type="module">
-    // ВСЕ ИМПОРТЫ ДОЛЖНЫ БЫТЬ В САМОМ ВЕРХУ
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import {
       getAuth,
@@ -245,7 +244,7 @@
       signInWithPhoneNumber
     } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
     import {
-      initializeFirestore, // Убедитесь, что это initializeFirestore
+      getFirestore,
       collection,
       doc,
       getDoc,
@@ -260,11 +259,8 @@
       serverTimestamp,
       increment,
       arrayUnion
-    }
-    from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-
-    // ТЕПЕРЬ firebaseConfig, а затем все остальное
     const firebaseConfig = {
       apiKey: "AIzaSyA9gA_Nvei89csa7_YrmbnbnxFngb0UKoM",
       authDomain: "neon-messenger-83ed4.firebaseapp.com",
@@ -274,15 +270,10 @@
       appId: "1:954172505610:web:03f56a8a5b89f2d402a9f3"
     };
 
-    const app = initializeApp(firebaseConfig); // Теперь эта строка будет работать
+    const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
-    const db = initializeFirestore(app, {}, 'neon');
+    const db = getFirestore(app);
     auth.languageCode = "ru";
-
-    // ... остальной ваш код приложения
-</script/>
-
-
 
     const state = {
       user: null,
@@ -318,11 +309,11 @@
 
     async function createCaptcha(containerId) {
       resetCaptcha();
-      state.captcha = new RecaptchaVerifier(auth, containerId, {
+      state.captcha = new RecaptchaVerifier(containerId, {
         size: "normal",
         callback: () => console.log("reCAPTCHA solved"),
         "expired-callback": () => resetCaptcha()
-      });
+      }, auth);
       await state.captcha.render();
       return state.captcha;
     }
