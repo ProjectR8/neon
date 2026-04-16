@@ -280,6 +280,9 @@
     }
     // --- КОНЕЦ ВРЕМЕННОГО РЕШЕНИЯ ---
 
+    const app = initializeApp(firebaseConfig); // Теперь initializeApp будет определена!
+    const app = initializeApp(firebaseConfig); // Теперь эта строка будет работать
+    const auth = getAuth(app);
     const db = initializeFirestore(app, {}, 'neon');
     auth.languageCode = "ru";
 
