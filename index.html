@@ -245,7 +245,7 @@
       signInWithPhoneNumber
     } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
     import {
-      initializeFirestore,
+      initializeFirestore, // Убедитесь, что это initializeFirestore
       collection,
       doc,
       getDoc,
@@ -262,9 +262,6 @@
       arrayUnion
     }
     from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-    // >>>>>>>>>>>>>> НАЧАЛО НОВЫХ ИМПОРТОВ FCM <<<<<<<<<<<<<<<<
-    import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
-    // >>>>>>>>>>>>>> КОНЕЦ НОВЫХ ИМПОРТОВ FCM <<<<<<<<<<<<<<<<<
 
 
     // ТЕПЕРЬ firebaseConfig, а затем все остальное
@@ -277,14 +274,10 @@
       appId: "1:954172505610:web:03f56a8a5b89f2d402a9f3"
     };
 
-    const app = initializeApp(firebaseConfig);
+    const app = initializeApp(firebaseConfig); // Теперь эта строка будет работать
     const auth = getAuth(app);
     const db = initializeFirestore(app, {}, 'neonmess');
     auth.languageCode = "ru";
-
-    // >>>>>>>>>>>>>> НАЧАЛО НОВОЙ ИНИЦИАЛИЗАЦИИ FCM <<<<<<<<<<<<<<<<
-    const messaging = getMessaging(app);
-    // >>>>>>>>>>>>>> КОНЕЦ НОВОЙ ИНИЦИАЛИЗАЦИИ FCM <<<<<<<<<<<<<<<<<
 
     // ... остальной ваш код приложения
 
@@ -296,10 +289,7 @@
       wallPosts: [],
       activeChat: null,
       chatUnsub: null,
-      captcha: null,
-      // >>>>>>>>>>>>>> НАЧАЛО НОВОГО ПОЛЯ FCM <<<<<<<<<<<<<<<<
-      fcmToken: null
-      // >>>>>>>>>>>>>> КОНЕЦ НОВОГО ПОЛЯ FCM <<<<<<<<<<<<<<<<<
+      captcha: null
     };
 
     const root = document.getElementById("root");
@@ -359,8 +349,7 @@
         await setDoc(ref, {
           ...baseData,
           createdAt: serverTimestamp(),
-          isSubscribed: false,
-          fcmTokens: [] // Инициализируем массив FCM токенов при создании профиля
+          isSubscribed: false
         });
       } else if (username || avatar) {
         await updateDoc(ref, baseData);
@@ -479,11 +468,6 @@
           };
           state.profile = profile;
           renderApp();
-          // Запрашиваем FCM токен после успешного логина
-          const token = await requestNotificationPermissionAndGetToken();
-          if (token && state.user) {
-            await saveFCMTokenToFirestore(state.user.uid, token);
-          }
         } catch (err) {
           console.error(err);
           alert("Ошибка входа: " + (err?.message || "неизвестная ошибка"));
@@ -556,10 +540,7 @@
             <div class="glass" style="padding:18px;">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
                 <h2 style="text-shadow:0 0 5px #0ff; color:#fff;">💬 NEON CHATS</h2>
-                <button id="newChatBtn" style="background:none
-
-
-      
+                <button id="newChatBtn" style="background:none; color:cyan; font-size:28px; border:1px solid cyan; border-radius:40px; padding:4px 16px; cursor:pointer;">+</button>
               </div>
               <div id="chatsList"><div class="loading">Загрузка чатов...</div></div>
             </div>
