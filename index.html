@@ -929,15 +929,20 @@
     }
 
     async function boot() {
-      onAuthStateChanged(auth, async (user) => { // <-- ВОТ ЭТА СТРОКА ОШИБКИ
+      auth.onAuthStateChanged(async (user) => { // <--- ИСПРАВЛЕНО: теперь это метод объекта 'auth'
         if (!user) {
           state.user = null;
           state.profile = null;
           state.chats = [];
           state.wallPosts = [];
+          if (state.chatUnsub) { // Этот блок я не увидел в вашем предыдущем сокращенном коде, но он должен быть здесь.
+              state.chatUnsub();
+              state.chatUnsub = null;
+          }
           showLogin();
           return;
         }
+
         let profile = await loadProfile(user.uid);
         if (!profile) {
           profile = await ensureProfile(user, user.displayName || "Без имени", user.photoURL || "👤");
@@ -952,8 +957,15 @@
         state.profile = profile;
         state.page = "chats";
         renderApp();
+
+        // После успешного входа, запрашиваем разрешение на уведомления
+        const token = await requestNotificationPermissionAndGetToken();
+        if (token && state.user) {
+          await saveFCMTokenToFirestore(state.user.uid, token);
+        }
       });
     }
+
         // ====================================================================
     // >>>>>>>>>>>>>> НАЧАЛО НОВОГО КОДА ДЛЯ FCM <<<<<<<<<<<<<<<<
     // ====================================================================
