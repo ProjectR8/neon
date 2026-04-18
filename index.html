@@ -6,7 +6,7 @@
   <title>NEON MESSENGER | чаты + стена</title>
 
   <style>
-    /* Все стили остаются те же */
+    /* ВСЕ ВАШИ СТИЛИ ОСТАЮТСЯ БЕЗ ИЗМЕНЕНИЙ */
     * {
       margin: 0;
       padding: 0;
@@ -236,7 +236,7 @@
   <div id="root"><div class="loading">✨ Загрузка...</div></div>
 
   <script type="module">
-    // ========== ИМПОРТЫ (МОДУЛЬНЫЙ SDK) ==========
+    // ========== ИМПОРТЫ ==========
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import {
       getAuth,
@@ -260,7 +260,8 @@
       onSnapshot,
       serverTimestamp,
       increment,
-      arrayUnion
+      arrayUnion,
+      arrayRemove
     } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
     import {
       getMessaging,
@@ -277,6 +278,9 @@
       messagingSenderId: "954172505610",
       appId: "1:954172505610:web:03f56a8a5b89f2d402a9f3"
     };
+
+    // ВАЖНО: Замените на ваш Server Key из Firebase Console
+    const FCM_SERVER_KEY = "BDRTV4EZNNWVT9_dRipTDFG_JHwJa53Ne82UgG5g6XdgLWufZumogCNM8EQK_T-Qg9fZDeCEq7_R6DchHcfWXZQ";
 
     // ========== ИНИЦИАЛИЗАЦИЯ ==========
     const app = initializeApp(firebaseConfig);
@@ -296,7 +300,8 @@
       activeChat: null,
       chatUnsub: null,
       captcha: null,
-      fcmToken: null
+      fcmToken: null,
+      globalChatsUnsub: null
     };
 
     const root = document.getElementById("root");
@@ -433,7 +438,6 @@
           state.profile = profile;
           renderApp();
           
-          // Запрашиваем FCM токен после входа
           const token = await requestNotificationPermissionAndGetToken();
           if (token && state.user) {
             await saveFCMTokenToFirestore(state.user.uid, token);
@@ -714,6 +718,7 @@
 
     function renderProfilePage() {
       const profile = state.profile || state.user || { displayName: "Без имени", phoneNumber: "", photoURL: "👤" };
+      const notificationStatus = Notification.permission;
 
       root.innerHTML = `
         <div style="max-width:1300px; margin:0 auto; padding:16px; padding-bottom:90px;">
@@ -728,12 +733,16 @@
 
               <hr style="margin:24px 0; border-color:cyan;">
 
-              <div style="display:flex; justify-content:space-between; align-items:center;">
-                <span style="color:#fff;">💎 NEON PREMIUM</span>
-                <span class="badge" style="background:#0ff;">НЕАКТИВНА</span>
+              <div style="background: rgba(0,0,0,0.3); border-radius: 20px; padding: 15px; margin-bottom: 15px;">
+                <div style="color: ${notificationStatus === 'granted' ? '#0f0' : '#ff0'}; font-size: 14px; margin-bottom: 10px;">
+                  ${notificationStatus === 'granted' ? '✅ Уведомления включены' : '⚠️ Уведомления не настроены'}
+                </div>
+                <button id="enableNotificationsBtn" class="neon-btn" style="width:100%;">
+                  🔔 ${notificationStatus === 'granted' ? 'ОБНОВИТЬ УВЕДОМЛЕНИЯ' : 'ВКЛЮЧИТЬ УВЕДОМЛЕНИЯ'}
+                </button>
               </div>
 
-              <button id="editProfileBtn" class="neon-btn" style="margin-top:16px; width:100%;">✏️ Изменить профиль</button>
+              <button id="editProfileBtn" class="neon-btn" style="margin-top:10px; width:100%;">✏️ Изменить профиль</button>
               <button id="logoutBtn" style="background:none; border:1px solid magenta; color:magenta; margin-top:20px; width:100%; padding:10px; border-radius:40px; cursor:pointer;">ВЫЙТИ</button>
             </div>
           </div>
@@ -743,6 +752,17 @@
         </div>
         ${renderNav("profile")}
       `;
+
+      document.getElementById("enableNotificationsBtn").onclick = async () => {
+        const token = await requestNotificationPermissionAndGetToken();
+        if (token) {
+          await saveFCMTokenToFirestore(state.user.uid, token);
+          alert('✅ Уведомления включены!');
+          renderProfilePage();
+        } else {
+          alert('❌ Не удалось включить уведомления. Проверьте настройки браузера.');
+        }
+      };
 
       document.getElementById("editProfileBtn").onclick = async () => {
         const username = prompt("Новое имя:", profile.displayName || "");
@@ -795,6 +815,7 @@
       if (state.page === "profile") return renderProfilePage();
       renderChatsPage();
       refreshChats();
+      setupGlobalMessageListener();
     }
 
     // ========== ЧАТ ==========
@@ -878,6 +899,8 @@
         const text = input.value.trim();
         if (!text) return;
 
+        const recipientId = chat.members.find(uid => uid !== state.user.uid);
+        
         await addDoc(messagesRef, {
           text,
           userId: state.user.uid,
@@ -886,8 +909,17 @@
 
         await updateDoc(doc(db, "chats", chat.id), {
           lastMessage: text,
+          lastMessageUserId: state.user.uid,
           updatedAt: serverTimestamp()
         });
+
+        if (recipientId) {
+          await sendNotificationToUser(recipientId, {
+            title: `${state.user.displayName} 💬`,
+            body: text,
+            chatId: chat.id
+          });
+        }
 
         input.value = "";
       }
@@ -942,101 +974,220 @@
       if (chat) openChat(chat);
     }
 
-    // ========== FCM УВЕДОМЛЕНИЯ ==========
-async function requestNotificationPermissionAndGetToken() {
-  try {
-    console.log('📱 Запрос разрешения на уведомления...');
-    
-    // Проверяем поддержку Service Worker
-    if (!('serviceWorker' in navigator)) {
-      console.error('❌ Service Worker не поддерживается');
-      return null;
-    }
-
-    // Регистрируем Service Worker для FCM
-    let registration;
-    try {
-      // Для репозитория neon на GitHub Pages
-      const swPath = '/neon/firebase-messaging-sw.js';
-      console.log('📱 Регистрируем Service Worker по пути:', swPath);
-      
-      registration = await navigator.serviceWorker.register(swPath);
-      console.log('✅ Service Worker зарегистрирован:', registration);
-      
-      // Ждем активации
-      await navigator.serviceWorker.ready;
-      console.log('✅ Service Worker готов к работе');
-      
-    } catch (err) {
-      console.error('❌ Ошибка регистрации Service Worker:', err);
-      console.log('💡 Убедитесь, что файл firebase-messaging-sw.js находится в папке /neon/');
-      return null;
-    }
-
-    const permission = await Notification.requestPermission();
-    console.log('📱 Статус разрешения:', permission);
-    
-    if (permission === 'granted') {
-      console.log('✅ Разрешение на уведомления получено.');
-      
+    // ========== УВЕДОМЛЕНИЯ ==========
+    async function sendNotificationToUser(uid, notification) {
       try {
-        // ВАЖНО: Передаем registration в getToken
-        const currentToken = await getToken(messaging, {
-          vapidKey: 'BDRTV4EZNNWVT9_dRipTDFG_JHwJa53Ne82UgG5g6XdgLWufZumogCNM8EQK_T-Qg9fZDeCEq7_R6DchHcfWXZQ',
-          serviceWorkerRegistration: registration // <-- ВОТ ЭТО ВАЖНО!
+        const userRef = doc(db, "users", uid);
+        const userDoc = await getDoc(userRef);
+        
+        if (!userDoc.exists()) return;
+        
+        const userData = userDoc.data();
+        const fcmTokens = userData.fcmTokens || [];
+        
+        if (fcmTokens.length === 0) return;
+        
+        console.log(`📱 Отправляем уведомление на ${fcmTokens.length} устройств`);
+        
+        for (const token of fcmTokens) {
+          await sendFCMNotification(token, notification);
+        }
+        
+      } catch (error) {
+        console.error('❌ Ошибка отправки уведомления:', error);
+      }
+    }
+
+    async function sendFCMNotification(token, notification) {
+      try {
+        const response = await fetch('https://fcm.googleapis.com/fcm/send', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `key=${FCM_SERVER_KEY}`
+          },
+          body: JSON.stringify({
+            to: token,
+            notification: {
+              title: notification.title,
+              body: notification.body,
+              click_action: `https://projectr8.github.io/neon/`
+            },
+            webpush: {
+              notification: {
+                icon: '/neon/icon-192x192.png',
+                badge: '/neon/icon-192x192.png',
+                vibrate: [200, 100, 200],
+                tag: `chat-${notification.chatId}`,
+                renotify: true,
+                requireInteraction: true
+              },
+              fcm_options: {
+                link: `https://projectr8.github.io/neon/`
+              }
+            }
+          })
         });
         
-        if (currentToken) {
-          console.log('✅ FCM Device Token получен:', currentToken);
-          state.fcmToken = currentToken;
-          return currentToken;
-        } else {
-          console.warn('⚠️ Не удалось получить токен устройства.');
+        const result = await response.json();
+        console.log('✅ FCM ответ:', result);
+        
+        if (result.failure && result.results) {
+          result.results.forEach((res) => {
+            if (res.error === 'NotRegistered') {
+              removeInvalidToken(token);
+            }
+          });
         }
-      } catch (tokenError) {
-        console.error('❌ Ошибка получения токена:', tokenError);
-        // Детальная информация об ошибке
-        if (tokenError.code === 'messaging/failed-service-worker-registration') {
-          console.error('💡 Firebase пытается использовать неправильный путь к Service Worker');
-        }
+        
+      } catch (error) {
+        console.error('❌ Ошибка FCM:', error);
       }
-    } else {
-      console.warn('⚠️ Разрешение на уведомления отклонено.');
     }
-  } catch (error) {
-    console.error('❌ Ошибка при запросе разрешения на уведомления:', error);
-  }
-  return null;
-}
 
-    // Слушатель foreground сообщений
+    async function removeInvalidToken(token) {
+      try {
+        const usersSnap = await getDocs(query(
+          collection(db, "users"),
+          where("fcmTokens", "array-contains", token)
+        ));
+        
+        usersSnap.forEach(async (userDoc) => {
+          await updateDoc(doc(db, "users", userDoc.id), {
+            fcmTokens: arrayRemove(token)
+          });
+        });
+        
+      } catch (error) {
+        console.error('❌ Ошибка удаления токена:', error);
+      }
+    }
+
+    function setupGlobalMessageListener() {
+      if (!state.user || state.globalChatsUnsub) return;
+      
+      console.log('👂 Настраиваем слушатель новых сообщений...');
+      
+      const chatsQuery = query(
+        collection(db, "chats"),
+        where("members", "array-contains", state.user.uid)
+      );
+      
+      state.globalChatsUnsub = onSnapshot(chatsQuery, async (snapshot) => {
+        snapshot.docChanges().forEach(async (change) => {
+          if (change.type === "modified") {
+            const chat = change.doc.data();
+            const chatId = change.doc.id;
+            
+            if (chat.lastMessageUserId && 
+                chat.lastMessageUserId !== state.user.uid && 
+                state.activeChat?.id !== chatId) {
+              
+              console.log('📨 Новое сообщение в чате:', chatId);
+              
+              if (Notification.permission === 'granted') {
+                const sender = await loadProfile(chat.lastMessageUserId);
+                
+                new Notification(`${sender?.displayName || 'NEON'} 💬`, {
+                  body: chat.lastMessage,
+                  icon: '/neon/icon-192x192.png',
+                  badge: '/neon/icon-192x192.png',
+                  tag: chatId,
+                  requireInteraction: true
+                }).onclick = () => {
+                  window.focus();
+                  if (chatId) {
+                    const chatData = state.chats.find(c => c.id === chatId);
+                    if (chatData) openChat(chatData);
+                  }
+                };
+              }
+              
+              refreshChats();
+            }
+          }
+        });
+      });
+    }
+
+    async function requestNotificationPermissionAndGetToken() {
+      try {
+        console.log('📱 Запрос разрешения на уведомления...');
+        
+        if (!('serviceWorker' in navigator)) {
+          console.error('❌ Service Worker не поддерживается');
+          return null;
+        }
+
+        let registration;
+        try {
+          const swPath = '/neon/firebase-messaging-sw.js';
+          registration = await navigator.serviceWorker.register(swPath);
+          console.log('✅ SW зарегистрирован');
+          await navigator.serviceWorker.ready;
+        } catch (err) {
+          console.error('❌ Ошибка регистрации SW:', err);
+          return null;
+        }
+
+        const permission = await Notification.requestPermission();
+        console.log('📱 Статус:', permission);
+        
+        if (permission === 'granted') {
+          try {
+            const currentToken = await getToken(messaging, {
+              vapidKey: 'BDRTV4EZNNWVT9_dRipTDFG_JHwJa53Ne82UgG5g6XdgLWufZumogCNM8EQK_T-Qg9fZDeCEq7_R6DchHcfWXZQ',
+              serviceWorkerRegistration: registration
+            });
+            
+            if (currentToken) {
+              console.log('✅ Токен получен:', currentToken);
+              state.fcmToken = currentToken;
+              return currentToken;
+            }
+          } catch (tokenError) {
+            console.error('❌ Ошибка токена:', tokenError);
+          }
+        }
+      } catch (error) {
+        console.error('❌ Ошибка:', error);
+      }
+      return null;
+    }
+
+    async function saveFCMTokenToFirestore(uid, token) {
+      if (!uid || !token) return;
+      try {
+        const userRef = doc(db, "users", uid);
+        await updateDoc(userRef, {
+          fcmTokens: arrayUnion(token)
+        });
+        console.log(`✅ Токен сохранен`);
+      } catch (error) {
+        console.error('❌ Ошибка сохранения токена:', error);
+      }
+    }
+
     onMessage(messaging, (payload) => {
-      console.log('📨 Сообщение получено в foreground:', payload);
+      console.log('📨 Сообщение получено:', payload);
       if (payload.notification) {
         new Notification(payload.notification.title, {
           body: payload.notification.body,
-          icon: '/icon-192x192.png',
-          badge: '/icon-192x192.png'
+          icon: '/neon/icon-192x192.png'
         });
       }
     });
 
     // ========== ЗАПУСК ==========
     async function boot() {
-      console.log('🚀 Запуск приложения...');
-      
       onAuthStateChanged(auth, async (user) => {
-        console.log('🔄 Auth state changed:', user ? 'logged in' : 'logged out');
-        
         if (!user) {
           state.user = null;
           state.profile = null;
           state.chats = [];
           state.wallPosts = [];
-          if (state.chatUnsub) {
-            state.chatUnsub();
-            state.chatUnsub = null;
-          }
+          if (state.chatUnsub) state.chatUnsub();
+          if (state.globalChatsUnsub) state.globalChatsUnsub();
           showLogin();
           return;
         }
@@ -1056,7 +1207,6 @@ async function requestNotificationPermissionAndGetToken() {
         state.page = "chats";
         renderApp();
 
-        // Запрашиваем FCM токен
         const token = await requestNotificationPermissionAndGetToken();
         if (token && state.user) {
           await saveFCMTokenToFirestore(state.user.uid, token);
