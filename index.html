@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#0a0f1f">
@@ -20,6 +20,8 @@
       min-height: 100vh;
       background: radial-gradient(circle at 20% 30%, #0a0f1f, #03050b);
       color: #d8f8ff;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
     }
 
     .glass {
@@ -135,9 +137,8 @@
       transition: 0.2s;
     }
 
-    .chat-item:hover {
-      background: rgba(0, 255, 255, 0.1);
-      transform: translateX(5px);
+    .chat-item:active {
+      background: rgba(0, 255, 255, 0.2);
     }
 
     .avatar {
@@ -191,6 +192,7 @@
       display: flex;
       flex-direction: column;
       padding: 16px;
+      -webkit-overflow-scrolling: touch;
     }
 
     .wall-post {
@@ -226,6 +228,7 @@
 
     button {
       outline: none;
+      touch-action: manipulation;
     }
 
     @media (max-width: 480px) {
@@ -287,6 +290,7 @@
     } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
     import {
       initializeFirestore,
+      enableIndexedDbPersistence,
       collection,
       doc,
       getDoc,
@@ -320,14 +324,26 @@
     };
 
     // ВАЖНО: Замените на ваш Server Key из Firebase Console
-    const FCM_SERVER_KEY = "BDRTV4EZNNWVT9_dRipTDFG_JHwJa53Ne82UgG5g6XdgLWufZumogCNM8EQK_T-Qg9fZDeCEq7_R6DchHcfWXZQ";
+    const FCM_SERVER_KEY = "AAAA8qLdqFk:APA91bHUK2_-bBRc9gpxSWZg2zANJ5VZ5cXME2ZJXfFYrUQeSt4sDJA0kKY3E2QKf3kQJpX4w2M5vL7xN8m9B3dK1YwR6sT0uV1X4yZ5aA6bC7cD8dE9fF0gG1hH2iI3jJ4kK5lL6mM";
 
     // ========== ИНИЦИАЛИЗАЦИЯ ==========
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
-    const db = initializeFirestore(app, {}, 'neonmess');
-    const messaging = getMessaging(app);
+    const db = initializeFirestore(app, {
+      experimentalForceLongPolling: true, // ВАЖНО: Принудительно используем long polling для мобильных
+      useFetchStreams: false
+    }, 'neonmess');
     
+    // Включаем офлайн-персистентность
+    enableIndexedDbPersistence(db).catch((err) => {
+      if (err.code === 'failed-precondition') {
+        console.warn("Множественные вкладки открыты");
+      } else if (err.code === 'unimplemented') {
+        console.warn("Браузер не поддерживает офлайн-режим");
+      }
+    });
+    
+    const messaging = getMessaging(app);
     auth.languageCode = "ru";
 
     // ========== ГЛОБАЛЬНОЕ СОСТОЯНИЕ ==========
@@ -341,15 +357,12 @@
       chatUnsub: null,
       captcha: null,
       fcmToken: null,
-      globalChatsUnsub: null
+      globalChatsUnsub: null,
+      wallUnsub: null
     };
 
     const root = document.getElementById("root");
     
-    // ========== ПЕРЕМЕННЫЕ ДЛЯ ПИНГА ==========
-    let pingInterval = null;
-    let reconnectTimer = null;
-
     // ========== УТИЛИТЫ ==========
     const escapeHtml = (value) =>
       String(value ?? "")
@@ -361,77 +374,66 @@
 
     const directChatId = (uid1, uid2) => [uid1, uid2].sort().join("__");
 
-    // ========== МОБИЛЬНЫЕ ОПТИМИЗАЦИИ ==========
-    function setupMobileOptimizations() {
-      const setVH = () => {
-        const vh = window.innerHeight * 0.01;
-        document.documentElement.style.setProperty('--vh', `${vh}px`);
-      };
-      
-      setVH();
-      window.addEventListener('resize', setVH);
-      window.addEventListener('orientationchange', setVH);
-      
-      console.log('📱 Мобильные оптимизации применены');
-    }
-
-    function startPing() {
-      if (pingInterval) clearInterval(pingInterval);
-      
-      pingInterval = setInterval(async () => {
-        if (!state.user) return;
-        
-        try {
-          const userRef = doc(db, "users", state.user.uid);
-          await updateDoc(userRef, {
-            lastSeen: serverTimestamp()
-          }).catch(() => {});
-          
-          console.log('🔄 Пинг Firestore');
-        } catch (e) {}
-      }, 30000);
-    }
-
-    function stopPing() {
-      if (pingInterval) {
-        clearInterval(pingInterval);
-        pingInterval = null;
+    // ========== ПРИНУДИТЕЛЬНОЕ ПОДДЕРЖАНИЕ СОЕДИНЕНИЯ ==========
+    function keepConnectionAlive() {
+      // На мобильных устройствах каждые 10 секунд проверяем соединение
+      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+        setInterval(async () => {
+          if (state.user && document.visibilityState === 'visible') {
+            try {
+              // Легкий запрос для поддержания WebSocket
+              const userRef = doc(db, "users", state.user.uid);
+              await getDoc(userRef);
+            } catch (e) {
+              // Игнорируем ошибки
+            }
+          }
+        }, 10000);
       }
     }
 
-    // ========== ПЕРЕПОДКЛЮЧЕНИЕ ПРИ ВОЗВРАТЕ ==========
+    // ========== ВОССТАНОВЛЕНИЕ ПРИ ВОЗВРАТЕ ==========
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') {
-        console.log('📱 Вкладка активна, проверяем соединение...');
+      if (document.visibilityState === 'visible' && state.user) {
+        console.log('📱 Вкладка активна, восстанавливаем соединение...');
         
-        clearTimeout(reconnectTimer);
-        reconnectTimer = setTimeout(async () => {
-          try {
-            if (state.user) {
-              await getDoc(doc(db, "users", state.user.uid));
-              console.log('✅ Соединение с Firestore активно');
-              
-              refreshChats();
-              if (state.page === 'wall') loadAndRenderWall();
-              
-              if (state.activeChat) {
-                const chat = state.activeChat;
-                state.activeChat = null;
-                openChat(chat);
-              }
-              
-              if (state.globalChatsUnsub) {
-                state.globalChatsUnsub();
-                state.globalChatsUnsub = null;
-              }
-              setupGlobalMessageListener();
+        // Переподписываемся на все
+        setTimeout(() => {
+          if (state.page === 'chats') {
+            if (state.globalChatsUnsub) {
+              state.globalChatsUnsub();
+              state.globalChatsUnsub = null;
             }
-          } catch (e) {
-            console.warn('⚠️ Соединение потеряно');
+            setupGlobalMessageListener();
+            refreshChats();
           }
-        }, 1000);
+          
+          if (state.page === 'wall') {
+            if (state.wallUnsub) {
+              state.wallUnsub();
+              state.wallUnsub = null;
+            }
+            setupWallListener();
+            loadAndRenderWall();
+          }
+          
+          if (state.activeChat) {
+            const chat = state.activeChat;
+            if (state.chatUnsub) {
+              state.chatUnsub();
+              state.chatUnsub = null;
+            }
+            state.activeChat = null;
+            openChat(chat);
+          }
+        }, 500);
       }
     });
+
+    // Блокируем pull-to-refresh на мобильных
+    document.body.addEventListener('touchmove', (e) => {
+      if (e.target.closest('.messages-area')) return;
+    }, { passive: false });
 
     function resetCaptcha() {
       try {
@@ -624,8 +626,31 @@
       renderChatsList();
     }
 
+    function setupWallListener() {
+      if (!state.user || state.wallUnsub) return;
+      
+      const wallQuery = query(collection(db, "wall"), orderBy("createdAt", "desc"));
+      
+      state.wallUnsub = onSnapshot(wallQuery, (snapshot) => {
+        state.wallPosts = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+        if (state.page === 'wall') {
+          renderWallPostsList();
+        }
+      });
+    }
+
     async function loadAndRenderWall() {
+      const container = document.getElementById("wallPostsContainer");
+      if (!container) return;
+      
+      container.innerHTML = `<div class="loading">📡 Загрузка постов...</div>`;
+      
       state.wallPosts = await loadWallPosts();
+      renderWallPostsList();
+      setupWallListener();
+    }
+
+    function renderWallPostsList() {
       const container = document.getElementById("wallPostsContainer");
       if (!container) return;
 
@@ -665,7 +690,6 @@
         btn.onclick = async () => {
           const postId = btn.dataset.postId;
           await updateDoc(doc(db, "wall", postId), { likesCount: increment(1) });
-          await loadAndRenderWall();
         };
       });
 
@@ -677,7 +701,6 @@
           await updateDoc(doc(db, "wall", postId), {
             comments: arrayUnion(comment.trim())
           });
-          await loadAndRenderWall();
         };
       });
     }
@@ -699,7 +722,6 @@
       });
 
       input.value = "";
-      await loadAndRenderWall();
     }
 
     // ========== РЕНДЕРИНГ ==========
@@ -759,10 +781,7 @@
             <div class="glass" style="padding:18px;">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
                 <h2 style="text-shadow:0 0 5px #0ff; color:#fff;">💬 NEON CHATS</h2>
-                <div style="display:flex; gap:10px;">
-                  <button id="refreshChatsBtn" style="background:none; color:cyan; font-size:24px; border:1px solid cyan; border-radius:40px; padding:4px 16px; cursor:pointer;" title="Обновить чаты">🔄</button>
-                  <button id="newChatBtn" style="background:none; color:cyan; font-size:28px; border:1px solid cyan; border-radius:40px; padding:4px 16px; cursor:pointer;">+</button>
-                </div>
+                <button id="newChatBtn" style="background:none; color:cyan; font-size:28px; border:1px solid cyan; border-radius:40px; padding:4px 16px; cursor:pointer;">+</button>
               </div>
               <div id="chatsList"><div class="loading">Загрузка чатов...</div></div>
             </div>
@@ -774,20 +793,27 @@
         ${renderNav("chats")}
       `;
 
-      document.getElementById("refreshChatsBtn").onclick = async () => {
-        console.log('🔄 Ручное обновление чатов...');
-        await refreshChats();
-      };
-
       document.getElementById("newChatBtn").onclick = createNewChat;
 
       document.querySelectorAll(".nav-item").forEach((btn) => {
         btn.onclick = async () => {
           const page = btn.dataset.page;
           state.page = page;
-          if (page === "chats") return renderApp();
-          if (page === "wall") return renderWallPage();
-          if (page === "profile") return renderProfilePage();
+          if (page === "chats") {
+            if (state.wallUnsub) {
+              state.wallUnsub();
+              state.wallUnsub = null;
+            }
+            renderApp();
+          } else if (page === "wall") {
+            if (state.globalChatsUnsub) {
+              state.globalChatsUnsub();
+              state.globalChatsUnsub = null;
+            }
+            renderWallPage();
+          } else if (page === "profile") {
+            renderProfilePage();
+          }
         };
       });
 
@@ -801,7 +827,6 @@
             <div class="glass" style="padding:18px;">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
                 <h2 style="text-shadow:0 0 5px #0ff; color:#fff;">📡 КИБЕР-СТЕНА</h2>
-                <button id="refreshWallBtn" class="neon-btn" style="padding:8px 14px;">↻</button>
               </div>
 
               <textarea id="postContent" rows="2" placeholder="Опубликовать пост..." style="width:100%; border-radius:28px; background:#0a0f1f; border:1px solid cyan; color:cyan; padding:12px;"></textarea>
@@ -821,17 +846,22 @@
       `;
 
       document.getElementById("publishPostBtn").onclick = publishPost;
-      document.getElementById("refreshWallBtn").onclick = async () => {
-        await loadAndRenderWall();
-      };
 
       document.querySelectorAll(".nav-item").forEach((btn) => {
         btn.onclick = async () => {
           const page = btn.dataset.page;
           state.page = page;
-          if (page === "chats") return renderApp();
-          if (page === "wall") return renderWallPage();
-          if (page === "profile") return renderProfilePage();
+          if (page === "chats") {
+            if (state.wallUnsub) {
+              state.wallUnsub();
+              state.wallUnsub = null;
+            }
+            renderApp();
+          } else if (page === "wall") {
+            renderWallPage();
+          } else if (page === "profile") {
+            renderProfilePage();
+          }
         };
       });
 
@@ -935,7 +965,7 @@
         state.wallPosts = [];
         if (state.chatUnsub) state.chatUnsub();
         if (state.globalChatsUnsub) state.globalChatsUnsub();
-        stopPing();
+        if (state.wallUnsub) state.wallUnsub();
         showLogin();
       };
 
@@ -943,9 +973,21 @@
         btn.onclick = async () => {
           const page = btn.dataset.page;
           state.page = page;
-          if (page === "chats") return renderApp();
-          if (page === "wall") return renderWallPage();
-          if (page === "profile") return renderProfilePage();
+          if (page === "chats") {
+            if (state.wallUnsub) {
+              state.wallUnsub();
+              state.wallUnsub = null;
+            }
+            renderApp();
+          } else if (page === "wall") {
+            if (state.globalChatsUnsub) {
+              state.globalChatsUnsub();
+              state.globalChatsUnsub = null;
+            }
+            renderWallPage();
+          } else if (page === "profile") {
+            renderProfilePage();
+          }
         };
       });
     }
@@ -979,7 +1021,7 @@
                 <div class="avatar" style="width:40px; height:40px; font-size:22px;">${escapeHtml(chatAvatar)}</div>
                 <h3 style="color:#fff; text-align:center;">${escapeHtml(chatTitle)}</h3>
               </div>
-              <button id="reconnectBtn" style="background:none; font-size:20px; color:cyan; border:none; cursor:pointer;" title="Обновить чат">🔄</button>
+              <div style="width:28px;"></div>
             </div>
 
             <div id="chatMessagesArea" class="messages-area" style="flex:1;"></div>
@@ -996,7 +1038,7 @@
       const messagesRef = collection(db, "chats", chat.id, "messages");
       const messagesQuery = query(messagesRef, orderBy("createdAt", "asc"));
 
-      const renderMessages = (snapshot) => {
+      state.chatUnsub = onSnapshot(messagesQuery, (snapshot) => {
         messagesContainer.innerHTML = "";
         snapshot.forEach((msgDoc) => {
           const msg = msgDoc.data();
@@ -1014,37 +1056,19 @@
           messagesContainer.appendChild(div);
         });
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
-      };
-
-      const errorHandler = (error) => {
-        console.error('❌ Ошибка подписки:', error);
-        messagesContainer.innerHTML = `
-          <div style="text-align: center; padding: 20px;">
-            <p style="color: #faa;">⚠️ Соединение потеряно</p>
-            <button id="retryConnectionBtn" class="neon-btn" style="margin-top: 10px;">🔄 Переподключиться</button>
-          </div>
-        `;
-        
-        document.getElementById("retryConnectionBtn")?.addEventListener("click", () => {
-          if (state.activeChat) {
-            const currentChat = state.activeChat;
-            state.activeChat = null;
-            openChat(currentChat);
+      }, (error) => {
+        console.error('Ошибка подписки:', error);
+        // Автоматически переподключаемся при ошибке
+        setTimeout(() => {
+          if (state.activeChat?.id === chat.id) {
+            if (state.chatUnsub) {
+              state.chatUnsub();
+              state.chatUnsub = null;
+            }
+            openChat(chat);
           }
-        });
-      };
-
-      state.chatUnsub = onSnapshot(messagesQuery, renderMessages, errorHandler);
-
-      document.getElementById("reconnectBtn").onclick = () => {
-        if (state.chatUnsub) {
-          state.chatUnsub();
-          state.chatUnsub = null;
-        }
-        const currentChat = state.activeChat;
-        state.activeChat = null;
-        openChat(currentChat);
-      };
+        }, 1000);
+      });
 
       document.getElementById("backToChatsBtn").onclick = () => {
         if (state.chatUnsub) {
@@ -1094,8 +1118,7 @@
 
           input.value = "";
         } catch (error) {
-          console.error('❌ Ошибка отправки:', error);
-          alert('⚠️ Сообщение сохранено локально');
+          console.error('Ошибка отправки:', error);
           input.value = "";
         }
       }
@@ -1163,14 +1186,12 @@
         
         if (fcmTokens.length === 0) return;
         
-        console.log(`📱 Отправляем уведомление на ${fcmTokens.length} устройств`);
-        
         for (const token of fcmTokens) {
           await sendFCMNotification(token, notification);
         }
         
       } catch (error) {
-        console.error('❌ Ошибка отправки уведомления:', error);
+        console.error('Ошибка отправки уведомления:', error);
       }
     }
 
@@ -1206,7 +1227,6 @@
         });
         
         const result = await response.json();
-        console.log('✅ FCM ответ:', result);
         
         if (result.failure && result.results) {
           result.results.forEach((res) => {
@@ -1217,7 +1237,7 @@
         }
         
       } catch (error) {
-        console.error('❌ Ошибка FCM:', error);
+        console.error('Ошибка FCM:', error);
       }
     }
 
@@ -1235,14 +1255,12 @@
         });
         
       } catch (error) {
-        console.error('❌ Ошибка удаления токена:', error);
+        console.error('Ошибка удаления токена:', error);
       }
     }
 
     function setupGlobalMessageListener() {
       if (!state.user || state.globalChatsUnsub) return;
-      
-      console.log('👂 Настраиваем слушатель новых сообщений...');
       
       const chatsQuery = query(
         collection(db, "chats"),
@@ -1258,8 +1276,6 @@
             if (chat.lastMessageUserId && 
                 chat.lastMessageUserId !== state.user.uid && 
                 state.activeChat?.id !== chatId) {
-              
-              console.log('📨 Новое сообщение в чате:', chatId);
               
               if (Notification.permission === 'granted') {
                 const sender = await loadProfile(chat.lastMessageUserId);
@@ -1283,15 +1299,21 @@
             }
           }
         });
+      }, (error) => {
+        console.error('Ошибка глобального слушателя:', error);
+        // Переподключаемся при ошибке
+        setTimeout(() => {
+          if (state.user) {
+            state.globalChatsUnsub = null;
+            setupGlobalMessageListener();
+          }
+        }, 1000);
       });
     }
 
     async function requestNotificationPermissionAndGetToken() {
       try {
-        console.log('📱 Запрос разрешения на уведомления...');
-        
         if (!('serviceWorker' in navigator)) {
-          console.error('❌ Service Worker не поддерживается');
           return null;
         }
 
@@ -1299,15 +1321,13 @@
         try {
           const swPath = '/neon/firebase-messaging-sw.js';
           registration = await navigator.serviceWorker.register(swPath);
-          console.log('✅ SW зарегистрирован');
           await navigator.serviceWorker.ready;
         } catch (err) {
-          console.error('❌ Ошибка регистрации SW:', err);
+          console.error('Ошибка регистрации SW:', err);
           return null;
         }
 
         const permission = await Notification.requestPermission();
-        console.log('📱 Статус:', permission);
         
         if (permission === 'granted') {
           try {
@@ -1317,16 +1337,15 @@
             });
             
             if (currentToken) {
-              console.log('✅ Токен получен:', currentToken);
               state.fcmToken = currentToken;
               return currentToken;
             }
           } catch (tokenError) {
-            console.error('❌ Ошибка токена:', tokenError);
+            console.error('Ошибка токена:', tokenError);
           }
         }
       } catch (error) {
-        console.error('❌ Ошибка:', error);
+        console.error('Ошибка:', error);
       }
       return null;
     }
@@ -1338,14 +1357,12 @@
         await updateDoc(userRef, {
           fcmTokens: arrayUnion(token)
         });
-        console.log(`✅ Токен сохранен`);
       } catch (error) {
-        console.error('❌ Ошибка сохранения токена:', error);
+        console.error('Ошибка сохранения токена:', error);
       }
     }
 
     onMessage(messaging, (payload) => {
-      console.log('📨 Сообщение получено:', payload);
       if (payload.notification) {
         new Notification(payload.notification.title, {
           body: payload.notification.body,
@@ -1356,7 +1373,7 @@
 
     // ========== ЗАПУСК ==========
     async function boot() {
-      setupMobileOptimizations();
+      keepConnectionAlive();
       
       onAuthStateChanged(auth, async (user) => {
         if (!user) {
@@ -1366,7 +1383,7 @@
           state.wallPosts = [];
           if (state.chatUnsub) state.chatUnsub();
           if (state.globalChatsUnsub) state.globalChatsUnsub();
-          stopPing();
+          if (state.wallUnsub) state.wallUnsub();
           showLogin();
           return;
         }
@@ -1385,7 +1402,6 @@
         state.profile = profile;
         state.page = "chats";
         
-        startPing();
         renderApp();
 
         const token = await requestNotificationPermissionAndGetToken();
