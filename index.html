@@ -3,10 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#0a0f1f">
   <title>NEON MESSENGER | чаты + стена</title>
 
   <style>
-    /* ВСЕ ВАШИ СТИЛИ ОСТАЮТСЯ БЕЗ ИЗМЕНЕНИЙ */
     * {
       margin: 0;
       padding: 0;
@@ -226,9 +228,47 @@
       outline: none;
     }
 
-    @media (max-width: 768px) {
-      .avatar { width: 44px; height: 44px; font-size: 24px; }
-      .message { max-width: 85%; }
+    @media (max-width: 480px) {
+      .messages-area {
+        height: calc(100vh - 200px);
+      }
+      
+      .glass {
+        padding: 12px !important;
+      }
+      
+      .bottom-nav {
+        padding: 4px 8px;
+      }
+      
+      .nav-item {
+        padding: 4px 8px;
+        font-size: 10px;
+      }
+      
+      .nav-icon {
+        font-size: 22px;
+      }
+      
+      .avatar { 
+        width: 44px; 
+        height: 44px; 
+        font-size: 24px; 
+      }
+      
+      .message { 
+        max-width: 85%; 
+      }
+    }
+
+    @supports (-webkit-touch-callout: none) {
+      .messages-area {
+        height: calc(100vh - 220px);
+      }
+      
+      body {
+        min-height: -webkit-fill-available;
+      }
     }
   </style>
 </head>
@@ -305,6 +345,10 @@
     };
 
     const root = document.getElementById("root");
+    
+    // ========== ПЕРЕМЕННЫЕ ДЛЯ ПИНГА ==========
+    let pingInterval = null;
+    let reconnectTimer = null;
 
     // ========== УТИЛИТЫ ==========
     const escapeHtml = (value) =>
@@ -316,6 +360,78 @@
         .replaceAll("'", "&#039;");
 
     const directChatId = (uid1, uid2) => [uid1, uid2].sort().join("__");
+
+    // ========== МОБИЛЬНЫЕ ОПТИМИЗАЦИИ ==========
+    function setupMobileOptimizations() {
+      const setVH = () => {
+        const vh = window.innerHeight * 0.01;
+        document.documentElement.style.setProperty('--vh', `${vh}px`);
+      };
+      
+      setVH();
+      window.addEventListener('resize', setVH);
+      window.addEventListener('orientationchange', setVH);
+      
+      console.log('📱 Мобильные оптимизации применены');
+    }
+
+    function startPing() {
+      if (pingInterval) clearInterval(pingInterval);
+      
+      pingInterval = setInterval(async () => {
+        if (!state.user) return;
+        
+        try {
+          const userRef = doc(db, "users", state.user.uid);
+          await updateDoc(userRef, {
+            lastSeen: serverTimestamp()
+          }).catch(() => {});
+          
+          console.log('🔄 Пинг Firestore');
+        } catch (e) {}
+      }, 30000);
+    }
+
+    function stopPing() {
+      if (pingInterval) {
+        clearInterval(pingInterval);
+        pingInterval = null;
+      }
+    }
+
+    // ========== ПЕРЕПОДКЛЮЧЕНИЕ ПРИ ВОЗВРАТЕ ==========
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        console.log('📱 Вкладка активна, проверяем соединение...');
+        
+        clearTimeout(reconnectTimer);
+        reconnectTimer = setTimeout(async () => {
+          try {
+            if (state.user) {
+              await getDoc(doc(db, "users", state.user.uid));
+              console.log('✅ Соединение с Firestore активно');
+              
+              refreshChats();
+              if (state.page === 'wall') loadAndRenderWall();
+              
+              if (state.activeChat) {
+                const chat = state.activeChat;
+                state.activeChat = null;
+                openChat(chat);
+              }
+              
+              if (state.globalChatsUnsub) {
+                state.globalChatsUnsub();
+                state.globalChatsUnsub = null;
+              }
+              setupGlobalMessageListener();
+            }
+          } catch (e) {
+            console.warn('⚠️ Соединение потеряно');
+          }
+        }, 1000);
+      }
+    });
 
     function resetCaptcha() {
       try {
@@ -613,14 +729,12 @@
       }
 
       list.innerHTML = state.chats.map((chat) => {
-        const unread = chat.unreadCount || 0;
         return `
           <div class="chat-item" data-chat-id="${chat.id}">
             <div class="avatar">${escapeHtml(chat.avatar || "👤")}</div>
             <div style="min-width:0; flex:1;">
               <div style="font-weight:700; color:#fff;">
                 ${escapeHtml(chat.title || "Чат")}
-                ${unread > 0 ? `<span class="badge">${unread}</span>` : ""}
               </div>
               <div style="font-size:13px; color:#9db7d3; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
                 ${escapeHtml(chat.lastMessage || "Нет сообщений")}
@@ -645,7 +759,10 @@
             <div class="glass" style="padding:18px;">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
                 <h2 style="text-shadow:0 0 5px #0ff; color:#fff;">💬 NEON CHATS</h2>
-                <button id="newChatBtn" style="background:none; color:cyan; font-size:28px; border:1px solid cyan; border-radius:40px; padding:4px 16px; cursor:pointer;">+</button>
+                <div style="display:flex; gap:10px;">
+                  <button id="refreshChatsBtn" style="background:none; color:cyan; font-size:24px; border:1px solid cyan; border-radius:40px; padding:4px 16px; cursor:pointer;" title="Обновить чаты">🔄</button>
+                  <button id="newChatBtn" style="background:none; color:cyan; font-size:28px; border:1px solid cyan; border-radius:40px; padding:4px 16px; cursor:pointer;">+</button>
+                </div>
               </div>
               <div id="chatsList"><div class="loading">Загрузка чатов...</div></div>
             </div>
@@ -656,6 +773,11 @@
         </div>
         ${renderNav("chats")}
       `;
+
+      document.getElementById("refreshChatsBtn").onclick = async () => {
+        console.log('🔄 Ручное обновление чатов...');
+        await refreshChats();
+      };
 
       document.getElementById("newChatBtn").onclick = createNewChat;
 
@@ -719,6 +841,9 @@
     function renderProfilePage() {
       const profile = state.profile || state.user || { displayName: "Без имени", phoneNumber: "", photoURL: "👤" };
       const notificationStatus = Notification.permission;
+      
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+      const isAndroid = /Android/.test(navigator.userAgent);
 
       root.innerHTML = `
         <div style="max-width:1300px; margin:0 auto; padding:16px; padding-bottom:90px;">
@@ -734,12 +859,26 @@
               <hr style="margin:24px 0; border-color:cyan;">
 
               <div style="background: rgba(0,0,0,0.3); border-radius: 20px; padding: 15px; margin-bottom: 15px;">
-                <div style="color: ${notificationStatus === 'granted' ? '#0f0' : '#ff0'}; font-size: 14px; margin-bottom: 10px;">
-                  ${notificationStatus === 'granted' ? '✅ Уведомления включены' : '⚠️ Уведомления не настроены'}
-                </div>
-                <button id="enableNotificationsBtn" class="neon-btn" style="width:100%;">
-                  🔔 ${notificationStatus === 'granted' ? 'ОБНОВИТЬ УВЕДОМЛЕНИЯ' : 'ВКЛЮЧИТЬ УВЕДОМЛЕНИЯ'}
-                </button>
+                ${isIOS ? `
+                  <div style="color: #ff0; font-size: 14px; margin-bottom: 10px;">
+                    ⚠️ iOS не поддерживает уведомления в браузере
+                  </div>
+                  <p style="color: #88aaff; font-size: 12px; margin-bottom: 10px;">
+                    Добавьте сайт на домашний экран через кнопку "Поделиться" → "На экран Домой"
+                  </p>
+                ` : `
+                  <div style="color: ${notificationStatus === 'granted' ? '#0f0' : '#ff0'}; font-size: 14px; margin-bottom: 10px;">
+                    ${notificationStatus === 'granted' ? '✅ Уведомления включены' : '⚠️ Уведомления не настроены'}
+                  </div>
+                  <button id="enableNotificationsBtn" class="neon-btn" style="width:100%;">
+                    🔔 ${notificationStatus === 'granted' ? 'ОБНОВИТЬ УВЕДОМЛЕНИЯ' : 'ВКЛЮЧИТЬ УВЕДОМЛЕНИЯ'}
+                  </button>
+                  ${isAndroid ? `
+                    <p style="color: #88aaff; font-size: 11px; margin-top: 8px;">
+                      Если уведомления не приходят, проверьте настройки браузера
+                    </p>
+                  ` : ''}
+                `}
               </div>
 
               <button id="editProfileBtn" class="neon-btn" style="margin-top:10px; width:100%;">✏️ Изменить профиль</button>
@@ -753,16 +892,18 @@
         ${renderNav("profile")}
       `;
 
-      document.getElementById("enableNotificationsBtn").onclick = async () => {
-        const token = await requestNotificationPermissionAndGetToken();
-        if (token) {
-          await saveFCMTokenToFirestore(state.user.uid, token);
-          alert('✅ Уведомления включены!');
-          renderProfilePage();
-        } else {
-          alert('❌ Не удалось включить уведомления. Проверьте настройки браузера.');
-        }
-      };
+      if (!isIOS) {
+        document.getElementById("enableNotificationsBtn").onclick = async () => {
+          const token = await requestNotificationPermissionAndGetToken();
+          if (token) {
+            await saveFCMTokenToFirestore(state.user.uid, token);
+            alert('✅ Уведомления включены!');
+            renderProfilePage();
+          } else {
+            alert('❌ Не удалось включить уведомления. Проверьте настройки браузера.');
+          }
+        };
+      }
 
       document.getElementById("editProfileBtn").onclick = async () => {
         const username = prompt("Новое имя:", profile.displayName || "");
@@ -792,10 +933,9 @@
         state.profile = null;
         state.chats = [];
         state.wallPosts = [];
-        if (state.chatUnsub) {
-          state.chatUnsub();
-          state.chatUnsub = null;
-        }
+        if (state.chatUnsub) state.chatUnsub();
+        if (state.globalChatsUnsub) state.globalChatsUnsub();
+        stopPing();
         showLogin();
       };
 
@@ -839,7 +979,7 @@
                 <div class="avatar" style="width:40px; height:40px; font-size:22px;">${escapeHtml(chatAvatar)}</div>
                 <h3 style="color:#fff; text-align:center;">${escapeHtml(chatTitle)}</h3>
               </div>
-              <div style="width:28px;"></div>
+              <button id="reconnectBtn" style="background:none; font-size:20px; color:cyan; border:none; cursor:pointer;" title="Обновить чат">🔄</button>
             </div>
 
             <div id="chatMessagesArea" class="messages-area" style="flex:1;"></div>
@@ -856,7 +996,7 @@
       const messagesRef = collection(db, "chats", chat.id, "messages");
       const messagesQuery = query(messagesRef, orderBy("createdAt", "asc"));
 
-      state.chatUnsub = onSnapshot(messagesQuery, (snapshot) => {
+      const renderMessages = (snapshot) => {
         messagesContainer.innerHTML = "";
         snapshot.forEach((msgDoc) => {
           const msg = msgDoc.data();
@@ -874,7 +1014,37 @@
           messagesContainer.appendChild(div);
         });
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
-      });
+      };
+
+      const errorHandler = (error) => {
+        console.error('❌ Ошибка подписки:', error);
+        messagesContainer.innerHTML = `
+          <div style="text-align: center; padding: 20px;">
+            <p style="color: #faa;">⚠️ Соединение потеряно</p>
+            <button id="retryConnectionBtn" class="neon-btn" style="margin-top: 10px;">🔄 Переподключиться</button>
+          </div>
+        `;
+        
+        document.getElementById("retryConnectionBtn")?.addEventListener("click", () => {
+          if (state.activeChat) {
+            const currentChat = state.activeChat;
+            state.activeChat = null;
+            openChat(currentChat);
+          }
+        });
+      };
+
+      state.chatUnsub = onSnapshot(messagesQuery, renderMessages, errorHandler);
+
+      document.getElementById("reconnectBtn").onclick = () => {
+        if (state.chatUnsub) {
+          state.chatUnsub();
+          state.chatUnsub = null;
+        }
+        const currentChat = state.activeChat;
+        state.activeChat = null;
+        openChat(currentChat);
+      };
 
       document.getElementById("backToChatsBtn").onclick = () => {
         if (state.chatUnsub) {
@@ -901,27 +1071,33 @@
 
         const recipientId = chat.members.find(uid => uid !== state.user.uid);
         
-        await addDoc(messagesRef, {
-          text,
-          userId: state.user.uid,
-          createdAt: serverTimestamp()
-        });
-
-        await updateDoc(doc(db, "chats", chat.id), {
-          lastMessage: text,
-          lastMessageUserId: state.user.uid,
-          updatedAt: serverTimestamp()
-        });
-
-        if (recipientId) {
-          await sendNotificationToUser(recipientId, {
-            title: `${state.user.displayName} 💬`,
-            body: text,
-            chatId: chat.id
+        try {
+          await addDoc(messagesRef, {
+            text,
+            userId: state.user.uid,
+            createdAt: serverTimestamp()
           });
-        }
 
-        input.value = "";
+          await updateDoc(doc(db, "chats", chat.id), {
+            lastMessage: text,
+            lastMessageUserId: state.user.uid,
+            updatedAt: serverTimestamp()
+          });
+
+          if (recipientId) {
+            await sendNotificationToUser(recipientId, {
+              title: `${state.user.displayName} 💬`,
+              body: text,
+              chatId: chat.id
+            });
+          }
+
+          input.value = "";
+        } catch (error) {
+          console.error('❌ Ошибка отправки:', error);
+          alert('⚠️ Сообщение сохранено локально');
+          input.value = "";
+        }
       }
     }
 
@@ -1180,6 +1356,8 @@
 
     // ========== ЗАПУСК ==========
     async function boot() {
+      setupMobileOptimizations();
+      
       onAuthStateChanged(auth, async (user) => {
         if (!user) {
           state.user = null;
@@ -1188,6 +1366,7 @@
           state.wallPosts = [];
           if (state.chatUnsub) state.chatUnsub();
           if (state.globalChatsUnsub) state.globalChatsUnsub();
+          stopPing();
           showLogin();
           return;
         }
@@ -1205,6 +1384,8 @@
         };
         state.profile = profile;
         state.page = "chats";
+        
+        startPing();
         renderApp();
 
         const token = await requestNotificationPermissionAndGetToken();
