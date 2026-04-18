@@ -929,7 +929,7 @@
     }
 
     async function boot() {
-      onAuthStateChanged(auth, async (user) => {
+      onAuthStateChanged(auth, async (user) => { // <-- ВОТ ЭТА СТРОКА ОШИБКИ
         if (!user) {
           state.user = null;
           state.profile = null;
@@ -938,7 +938,6 @@
           showLogin();
           return;
         }
-
         let profile = await loadProfile(user.uid);
         if (!profile) {
           profile = await ensureProfile(user, user.displayName || "Без имени", user.photoURL || "👤");
