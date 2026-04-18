@@ -257,9 +257,10 @@
     };
 
     // >>>>>>>>>>>>>> ИЗМЕНЕННАЯ ИНИЦИАЛИЗАЦИЯ И ПОЛУЧЕНИЕ СЕРВИСОВ <<<<<<<<<<<<<<<<
-    const app = firebase.initializeApp(firebaseConfig); // Используем firebase.initializeApp
-    const auth = firebase.auth(app); // Используем firebase.auth
-    const db = firebase.firestore(app, 'neonmess'); // Используем firebase.firestore
+    const app = window.firebase.initializeApp(firebaseConfig);
+    const auth = window.firebase.auth(app);
+// ====> ВОТ ЗДЕСЬ ДОЛЖНО БЫТЬ ИЗМЕНЕНИЕ:
+    const db = window.firebase.firestore(app, 'neonmess');// Используем firebase.firestore
     auth.languageCode = "ru";
 
     const messaging = firebase.messaging(app); // Используем firebase.messaging
