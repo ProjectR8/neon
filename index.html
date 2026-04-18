@@ -236,46 +236,14 @@
 
   <script type="module">
     // ВСЕ ИМПОРТЫ ДОЛЖНЫ БЫТЬ В САМОМ ВЕРХУ
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import {
-      getAuth,
-      onAuthStateChanged,
-      signOut,
-      RecaptchaVerifier,
-      signInWithPhoneNumber
-    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import {
-      getAuth,
-      onAuthStateChanged,
-      signOut,
-      RecaptchaVerifier,
-      signInWithPhoneNumber
-    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-    import {
-      initializeFirestore, // Убедитесь, что это initializeFirestore
-      collection,
-      doc,
-      getDoc,
-      getDocs,
-      setDoc,
-      updateDoc,
-      addDoc,
-      query,
-      where,
-      orderBy,
-      onSnapshot,
-      serverTimestamp,
-      increment,
-      arrayUnion
-    }
-    from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-    // >>>>>>>>>>>>>> НАЧАЛО НОВЫХ ИМПОРТОВ FCM <<<<<<<<<<<<<<<<
-    import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
-    // >>>>>>>>>>>>>> КОНЕЦ НОВЫХ ИМПОРТОВ FCM <<<<<<<<<<<<<<<<<
-    // >>>>>>>>>>>>>> НАЧАЛО НОВЫХ ИМПОРТОВ STORAGE <<<<<<<<<<<<<<<<
-    import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
-    // >>>>>>>>>>>>>> КОНЕЦ НОВЫХ ИМПОРТОВ STORAGE <<<<<<<<<<<<<<<<<
+    // >>>>>>>>>>>>>> ИЗМЕНЕННЫЕ ИМПОРТЫ НА 'compat' ВЕРСИИ <<<<<<<<<<<<<<<<
+    import * as firebase from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js";
+    import "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js";
+    import "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js";
+    import "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js";
+    import "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js";
+    // >>>>>>>>>>>>>> КОНЕЦ ИЗМЕНЕННЫХ ИМПОРТОВ <<<<<<<<<<<<<<<<
+
 
     // ТЕПЕРЬ firebaseConfig, а затем все остальное
     const firebaseConfig = {
@@ -287,18 +255,18 @@
       appId: "1:954172505610:web:03f56a8a5b89f2d402a9f3"
     };
 
-    const app = initializeApp(firebaseConfig); // Теперь эта строка будет работать
-    const auth = getAuth(app);
-    const db = initializeFirestore(app, {}, 'neonmess');
+    // >>>>>>>>>>>>>> ИЗМЕНЕННАЯ ИНИЦИАЛИЗАЦИЯ И ПОЛУЧЕНИЕ СЕРВИСОВ <<<<<<<<<<<<<<<<
+    const app = firebase.initializeApp(firebaseConfig); // Используем firebase.initializeApp
+    const auth = firebase.auth(app); // Используем firebase.auth
+    const db = firebase.firestore(app); // Используем firebase.firestore
     auth.languageCode = "ru";
-        // >>>>>>>>>>>>>> НАЧАЛО НОВОЙ ИНИЦИАЛИЗАЦИИ FCM И STORAGE <<<<<<<<<<<<<<<<
-    const messaging = getMessaging(app); // Инициализация Firebase Messaging
-    const storage = getStorage(app);    // Инициализация Firebase Storage
-    // >>>>>>>>>>>>>> КОНЕЦ НОВОЙ ИНИЦИАЛИЗАЦИИ FCM И STORAGE <<<<<<<<<<<<<<<<<
-    
-    // ... остальной ваш код приложения
 
-        const state = {
+    const messaging = firebase.messaging(app); // Используем firebase.messaging
+    const storage = firebase.storage(app); // Используем firebase.storage
+    // >>>>>>>>>>>>>> КОНЕЦ ИЗМЕНЕННОЙ ИНИЦИАЛИЗАЦИИ <<<<<<<<<<<<<<<<
+
+
+    const state = {
       user: null,
       profile: null,
       page: "chats",
@@ -335,18 +303,20 @@
 
     async function createCaptcha(containerId) {
       resetCaptcha();
-      state.captcha = new RecaptchaVerifier(auth, containerId, {
+      // >>>>>>>>>>>>>> ИЗМЕНЕНО: firebase.auth.RecaptchaVerifier <<<<<<<<<<<<<<<<
+      const verifier = new firebase.auth.RecaptchaVerifier(containerId, {
         size: "normal",
         callback: () => console.log("reCAPTCHA solved"),
         "expired-callback": () => resetCaptcha()
       });
-      await state.captcha.render();
-      return state.captcha;
+      await verifier.render();
+      return verifier;
     }
 
     async function loginWithPhone(phone, containerId) {
       const verifier = await createCaptcha(containerId);
-      const confirmation = await signInWithPhoneNumber(auth, phone, verifier);
+      // >>>>>>>>>>>>>> ИЗМЕНЕНО: auth.signInWithPhoneNumber <<<<<<<<<<<<<<<<
+      const confirmation = await auth.signInWithPhoneNumber(phone, verifier);
       const code = prompt("Введите код из SMS:");
       if (!code) throw new Error("Код не введён");
       const result = await confirmation.confirm(code);
@@ -355,39 +325,44 @@
     }
 
     async function ensureProfile(user, username, avatar) {
-      const ref = doc(db, "users", user.uid);
-      const snap = await getDoc(ref);
+      // >>>>>>>>>>>>>> ИЗМЕНЕНО: db.collection("users").doc(user.uid) <<<<<<<<<<<<<<<<
+      const ref = db.collection("users").doc(user.uid);
+      const snap = await ref.get();
 
       const baseData = {
         phone: user.phoneNumber || "",
         username: username || snap.data()?.username || "Без имени",
         avatar: avatar || snap.data()?.avatar || "👤",
-        updatedAt: serverTimestamp()
+        // >>>>>>>>>>>>>> ИЗМЕНЕНО: firebase.firestore.FieldValue.serverTimestamp() <<<<<<<<<<<<<<<<
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       };
 
       if (!snap.exists()) {
-        await setDoc(ref, {
+        await ref.set({
           ...baseData,
-          createdAt: serverTimestamp(),
-          isSubscribed: false
+          // >>>>>>>>>>>>>> ИЗМЕНЕНО: firebase.firestore.FieldValue.serverTimestamp() <<<<<<<<<<<<<<<<
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          isSubscribed: false,
+          fcmTokens: [] // Инициализируем массив FCM токенов при создании профиля
         });
       } else if (username || avatar) {
-        await updateDoc(ref, baseData);
+        await ref.update(baseData);
       }
 
-      const fresh = await getDoc(ref);
+      const fresh = await ref.get();
       const data = fresh.data() || {};
 
       return {
         uid: user.uid,
-        phoneNumber: user.phoneNumber || data.phone || "",
+        phoneNumber: data.phone || "",
         displayName: data.username || "Без имени",
         photoURL: data.avatar || "👤"
       };
     }
 
     async function loadProfile(uid) {
-      const snap = await getDoc(doc(db, "users", uid));
+      // >>>>>>>>>>>>>> ИЗМЕНЕНО: db.collection("users").doc(uid).get() <<<<<<<<<<<<<<<<
+      const snap = await db.collection("users").doc(uid).get();
       if (!snap.exists()) return null;
       const data = snap.data();
       return {
@@ -400,9 +375,10 @@
 
     async function loadChats() {
       if (!state.user) return [];
-      const snap = await getDocs(
-        query(collection(db, "chats"), where("members", "array-contains", state.user.uid))
-      );
+      // >>>>>>>>>>>>>> ИЗМЕНЕНО: db.collection("chats").where().get() <<<<<<<<<<<<<<<<
+      const snap = await db.collection("chats")
+        .where("members", "array-contains", state.user.uid)
+        .get();
 
       const chats = await Promise.all(
         snap.docs.map(async (chatDoc) => {
@@ -440,7 +416,10 @@
     }
 
     async function loadWallPosts() {
-      const snap = await getDocs(query(collection(db, "wall"), orderBy("createdAt", "desc")));
+      // >>>>>>>>>>>>>> ИЗМЕНЕНО: db.collection("wall").orderBy().get() <<<<<<<<<<<<<<<<
+      const snap = await db.collection("wall")
+        .orderBy("createdAt", "desc")
+        .get();
       return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
     }
 
@@ -488,6 +467,11 @@
           };
           state.profile = profile;
           renderApp();
+          // Запрашиваем FCM токен после успешного логина
+          const token = await requestNotificationPermissionAndGetToken();
+          if (token && state.user) {
+            await saveFCMTokenToFirestore(state.user.uid, token);
+          }
         } catch (err) {
           console.error(err);
           alert("Ошибка входа: " + (err?.message || "неизвестная ошибка"));
