@@ -244,6 +244,14 @@
       RecaptchaVerifier,
       signInWithPhoneNumber
     } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import {
+      getAuth,
+      onAuthStateChanged,
+      signOut,
+      RecaptchaVerifier,
+      signInWithPhoneNumber
+    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
     import {
       initializeFirestore, // Убедитесь, что это initializeFirestore
       collection,
@@ -262,7 +270,12 @@
       arrayUnion
     }
     from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
+    // >>>>>>>>>>>>>> НАЧАЛО НОВЫХ ИМПОРТОВ FCM <<<<<<<<<<<<<<<<
+    import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
+    // >>>>>>>>>>>>>> КОНЕЦ НОВЫХ ИМПОРТОВ FCM <<<<<<<<<<<<<<<<<
+    // >>>>>>>>>>>>>> НАЧАЛО НОВЫХ ИМПОРТОВ STORAGE <<<<<<<<<<<<<<<<
+    import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
+    // >>>>>>>>>>>>>> КОНЕЦ НОВЫХ ИМПОРТОВ STORAGE <<<<<<<<<<<<<<<<<
 
     // ТЕПЕРЬ firebaseConfig, а затем все остальное
     const firebaseConfig = {
