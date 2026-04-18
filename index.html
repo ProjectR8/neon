@@ -291,10 +291,14 @@
     const auth = getAuth(app);
     const db = initializeFirestore(app, {}, 'neonmess');
     auth.languageCode = "ru";
-
+        // >>>>>>>>>>>>>> НАЧАЛО НОВОЙ ИНИЦИАЛИЗАЦИИ FCM И STORAGE <<<<<<<<<<<<<<<<
+    const messaging = getMessaging(app); // Инициализация Firebase Messaging
+    const storage = getStorage(app);    // Инициализация Firebase Storage
+    // >>>>>>>>>>>>>> КОНЕЦ НОВОЙ ИНИЦИАЛИЗАЦИИ FCM И STORAGE <<<<<<<<<<<<<<<<<
+    
     // ... остальной ваш код приложения
 
-    const state = {
+        const state = {
       user: null,
       profile: null,
       page: "chats",
@@ -302,7 +306,10 @@
       wallPosts: [],
       activeChat: null,
       chatUnsub: null,
-      captcha: null
+      captcha: null,
+      // >>>>>>>>>>>>>> НАЧАЛО НОВОГО ПОЛЯ FCM <<<<<<<<<<<<<<<<
+      fcmToken: null // Для хранения FCM токена
+      // >>>>>>>>>>>>>> КОНЕЦ НОВОГО ПОЛЯ FCM <<<<<<<<<<<<<<<<<
     };
 
     const root = document.getElementById("root");
@@ -963,7 +970,70 @@
         renderApp();
       });
     }
+        // ====================================================================
+    // >>>>>>>>>>>>>> НАЧАЛО НОВОГО КОДА ДЛЯ FCM <<<<<<<<<<<<<<<<
+    // ====================================================================
 
+    // Запрашиваем разрешение на уведомления и получаем токен
+    async function requestNotificationPermissionAndGetToken() {
+      try {
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+          console.log('Разрешение на уведомления получено.');
+          // Получаем токен устройства для FCM
+          const currentToken = await getToken(messaging, {
+            vapidKey: 'BDRTV4EZNNWVT9_dRipTDFG_JHwJa53Ne82UgG5g6XdgLWufZumogCNM8EQK_T-Qg9fZDeCEq7_R6DchHcfWXZQ' // <-- ОБЯЗАТЕЛЬНО ЗАМЕНИТЕ НА ВАШ КЛЮЧ VAPID
+          });
+          if (currentToken) {
+            console.log('FCM Device Token:', currentToken);
+            state.fcmToken = currentToken;
+            // Сохраняем токен в Firestore для текущего пользователя
+            if (state.user) {
+              await saveFCMTokenToFirestore(state.user.uid, currentToken);
+            }
+            return currentToken;
+          } else {
+            console.warn('Не удалось получить токен устройства. Убедитесь, что браузер поддерживает Service Worker и разрешения не заблокированы.');
+          }
+        } else {
+          console.warn('Разрешение на уведомления отклонено.');
+        }
+      } catch (error) {
+        console.error('Ошибка при запросе разрешения на уведомления или получении токена:', error);
+      }
+      return null;
+    }
+
+    // Функция для сохранения FCM токена в Firestore
+    async function saveFCMTokenToFirestore(uid, token) {
+      if (!uid || !token) return;
+      try {
+        const userRef = doc(db, "users", uid);
+        await updateDoc(userRef, {
+          fcmTokens: arrayUnion(token) // Сохраняем токены в массиве, чтобы у пользователя могло быть несколько устройств
+        });
+        console.log(`FCM токен для пользователя ${uid} сохранен/обновлен.`);
+      } catch (error) {
+        console.error('Ошибка при сохранении FCM токена в Firestore:', error);
+      }
+    }
+
+    // Слушаем входящие сообщения, когда приложение находится на переднем плане
+    onMessage(messaging, (payload) => {
+      console.log('Сообщение получено на переднем плане:', payload);
+      // Здесь вы можете показать кастомное уведомление или обновить UI
+      // Например, с помощью Notification API
+      if (payload.notification) {
+        new Notification(payload.notification.title, {
+          body: payload.notification.body,
+          icon: payload.notification.icon || '/firebase-logo.png' // Укажите путь к вашей иконке
+        });
+      }
+    });
+
+    // ====================================================================
+    // >>>>>>>>>>>>>> КОНЕЦ НОВОГО КОДА ДЛЯ FCM <<<<<<<<<<<<<<<<
+    // ====================================================================
     boot();
   </script>
 </body>
