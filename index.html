@@ -235,14 +235,36 @@
   <div id="root"><div class="loading">✨ Загрузка...</div></div>
 
   <script type="module">
-    // ========== ИМПОРТЫ ==========
-    import "https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js";
-    import "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js";
-    import "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js";
-    import "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js";
-    import "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js";
+    // ВСЕ ИМПОРТЫ ДОЛЖНЫ БЫТЬ В САМОМ ВЕРХУ
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import {
+      getAuth,
+      onAuthStateChanged,
+      signOut,
+      RecaptchaVerifier,
+      signInWithPhoneNumber
+    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import {
+      initializeFirestore, // Убедитесь, что это initializeFirestore
+      collection,
+      doc,
+      getDoc,
+      getDocs,
+      setDoc,
+      updateDoc,
+      addDoc,
+      query,
+      where,
+      orderBy,
+      onSnapshot,
+      serverTimestamp,
+      increment,
+      arrayUnion
+    }
+    from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-    // ========== КОНФИГУРАЦИЯ ==========
+
+    // ТЕПЕРЬ firebaseConfig, а затем все остальное
     const firebaseConfig = {
       apiKey: "AIzaSyA9gA_Nvei89csa7_YrmbnbnxFngb0UKoM",
       authDomain: "neon-messenger-83ed4.firebaseapp.com",
@@ -252,17 +274,13 @@
       appId: "1:954172505610:web:03f56a8a5b89f2d402a9f3"
     };
 
-    // ========== ИНИЦИАЛИЗАЦИЯ ==========
-    const app = window.firebase.initializeApp(firebaseConfig);
-    const auth = window.firebase.auth(app);
-    const db = window.firebase.firestore(app, neonmess);
-    const messaging = firebase.messaging(app);
-    const storage = firebase.storage(app);
-    const FieldValue = firebase.firestore.FieldValue;
-    
+    const app = initializeApp(firebaseConfig); // Теперь эта строка будет работать
+    const auth = getAuth(app);
+    const db = initializeFirestore(app, {}, 'neonmess');
     auth.languageCode = "ru";
 
-    // ========== ГЛОБАЛЬНОЕ СОСТОЯНИЕ ==========
+    // ... остальной ваш код приложения
+
     const state = {
       user: null,
       profile: null,
@@ -271,13 +289,11 @@
       wallPosts: [],
       activeChat: null,
       chatUnsub: null,
-      captcha: null,
-      fcmToken: null
+      captcha: null
     };
 
     const root = document.getElementById("root");
 
-    // ========== УТИЛИТЫ ==========
     const escapeHtml = (value) =>
       String(value ?? "")
         .replaceAll("&", "&amp;")
@@ -299,19 +315,18 @@
 
     async function createCaptcha(containerId) {
       resetCaptcha();
-      const verifier = new firebase.auth.RecaptchaVerifier(containerId, {
+      state.captcha = new RecaptchaVerifier(auth, containerId, {
         size: "normal",
         callback: () => console.log("reCAPTCHA solved"),
         "expired-callback": () => resetCaptcha()
       });
-      await verifier.render();
-      return verifier;
+      await state.captcha.render();
+      return state.captcha;
     }
 
-    // ========== АУТЕНТИФИКАЦИЯ ==========
     async function loginWithPhone(phone, containerId) {
       const verifier = await createCaptcha(containerId);
-      const confirmation = await auth.signInWithPhoneNumber(phone, verifier);
+      const confirmation = await signInWithPhoneNumber(auth, phone, verifier);
       const code = prompt("Введите код из SMS:");
       if (!code) throw new Error("Код не введён");
       const result = await confirmation.confirm(code);
@@ -320,40 +335,39 @@
     }
 
     async function ensureProfile(user, username, avatar) {
-      const ref = db.collection("users").doc(user.uid);
-      const snap = await ref.get();
+      const ref = doc(db, "users", user.uid);
+      const snap = await getDoc(ref);
 
       const baseData = {
         phone: user.phoneNumber || "",
         username: username || snap.data()?.username || "Без имени",
         avatar: avatar || snap.data()?.avatar || "👤",
-        updatedAt: FieldValue.serverTimestamp()
+        updatedAt: serverTimestamp()
       };
 
       if (!snap.exists()) {
-        await ref.set({
+        await setDoc(ref, {
           ...baseData,
-          createdAt: FieldValue.serverTimestamp(),
-          isSubscribed: false,
-          fcmTokens: []
+          createdAt: serverTimestamp(),
+          isSubscribed: false
         });
       } else if (username || avatar) {
-        await ref.update(baseData);
+        await updateDoc(ref, baseData);
       }
 
-      const fresh = await ref.get();
+      const fresh = await getDoc(ref);
       const data = fresh.data() || {};
 
       return {
         uid: user.uid,
-        phoneNumber: data.phone || "",
+        phoneNumber: user.phoneNumber || data.phone || "",
         displayName: data.username || "Без имени",
         photoURL: data.avatar || "👤"
       };
     }
 
     async function loadProfile(uid) {
-      const snap = await db.collection("users").doc(uid).get();
+      const snap = await getDoc(doc(db, "users", uid));
       if (!snap.exists()) return null;
       const data = snap.data();
       return {
@@ -362,6 +376,52 @@
         displayName: data.username || "Без имени",
         photoURL: data.avatar || "👤"
       };
+    }
+
+    async function loadChats() {
+      if (!state.user) return [];
+      const snap = await getDocs(
+        query(collection(db, "chats"), where("members", "array-contains", state.user.uid))
+      );
+
+      const chats = await Promise.all(
+        snap.docs.map(async (chatDoc) => {
+          const data = chatDoc.data();
+          let title = data.title || "Чат";
+          let avatar = "👤";
+
+          if (data.type === "direct") {
+            const otherUid = (data.members || []).find((m) => m !== state.user.uid);
+            if (otherUid) {
+              const otherProfile = await loadProfile(otherUid);
+              if (otherProfile) {
+                title = otherProfile.displayName;
+                avatar = otherProfile.photoURL;
+              }
+            }
+          }
+
+          return {
+            id: chatDoc.id,
+            ...data,
+            title,
+            avatar
+          };
+        })
+      );
+
+      chats.sort((a, b) => {
+        const ta = a.updatedAt?.toMillis ? a.updatedAt.toMillis() : 0;
+        const tb = b.updatedAt?.toMillis ? b.updatedAt.toMillis() : 0;
+        return tb - ta;
+      });
+
+      return chats;
+    }
+
+    async function loadWallPosts() {
+      const snap = await getDocs(query(collection(db, "wall"), orderBy("createdAt", "desc")));
+      return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
     }
 
     function showLogin() {
@@ -408,10 +468,6 @@
           };
           state.profile = profile;
           renderApp();
-          const token = await requestNotificationPermissionAndGetToken();
-          if (token && state.user) {
-            await saveFCMTokenToFirestore(state.user.uid, token);
-          }
         } catch (err) {
           console.error(err);
           alert("Ошибка входа: " + (err?.message || "неизвестная ошибка"));
@@ -426,141 +482,6 @@
       };
     }
 
-    // ========== ЗАГРУЗКА ДАННЫХ ==========
-    async function loadChats() {
-      if (!state.user) return [];
-      const snap = await db.collection("chats")
-        .where("members", "array-contains", state.user.uid)
-        .get();
-
-      const chats = await Promise.all(
-        snap.docs.map(async (chatDoc) => {
-          const data = chatDoc.data();
-          let title = data.title || "Чат";
-          let avatar = "👤";
-
-          if (data.type === "direct") {
-            const otherUid = (data.members || []).find((m) => m !== state.user.uid);
-            if (otherUid) {
-              const otherProfile = await loadProfile(otherUid);
-              if (otherProfile) {
-                title = otherProfile.displayName;
-                avatar = otherProfile.photoURL;
-              }
-            }
-          }
-
-          return {
-            id: chatDoc.id,
-            ...data,
-            title,
-            avatar
-          };
-        })
-      );
-
-      chats.sort((a, b) => {
-        const ta = a.updatedAt?.toMillis ? a.updatedAt.toMillis() : 0;
-        const tb = b.updatedAt?.toMillis ? b.updatedAt.toMillis() : 0;
-        return tb - ta;
-      });
-
-      return chats;
-    }
-
-    async function loadWallPosts() {
-      const snap = await db.collection("wall")
-        .orderBy("createdAt", "desc")
-        .get();
-      return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-    }
-
-    async function refreshChats() {
-      state.chats = await loadChats();
-      renderChatsList();
-    }
-
-    async function loadAndRenderWall() {
-      state.wallPosts = await loadWallPosts();
-      const container = document.getElementById("wallPostsContainer");
-      if (!container) return;
-
-      if (!state.wallPosts.length) {
-        container.innerHTML = `<div class="loading">📡 Ещё нет постов. Напиши первый!</div>`;
-        return;
-      }
-
-      container.innerHTML = state.wallPosts.map((post) => {
-        const comments = post.comments || [];
-        return `
-          <div class="wall-post" data-post-id="${post.id}">
-            <div class="post-header" style="display:flex; gap:12px; align-items:center; margin-bottom:12px;">
-              <div class="avatar" style="width:44px; height:44px; font-size:24px;">${escapeHtml(post.avatar || "👤")}</div>
-              <strong style="color:#fff;">${escapeHtml(post.author || "Аноним")}</strong>
-            </div>
-
-            <div style="white-space:pre-wrap; line-height:1.45;">${escapeHtml(post.content || "")}</div>
-
-            <div style="display:flex; gap:16px; margin-top:12px;">
-              <button class="like-btn neon-btn" data-post-id="${post.id}" style="padding:8px 14px;">❤️ ${post.likesCount || 0}</button>
-              <button class="comment-btn neon-btn" data-post-id="${post.id}" style="padding:8px 14px;">💬 ${comments.length}</button>
-            </div>
-
-            <div class="comments" style="margin-top:12px;">
-              ${comments.map((c) => `
-                <div style="background:rgba(0,255,255,0.1); border-radius:20px; padding:6px 12px; margin-top:6px;">
-                  💬 ${escapeHtml(c)}
-                </div>
-              `).join("")}
-            </div>
-          </div>
-        `;
-      }).join("");
-
-      container.querySelectorAll(".like-btn").forEach((btn) => {
-        btn.onclick = async () => {
-          const postId = btn.dataset.postId;
-          const postRef = db.collection("wall").doc(postId);
-          await postRef.update({ likesCount: FieldValue.increment(1) });
-          await loadAndRenderWall();
-        };
-      });
-
-      container.querySelectorAll(".comment-btn").forEach((btn) => {
-        btn.onclick = async () => {
-          const postId = btn.dataset.postId;
-          const comment = prompt("Ваш комментарий:");
-          if (!comment || !comment.trim()) return;
-          const postRef = db.collection("wall").doc(postId);
-          await postRef.update({
-            comments: FieldValue.arrayUnion(comment.trim())
-          });
-          await loadAndRenderWall();
-        };
-      });
-    }
-
-    async function publishPost() {
-      const input = document.getElementById("postContent");
-      if (!input) return;
-      const content = input.value.trim();
-      if (!content) return;
-
-      await db.collection("wall").add({
-        author: state.profile?.displayName || state.user?.displayName || "Без имени",
-        avatar: state.profile?.photoURL || state.user?.photoURL || "👤",
-        content,
-        likesCount: 0,
-        comments: [],
-        createdAt: FieldValue.serverTimestamp(),
-        userId: state.user.uid
-      });
-
-      input.value = "";
-      await loadAndRenderWall();
-    }
-
-    // ========== РЕНДЕРИНГ ==========
     function renderNav(active) {
       return `
         <div class="bottom-nav">
@@ -728,11 +649,10 @@
         const avatar = prompt("Новый аватар-эмодзи:", profile.photoURL || "👤");
         if (avatar === null) return;
 
-        const userRef = db.collection("users").doc(state.user.uid);
-        await userRef.update({
+        await updateDoc(doc(db, "users", state.user.uid), {
           username: username.trim() || "Без имени",
           avatar: avatar.trim() || "👤",
-          updatedAt: FieldValue.serverTimestamp()
+          updatedAt: serverTimestamp()
         });
 
         state.profile = {
@@ -746,7 +666,7 @@
       };
 
       document.getElementById("logoutBtn").onclick = async () => {
-        await auth.signOut();
+        await signOut(auth);
         state.user = null;
         state.profile = null;
         state.chats = [];
@@ -776,7 +696,89 @@
       refreshChats();
     }
 
-    // ========== ЧАТ ==========
+    async function refreshChats() {
+      state.chats = await loadChats();
+      renderChatsList();
+    }
+
+    async function loadAndRenderWall() {
+      state.wallPosts = await loadWallPosts();
+      const container = document.getElementById("wallPostsContainer");
+      if (!container) return;
+
+      if (!state.wallPosts.length) {
+        container.innerHTML = `<div class="loading">📡 Ещё нет постов. Напиши первый!</div>`;
+        return;
+      }
+
+      container.innerHTML = state.wallPosts.map((post) => {
+        const comments = post.comments || [];
+        return `
+          <div class="wall-post" data-post-id="${post.id}">
+            <div class="post-header" style="display:flex; gap:12px; align-items:center; margin-bottom:12px;">
+              <div class="avatar" style="width:44px; height:44px; font-size:24px;">${escapeHtml(post.avatar || "👤")}</div>
+              <strong style="color:#fff;">${escapeHtml(post.author || "Аноним")}</strong>
+            </div>
+
+            <div style="white-space:pre-wrap; line-height:1.45;">${escapeHtml(post.content || "")}</div>
+
+            <div style="display:flex; gap:16px; margin-top:12px;">
+              <button class="like-btn neon-btn" data-post-id="${post.id}" style="padding:8px 14px;">❤️ ${post.likesCount || 0}</button>
+              <button class="comment-btn neon-btn" data-post-id="${post.id}" style="padding:8px 14px;">💬 ${comments.length}</button>
+            </div>
+
+            <div class="comments" style="margin-top:12px;">
+              ${comments.map((c) => `
+                <div style="background:rgba(0,255,255,0.1); border-radius:20px; padding:6px 12px; margin-top:6px;">
+                  💬 ${escapeHtml(c)}
+                </div>
+              `).join("")}
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      container.querySelectorAll(".like-btn").forEach((btn) => {
+        btn.onclick = async () => {
+          const postId = btn.dataset.postId;
+          await updateDoc(doc(db, "wall", postId), { likesCount: increment(1) });
+          await loadAndRenderWall();
+        };
+      });
+
+      container.querySelectorAll(".comment-btn").forEach((btn) => {
+        btn.onclick = async () => {
+          const postId = btn.dataset.postId;
+          const comment = prompt("Ваш комментарий:");
+          if (!comment || !comment.trim()) return;
+          await updateDoc(doc(db, "wall", postId), {
+            comments: arrayUnion(comment.trim())
+          });
+          await loadAndRenderWall();
+        };
+      });
+    }
+
+    async function publishPost() {
+      const input = document.getElementById("postContent");
+      if (!input) return;
+      const content = input.value.trim();
+      if (!content) return;
+
+      await addDoc(collection(db, "wall"), {
+        author: state.profile?.displayName || state.user?.displayName || "Без имени",
+        avatar: state.profile?.photoURL || state.user?.photoURL || "👤",
+        content,
+        likesCount: 0,
+        comments: [],
+        createdAt: serverTimestamp(),
+        userId: state.user.uid
+      });
+
+      input.value = "";
+      await loadAndRenderWall();
+    }
+
     async function openChat(chat) {
       if (state.chatUnsub) {
         state.chatUnsub();
@@ -811,10 +813,10 @@
       `;
 
       const messagesContainer = document.getElementById("chatMessagesArea");
-      const messagesRef = db.collection("chats").doc(chat.id).collection("messages");
-      const messagesQuery = messagesRef.orderBy("createdAt", "asc");
+      const messagesRef = collection(db, "chats", chat.id, "messages");
+      const messagesQuery = query(messagesRef, orderBy("createdAt", "asc"));
 
-      state.chatUnsub = messagesQuery.onSnapshot((snapshot) => {
+      state.chatUnsub = onSnapshot(messagesQuery, (snapshot) => {
         messagesContainer.innerHTML = "";
         snapshot.forEach((msgDoc) => {
           const msg = msgDoc.data();
@@ -857,15 +859,15 @@
         const text = input.value.trim();
         if (!text) return;
 
-        await messagesRef.add({
+        await addDoc(messagesRef, {
           text,
           userId: state.user.uid,
-          createdAt: FieldValue.serverTimestamp()
+          createdAt: serverTimestamp()
         });
 
-        await db.collection("chats").doc(chat.id).update({
+        await updateDoc(doc(db, "chats", chat.id), {
           lastMessage: text,
-          updatedAt: FieldValue.serverTimestamp()
+          updatedAt: serverTimestamp()
         });
 
         input.value = "";
@@ -873,7 +875,7 @@
     }
 
     async function createNewChat() {
-      const usersSnap = await db.collection("users").get();
+      const usersSnap = await getDocs(collection(db, "users"));
       const users = [];
 
       usersSnap.forEach((d) => {
@@ -903,15 +905,15 @@
       if (!selected) return;
 
       const chatId = directChatId(state.user.uid, selected.uid);
-      const chatRef = db.collection("chats").doc(chatId);
-      const snap = await chatRef.get();
+      const chatRef = doc(db, "chats", chatId);
+      const snap = await getDoc(chatRef);
 
       if (!snap.exists()) {
-        await chatRef.set({
+        await setDoc(chatRef, {
           type: "direct",
           members: [state.user.uid, selected.uid],
-          createdAt: FieldValue.serverTimestamp(),
-          updatedAt: FieldValue.serverTimestamp(),
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
           lastMessage: ""
         });
       }
@@ -921,70 +923,13 @@
       if (chat) openChat(chat);
     }
 
-    // ========== FCM УВЕДОМЛЕНИЯ ==========
-    async function requestNotificationPermissionAndGetToken() {
-      try {
-        const permission = await Notification.requestPermission();
-        if (permission === 'granted') {
-          console.log('Разрешение на уведомления получено.');
-          const currentToken = await messaging.getToken({
-            vapidKey: 'BDRTV4EZNNWVT9_dRipTDFG_JHwJa53Ne82UgG5g6XdgLWufZumogCNM8EQK_T-Qg9fZDeCEq7_R6DchHcfWXZQ'
-          });
-          if (currentToken) {
-            console.log('FCM Device Token:', currentToken);
-            state.fcmToken = currentToken;
-            if (state.user) {
-              await saveFCMTokenToFirestore(state.user.uid, currentToken);
-            }
-            return currentToken;
-          } else {
-            console.warn('Не удалось получить токен устройства.');
-          }
-        } else {
-          console.warn('Разрешение на уведомления отклонено.');
-        }
-      } catch (error) {
-        console.error('Ошибка при запросе разрешения на уведомления:', error);
-      }
-      return null;
-    }
-
-    async function saveFCMTokenToFirestore(uid, token) {
-      if (!uid || !token) return;
-      try {
-        const userRef = db.collection("users").doc(uid);
-        await userRef.update({
-          fcmTokens: FieldValue.arrayUnion(token)
-        });
-        console.log(`FCM токен для пользователя ${uid} сохранен.`);
-      } catch (error) {
-        console.error('Ошибка при сохранении FCM токена:', error);
-      }
-    }
-
-    // Слушатель foreground сообщений
-    messaging.onMessage((payload) => {
-      console.log('Сообщение получено:', payload);
-      if (payload.notification) {
-        new Notification(payload.notification.title, {
-          body: payload.notification.body,
-          icon: payload.notification.icon || '/firebase-logo.png'
-        });
-      }
-    });
-
-    // ========== ЗАПУСК ==========
     async function boot() {
-      auth.onAuthStateChanged(async (user) => {
+      onAuthStateChanged(auth, async (user) => {
         if (!user) {
           state.user = null;
           state.profile = null;
           state.chats = [];
           state.wallPosts = [];
-          if (state.chatUnsub) {
-            state.chatUnsub();
-            state.chatUnsub = null;
-          }
           showLogin();
           return;
         }
@@ -1003,11 +948,6 @@
         state.profile = profile;
         state.page = "chats";
         renderApp();
-
-        const token = await requestNotificationPermissionAndGetToken();
-        if (token && state.user) {
-          await saveFCMTokenToFirestore(state.user.uid, token);
-        }
       });
     }
 
