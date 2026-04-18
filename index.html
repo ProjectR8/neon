@@ -943,50 +943,64 @@
     }
 
     // ========== FCM УВЕДОМЛЕНИЯ ==========
-    async function requestNotificationPermissionAndGetToken() {
-      try {
-        console.log('📱 Запрос разрешения на уведомления...');
-        
-        // Проверяем поддержку Service Worker
-        if (!('serviceWorker' in navigator)) {
-          console.error('❌ Service Worker не поддерживается');
-          return null;
-        }
-
-        // Регистрируем Service Worker для FCM
-        try {
-          const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-          console.log('✅ Service Worker зарегистрирован:', registration);
-        } catch (err) {
-          console.error('❌ Ошибка регистрации Service Worker:', err);
-        }
-
-        const permission = await Notification.requestPermission();
-        console.log('📱 Статус разрешения:', permission);
-        
-        if (permission === 'granted') {
-          console.log('✅ Разрешение на уведомления получено.');
-          
-          const currentToken = await getToken(messaging, {
-            vapidKey: 'BDRTV4EZNNWVT9_dRipTDFG_JHwJa53Ne82UgG5g6XdgLWufZumogCNM8EQK_T-Qg9fZDeCEq7_R6DchHcfWXZQ'
-          });
-          
-          if (currentToken) {
-            console.log('✅ FCM Device Token получен:', currentToken);
-            state.fcmToken = currentToken;
-            return currentToken;
-          } else {
-            console.warn('⚠️ Не удалось получить токен устройства.');
-          }
-        } else {
-          console.warn('⚠️ Разрешение на уведомления отклонено.');
-        }
-      } catch (error) {
-        console.error('❌ Ошибка при запросе разрешения на уведомления:', error);
-      }
+async function requestNotificationPermissionAndGetToken() {
+  try {
+    console.log('📱 Запрос разрешения на уведомления...');
+    
+    // Проверяем поддержку Service Worker
+    if (!('serviceWorker' in navigator)) {
+      console.error('❌ Service Worker не поддерживается');
       return null;
     }
 
+    // Регистрируем Service Worker для FCM
+    try {
+      // Для репозитория neon на GitHub Pages
+      const swPath = '/neon/firebase-messaging-sw.js';
+      console.log('📱 Регистрируем Service Worker по пути:', swPath);
+      
+      const registration = await navigator.serviceWorker.register(swPath);
+      console.log('✅ Service Worker зарегистрирован:', registration);
+      
+      // Ждем активации
+      await navigator.serviceWorker.ready;
+      console.log('✅ Service Worker готов к работе');
+      
+    } catch (err) {
+      console.error('❌ Ошибка регистрации Service Worker:', err);
+      console.log('💡 Убедитесь, что файл firebase-messaging-sw.js находится в папке /neon/');
+      return null;
+    }
+
+    const permission = await Notification.requestPermission();
+    console.log('📱 Статус разрешения:', permission);
+    
+    if (permission === 'granted') {
+      console.log('✅ Разрешение на уведомления получено.');
+      
+      try {
+        const currentToken = await getToken(messaging, {
+          vapidKey: 'BDRTV4EZNNWVT9_dRipTDFG_JHwJa53Ne82UgG5g6XdgLWufZumogCNM8EQK_T-Qg9fZDeCEq7_R6DchHcfWXZQ'
+        });
+        
+        if (currentToken) {
+          console.log('✅ FCM Device Token получен:', currentToken);
+          state.fcmToken = currentToken;
+          return currentToken;
+        } else {
+          console.warn('⚠️ Не удалось получить токен устройства.');
+        }
+      } catch (tokenError) {
+        console.error('❌ Ошибка получения токена:', tokenError);
+      }
+    } else {
+      console.warn('⚠️ Разрешение на уведомления отклонено.');
+    }
+  } catch (error) {
+    console.error('❌ Ошибка при запросе разрешения на уведомления:', error);
+  }
+  return null;
+}
     async function saveFCMTokenToFirestore(uid, token) {
       if (!uid || !token) return;
       try {
