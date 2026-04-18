@@ -235,18 +235,14 @@
   <div id="root"><div class="loading">✨ Загрузка...</div></div>
 
   <script type="module">
-    // ВСЕ ИМПОРТЫ ДОЛЖНЫ БЫТЬ В САМОМ ВЕРХУ
-    // >>>>>>>>>>>>>> ИМПОРТЫ ДЛЯ СОВМЕСТИМОГО (COMPAT) РЕЖИМА: ЗАГРУЖАЕМ ИХ ДЛЯ ПОБОЧНОГО ЭФФЕКТА СОЗДАНИЯ ГЛОБАЛЬНОГО `window.firebase` <<<<<<<<<<<<<<<<
-    // *** ВНИМАНИЕ: Ссылки на SDK теперь полные и корректные! ***
+    // ========== ИМПОРТЫ ==========
     import "https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js";
     import "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js";
     import "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js";
     import "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js";
     import "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js";
 
-
-
-    // ТЕПЕРЬ firebaseConfig, а затем все остальное
+    // ========== КОНФИГУРАЦИЯ ==========
     const firebaseConfig = {
       apiKey: "AIzaSyA9gA_Nvei89csa7_YrmbnbnxFngb0UKoM",
       authDomain: "neon-messenger-83ed4.firebaseapp.com",
@@ -256,18 +252,17 @@
       appId: "1:954172505610:web:03f56a8a5b89f2d402a9f3"
     };
 
-    // >>>>>>>>>>>>>> ИЗМЕНЕННАЯ ИНИЦИАЛИЗАЦИЯ И ПОЛУЧЕНИЕ СЕРВИСОВ <<<<<<<<<<<<<<<<
+    // ========== ИНИЦИАЛИЗАЦИЯ ==========
     const app = window.firebase.initializeApp(firebaseConfig);
     const auth = window.firebase.auth(app);
-// ====> ВОТ ЗДЕСЬ ДОЛЖНО БЫТЬ ИЗМЕНЕНИЕ:
-    const db = window.firebase.firestore(app, 'neonmess');// Используем firebase.firestore
+    const db = window.firebase.firestore(app, neonmess);
+    const messaging = firebase.messaging(app);
+    const storage = firebase.storage(app);
+    const FieldValue = firebase.firestore.FieldValue;
+    
     auth.languageCode = "ru";
 
-    const messaging = firebase.messaging(app); // Используем firebase.messaging
-    const storage = firebase.storage(app); // Используем firebase.storage
-    // >>>>>>>>>>>>>> КОНЕЦ ИЗМЕНЕННОЙ ИНИЦИАЛИЗАЦИИ <<<<<<<<<<<<<<<<
-
-
+    // ========== ГЛОБАЛЬНОЕ СОСТОЯНИЕ ==========
     const state = {
       user: null,
       profile: null,
@@ -277,13 +272,12 @@
       activeChat: null,
       chatUnsub: null,
       captcha: null,
-      // >>>>>>>>>>>>>> НАЧАЛО НОВОГО ПОЛЯ FCM <<<<<<<<<<<<<<<<
-      fcmToken: null // Для хранения FCM токена
-      // >>>>>>>>>>>>>> КОНЕЦ НОВОГО ПОЛЯ FCM <<<<<<<<<<<<<<<<<
+      fcmToken: null
     };
 
     const root = document.getElementById("root");
 
+    // ========== УТИЛИТЫ ==========
     const escapeHtml = (value) =>
       String(value ?? "")
         .replaceAll("&", "&amp;")
@@ -305,7 +299,6 @@
 
     async function createCaptcha(containerId) {
       resetCaptcha();
-      // >>>>>>>>>>>>>> ИЗМЕНЕНО: firebase.auth.RecaptchaVerifier <<<<<<<<<<<<<<<<
       const verifier = new firebase.auth.RecaptchaVerifier(containerId, {
         size: "normal",
         callback: () => console.log("reCAPTCHA solved"),
@@ -315,9 +308,9 @@
       return verifier;
     }
 
+    // ========== АУТЕНТИФИКАЦИЯ ==========
     async function loginWithPhone(phone, containerId) {
       const verifier = await createCaptcha(containerId);
-      // >>>>>>>>>>>>>> ИЗМЕНЕНО: auth.signInWithPhoneNumber <<<<<<<<<<<<<<<<
       const confirmation = await auth.signInWithPhoneNumber(phone, verifier);
       const code = prompt("Введите код из SMS:");
       if (!code) throw new Error("Код не введён");
@@ -327,7 +320,6 @@
     }
 
     async function ensureProfile(user, username, avatar) {
-      // >>>>>>>>>>>>>> ИЗМЕНЕНО: db.collection("users").doc(user.uid) <<<<<<<<<<<<<<<<
       const ref = db.collection("users").doc(user.uid);
       const snap = await ref.get();
 
@@ -335,17 +327,15 @@
         phone: user.phoneNumber || "",
         username: username || snap.data()?.username || "Без имени",
         avatar: avatar || snap.data()?.avatar || "👤",
-        // >>>>>>>>>>>>>> ИЗМЕНЕНО: firebase.firestore.FieldValue.serverTimestamp() <<<<<<<<<<<<<<<<
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        updatedAt: FieldValue.serverTimestamp()
       };
 
       if (!snap.exists()) {
         await ref.set({
           ...baseData,
-          // >>>>>>>>>>>>>> ИЗМЕНЕНО: firebase.firestore.FieldValue.serverTimestamp() <<<<<<<<<<<<<<<<
-          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          createdAt: FieldValue.serverTimestamp(),
           isSubscribed: false,
-          fcmTokens: [] // Инициализируем массив FCM токенов при создании профиля
+          fcmTokens: []
         });
       } else if (username || avatar) {
         await ref.update(baseData);
@@ -363,7 +353,6 @@
     }
 
     async function loadProfile(uid) {
-      // >>>>>>>>>>>>>> ИЗМЕНЕНО: db.collection("users").doc(uid).get() <<<<<<<<<<<<<<<<
       const snap = await db.collection("users").doc(uid).get();
       if (!snap.exists()) return null;
       const data = snap.data();
@@ -373,56 +362,6 @@
         displayName: data.username || "Без имени",
         photoURL: data.avatar || "👤"
       };
-    }
-
-    async function loadChats() {
-      if (!state.user) return [];
-      // >>>>>>>>>>>>>> ИЗМЕНЕНО: db.collection("chats").where().get() <<<<<<<<<<<<<<<<
-      const snap = await db.collection("chats")
-        .where("members", "array-contains", state.user.uid)
-        .get();
-
-      const chats = await Promise.all(
-        snap.docs.map(async (chatDoc) => {
-          const data = chatDoc.data();
-          let title = data.title || "Чат";
-          let avatar = "👤";
-
-          if (data.type === "direct") {
-            const otherUid = (data.members || []).find((m) => m !== state.user.uid);
-            if (otherUid) {
-              const otherProfile = await loadProfile(otherUid);
-              if (otherProfile) {
-                title = otherProfile.displayName;
-                avatar = otherProfile.photoURL;
-              }
-            }
-          }
-
-          return {
-            id: chatDoc.id,
-            ...data,
-            title,
-            avatar
-          };
-        })
-      );
-
-      chats.sort((a, b) => {
-        const ta = a.updatedAt?.toMillis ? a.updatedAt.toMillis() : 0;
-        const tb = b.updatedAt?.toMillis ? b.updatedAt.toMillis() : 0;
-        return tb - ta;
-      });
-
-      return chats;
-    }
-
-    async function loadWallPosts() {
-      // >>>>>>>>>>>>>> ИЗМЕНЕНО: db.collection("wall").orderBy().get() <<<<<<<<<<<<<<<<
-      const snap = await db.collection("wall")
-        .orderBy("createdAt", "desc")
-        .get();
-      return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
     }
 
     function showLogin() {
@@ -469,7 +408,6 @@
           };
           state.profile = profile;
           renderApp();
-          // Запрашиваем FCM токен после успешного логина
           const token = await requestNotificationPermissionAndGetToken();
           if (token && state.user) {
             await saveFCMTokenToFirestore(state.user.uid, token);
@@ -488,6 +426,141 @@
       };
     }
 
+    // ========== ЗАГРУЗКА ДАННЫХ ==========
+    async function loadChats() {
+      if (!state.user) return [];
+      const snap = await db.collection("chats")
+        .where("members", "array-contains", state.user.uid)
+        .get();
+
+      const chats = await Promise.all(
+        snap.docs.map(async (chatDoc) => {
+          const data = chatDoc.data();
+          let title = data.title || "Чат";
+          let avatar = "👤";
+
+          if (data.type === "direct") {
+            const otherUid = (data.members || []).find((m) => m !== state.user.uid);
+            if (otherUid) {
+              const otherProfile = await loadProfile(otherUid);
+              if (otherProfile) {
+                title = otherProfile.displayName;
+                avatar = otherProfile.photoURL;
+              }
+            }
+          }
+
+          return {
+            id: chatDoc.id,
+            ...data,
+            title,
+            avatar
+          };
+        })
+      );
+
+      chats.sort((a, b) => {
+        const ta = a.updatedAt?.toMillis ? a.updatedAt.toMillis() : 0;
+        const tb = b.updatedAt?.toMillis ? b.updatedAt.toMillis() : 0;
+        return tb - ta;
+      });
+
+      return chats;
+    }
+
+    async function loadWallPosts() {
+      const snap = await db.collection("wall")
+        .orderBy("createdAt", "desc")
+        .get();
+      return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    }
+
+    async function refreshChats() {
+      state.chats = await loadChats();
+      renderChatsList();
+    }
+
+    async function loadAndRenderWall() {
+      state.wallPosts = await loadWallPosts();
+      const container = document.getElementById("wallPostsContainer");
+      if (!container) return;
+
+      if (!state.wallPosts.length) {
+        container.innerHTML = `<div class="loading">📡 Ещё нет постов. Напиши первый!</div>`;
+        return;
+      }
+
+      container.innerHTML = state.wallPosts.map((post) => {
+        const comments = post.comments || [];
+        return `
+          <div class="wall-post" data-post-id="${post.id}">
+            <div class="post-header" style="display:flex; gap:12px; align-items:center; margin-bottom:12px;">
+              <div class="avatar" style="width:44px; height:44px; font-size:24px;">${escapeHtml(post.avatar || "👤")}</div>
+              <strong style="color:#fff;">${escapeHtml(post.author || "Аноним")}</strong>
+            </div>
+
+            <div style="white-space:pre-wrap; line-height:1.45;">${escapeHtml(post.content || "")}</div>
+
+            <div style="display:flex; gap:16px; margin-top:12px;">
+              <button class="like-btn neon-btn" data-post-id="${post.id}" style="padding:8px 14px;">❤️ ${post.likesCount || 0}</button>
+              <button class="comment-btn neon-btn" data-post-id="${post.id}" style="padding:8px 14px;">💬 ${comments.length}</button>
+            </div>
+
+            <div class="comments" style="margin-top:12px;">
+              ${comments.map((c) => `
+                <div style="background:rgba(0,255,255,0.1); border-radius:20px; padding:6px 12px; margin-top:6px;">
+                  💬 ${escapeHtml(c)}
+                </div>
+              `).join("")}
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      container.querySelectorAll(".like-btn").forEach((btn) => {
+        btn.onclick = async () => {
+          const postId = btn.dataset.postId;
+          const postRef = db.collection("wall").doc(postId);
+          await postRef.update({ likesCount: FieldValue.increment(1) });
+          await loadAndRenderWall();
+        };
+      });
+
+      container.querySelectorAll(".comment-btn").forEach((btn) => {
+        btn.onclick = async () => {
+          const postId = btn.dataset.postId;
+          const comment = prompt("Ваш комментарий:");
+          if (!comment || !comment.trim()) return;
+          const postRef = db.collection("wall").doc(postId);
+          await postRef.update({
+            comments: FieldValue.arrayUnion(comment.trim())
+          });
+          await loadAndRenderWall();
+        };
+      });
+    }
+
+    async function publishPost() {
+      const input = document.getElementById("postContent");
+      if (!input) return;
+      const content = input.value.trim();
+      if (!content) return;
+
+      await db.collection("wall").add({
+        author: state.profile?.displayName || state.user?.displayName || "Без имени",
+        avatar: state.profile?.photoURL || state.user?.photoURL || "👤",
+        content,
+        likesCount: 0,
+        comments: [],
+        createdAt: FieldValue.serverTimestamp(),
+        userId: state.user.uid
+      });
+
+      input.value = "";
+      await loadAndRenderWall();
+    }
+
+    // ========== РЕНДЕРИНГ ==========
     function renderNav(active) {
       return `
         <div class="bottom-nav">
@@ -655,10 +728,11 @@
         const avatar = prompt("Новый аватар-эмодзи:", profile.photoURL || "👤");
         if (avatar === null) return;
 
-        await updateDoc(doc(db, "users", state.user.uid), {
+        const userRef = db.collection("users").doc(state.user.uid);
+        await userRef.update({
           username: username.trim() || "Без имени",
           avatar: avatar.trim() || "👤",
-          updatedAt: serverTimestamp()
+          updatedAt: FieldValue.serverTimestamp()
         });
 
         state.profile = {
@@ -672,7 +746,7 @@
       };
 
       document.getElementById("logoutBtn").onclick = async () => {
-        await signOut(auth);
+        await auth.signOut();
         state.user = null;
         state.profile = null;
         state.chats = [];
@@ -702,89 +776,7 @@
       refreshChats();
     }
 
-    async function refreshChats() {
-      state.chats = await loadChats();
-      renderChatsList();
-    }
-
-    async function loadAndRenderWall() {
-      state.wallPosts = await loadWallPosts();
-      const container = document.getElementById("wallPostsContainer");
-      if (!container) return;
-
-      if (!state.wallPosts.length) {
-        container.innerHTML = `<div class="loading">📡 Ещё нет постов. Напиши первый!</div>`;
-        return;
-      }
-
-      container.innerHTML = state.wallPosts.map((post) => {
-        const comments = post.comments || [];
-        return `
-          <div class="wall-post" data-post-id="${post.id}">
-            <div class="post-header" style="display:flex; gap:12px; align-items:center; margin-bottom:12px;">
-              <div class="avatar" style="width:44px; height:44px; font-size:24px;">${escapeHtml(post.avatar || "👤")}</div>
-              <strong style="color:#fff;">${escapeHtml(post.author || "Аноним")}</strong>
-            </div>
-
-            <div style="white-space:pre-wrap; line-height:1.45;">${escapeHtml(post.content || "")}</div>
-
-            <div style="display:flex; gap:16px; margin-top:12px;">
-              <button class="like-btn neon-btn" data-post-id="${post.id}" style="padding:8px 14px;">❤️ ${post.likesCount || 0}</button>
-              <button class="comment-btn neon-btn" data-post-id="${post.id}" style="padding:8px 14px;">💬 ${comments.length}</button>
-            </div>
-
-            <div class="comments" style="margin-top:12px;">
-              ${comments.map((c) => `
-                <div style="background:rgba(0,255,255,0.1); border-radius:20px; padding:6px 12px; margin-top:6px;">
-                  💬 ${escapeHtml(c)}
-                </div>
-              `).join("")}
-            </div>
-          </div>
-        `;
-      }).join("");
-
-      container.querySelectorAll(".like-btn").forEach((btn) => {
-        btn.onclick = async () => {
-          const postId = btn.dataset.postId;
-          await updateDoc(doc(db, "wall", postId), { likesCount: increment(1) });
-          await loadAndRenderWall();
-        };
-      });
-
-      container.querySelectorAll(".comment-btn").forEach((btn) => {
-        btn.onclick = async () => {
-          const postId = btn.dataset.postId;
-          const comment = prompt("Ваш комментарий:");
-          if (!comment || !comment.trim()) return;
-          await updateDoc(doc(db, "wall", postId), {
-            comments: arrayUnion(comment.trim())
-          });
-          await loadAndRenderWall();
-        };
-      });
-    }
-
-    async function publishPost() {
-      const input = document.getElementById("postContent");
-      if (!input) return;
-      const content = input.value.trim();
-      if (!content) return;
-
-      await addDoc(collection(db, "wall"), {
-        author: state.profile?.displayName || state.user?.displayName || "Без имени",
-        avatar: state.profile?.photoURL || state.user?.photoURL || "👤",
-        content,
-        likesCount: 0,
-        comments: [],
-        createdAt: serverTimestamp(),
-        userId: state.user.uid
-      });
-
-      input.value = "";
-      await loadAndRenderWall();
-    }
-
+    // ========== ЧАТ ==========
     async function openChat(chat) {
       if (state.chatUnsub) {
         state.chatUnsub();
@@ -819,10 +811,10 @@
       `;
 
       const messagesContainer = document.getElementById("chatMessagesArea");
-      const messagesRef = collection(db, "chats", chat.id, "messages");
-      const messagesQuery = query(messagesRef, orderBy("createdAt", "asc"));
+      const messagesRef = db.collection("chats").doc(chat.id).collection("messages");
+      const messagesQuery = messagesRef.orderBy("createdAt", "asc");
 
-      state.chatUnsub = onSnapshot(messagesQuery, (snapshot) => {
+      state.chatUnsub = messagesQuery.onSnapshot((snapshot) => {
         messagesContainer.innerHTML = "";
         snapshot.forEach((msgDoc) => {
           const msg = msgDoc.data();
@@ -865,15 +857,15 @@
         const text = input.value.trim();
         if (!text) return;
 
-        await addDoc(messagesRef, {
+        await messagesRef.add({
           text,
           userId: state.user.uid,
-          createdAt: serverTimestamp()
+          createdAt: FieldValue.serverTimestamp()
         });
 
-        await updateDoc(doc(db, "chats", chat.id), {
+        await db.collection("chats").doc(chat.id).update({
           lastMessage: text,
-          updatedAt: serverTimestamp()
+          updatedAt: FieldValue.serverTimestamp()
         });
 
         input.value = "";
@@ -881,7 +873,7 @@
     }
 
     async function createNewChat() {
-      const usersSnap = await getDocs(collection(db, "users"));
+      const usersSnap = await db.collection("users").get();
       const users = [];
 
       usersSnap.forEach((d) => {
@@ -911,15 +903,15 @@
       if (!selected) return;
 
       const chatId = directChatId(state.user.uid, selected.uid);
-      const chatRef = doc(db, "chats", chatId);
-      const snap = await getDoc(chatRef);
+      const chatRef = db.collection("chats").doc(chatId);
+      const snap = await chatRef.get();
 
       if (!snap.exists()) {
-        await setDoc(chatRef, {
+        await chatRef.set({
           type: "direct",
           members: [state.user.uid, selected.uid],
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
+          createdAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
           lastMessage: ""
         });
       }
@@ -929,16 +921,69 @@
       if (chat) openChat(chat);
     }
 
+    // ========== FCM УВЕДОМЛЕНИЯ ==========
+    async function requestNotificationPermissionAndGetToken() {
+      try {
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+          console.log('Разрешение на уведомления получено.');
+          const currentToken = await messaging.getToken({
+            vapidKey: 'BDRTV4EZNNWVT9_dRipTDFG_JHwJa53Ne82UgG5g6XdgLWufZumogCNM8EQK_T-Qg9fZDeCEq7_R6DchHcfWXZQ'
+          });
+          if (currentToken) {
+            console.log('FCM Device Token:', currentToken);
+            state.fcmToken = currentToken;
+            if (state.user) {
+              await saveFCMTokenToFirestore(state.user.uid, currentToken);
+            }
+            return currentToken;
+          } else {
+            console.warn('Не удалось получить токен устройства.');
+          }
+        } else {
+          console.warn('Разрешение на уведомления отклонено.');
+        }
+      } catch (error) {
+        console.error('Ошибка при запросе разрешения на уведомления:', error);
+      }
+      return null;
+    }
+
+    async function saveFCMTokenToFirestore(uid, token) {
+      if (!uid || !token) return;
+      try {
+        const userRef = db.collection("users").doc(uid);
+        await userRef.update({
+          fcmTokens: FieldValue.arrayUnion(token)
+        });
+        console.log(`FCM токен для пользователя ${uid} сохранен.`);
+      } catch (error) {
+        console.error('Ошибка при сохранении FCM токена:', error);
+      }
+    }
+
+    // Слушатель foreground сообщений
+    messaging.onMessage((payload) => {
+      console.log('Сообщение получено:', payload);
+      if (payload.notification) {
+        new Notification(payload.notification.title, {
+          body: payload.notification.body,
+          icon: payload.notification.icon || '/firebase-logo.png'
+        });
+      }
+    });
+
+    // ========== ЗАПУСК ==========
     async function boot() {
-      auth.onAuthStateChanged(async (user) => { // <--- ИСПРАВЛЕНО: теперь это метод объекта 'auth'
+      auth.onAuthStateChanged(async (user) => {
         if (!user) {
           state.user = null;
           state.profile = null;
           state.chats = [];
           state.wallPosts = [];
-          if (state.chatUnsub) { // Этот блок я не увидел в вашем предыдущем сокращенном коде, но он должен быть здесь.
-              state.chatUnsub();
-              state.chatUnsub = null;
+          if (state.chatUnsub) {
+            state.chatUnsub();
+            state.chatUnsub = null;
           }
           showLogin();
           return;
@@ -959,7 +1004,6 @@
         state.page = "chats";
         renderApp();
 
-        // После успешного входа, запрашиваем разрешение на уведомления
         const token = await requestNotificationPermissionAndGetToken();
         if (token && state.user) {
           await saveFCMTokenToFirestore(state.user.uid, token);
@@ -967,70 +1011,6 @@
       });
     }
 
-        // ====================================================================
-    // >>>>>>>>>>>>>> НАЧАЛО НОВОГО КОДА ДЛЯ FCM <<<<<<<<<<<<<<<<
-    // ====================================================================
-
-    // Запрашиваем разрешение на уведомления и получаем токен
-    async function requestNotificationPermissionAndGetToken() {
-      try {
-        const permission = await Notification.requestPermission();
-        if (permission === 'granted') {
-          console.log('Разрешение на уведомления получено.');
-          // Получаем токен устройства для FCM
-          const currentToken = await getToken(messaging, {
-            vapidKey: 'BDRTV4EZNNWVT9_dRipTDFG_JHwJa53Ne82UgG5g6XdgLWufZumogCNM8EQK_T-Qg9fZDeCEq7_R6DchHcfWXZQ' // <-- ОБЯЗАТЕЛЬНО ЗАМЕНИТЕ НА ВАШ КЛЮЧ VAPID
-          });
-          if (currentToken) {
-            console.log('FCM Device Token:', currentToken);
-            state.fcmToken = currentToken;
-            // Сохраняем токен в Firestore для текущего пользователя
-            if (state.user) {
-              await saveFCMTokenToFirestore(state.user.uid, currentToken);
-            }
-            return currentToken;
-          } else {
-            console.warn('Не удалось получить токен устройства. Убедитесь, что браузер поддерживает Service Worker и разрешения не заблокированы.');
-          }
-        } else {
-          console.warn('Разрешение на уведомления отклонено.');
-        }
-      } catch (error) {
-        console.error('Ошибка при запросе разрешения на уведомления или получении токена:', error);
-      }
-      return null;
-    }
-
-    // Функция для сохранения FCM токена в Firestore
-    async function saveFCMTokenToFirestore(uid, token) {
-      if (!uid || !token) return;
-      try {
-        const userRef = doc(db, "users", uid);
-        await updateDoc(userRef, {
-          fcmTokens: arrayUnion(token) // Сохраняем токены в массиве, чтобы у пользователя могло быть несколько устройств
-        });
-        console.log(`FCM токен для пользователя ${uid} сохранен/обновлен.`);
-      } catch (error) {
-        console.error('Ошибка при сохранении FCM токена в Firestore:', error);
-      }
-    }
-
-    // Слушаем входящие сообщения, когда приложение находится на переднем плане
-    messaging.onMessage((payload) => { // Убран первый аргумент 'messaging'
-      console.log('Сообщение получено на переднем плане:', payload);
-      // Здесь вы можете показать кастомное уведомление или обновить UI
-      // Например, с помощью Notification API
-      if (payload.notification) {
-        new Notification(payload.notification.title, {
-          body: payload.notification.body,
-          icon: payload.notification.icon || '/firebase-logo.png' // Укажите путь к вашей иконке
-        });
-      }
-    });
-
-    // ====================================================================
-    // >>>>>>>>>>>>>> КОНЕЦ НОВОГО КОДА ДЛЯ FCM <<<<<<<<<<<<<<<<
-    // ====================================================================
     boot();
   </script>
 </body>
