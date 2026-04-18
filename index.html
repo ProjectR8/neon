@@ -954,12 +954,13 @@ async function requestNotificationPermissionAndGetToken() {
     }
 
     // Регистрируем Service Worker для FCM
+    let registration;
     try {
       // Для репозитория neon на GitHub Pages
       const swPath = '/neon/firebase-messaging-sw.js';
       console.log('📱 Регистрируем Service Worker по пути:', swPath);
       
-      const registration = await navigator.serviceWorker.register(swPath);
+      registration = await navigator.serviceWorker.register(swPath);
       console.log('✅ Service Worker зарегистрирован:', registration);
       
       // Ждем активации
@@ -979,8 +980,10 @@ async function requestNotificationPermissionAndGetToken() {
       console.log('✅ Разрешение на уведомления получено.');
       
       try {
+        // ВАЖНО: Передаем registration в getToken
         const currentToken = await getToken(messaging, {
-          vapidKey: 'BDRTV4EZNNWVT9_dRipTDFG_JHwJa53Ne82UgG5g6XdgLWufZumogCNM8EQK_T-Qg9fZDeCEq7_R6DchHcfWXZQ'
+          vapidKey: 'BDRTV4EZNNWVT9_dRipTDFG_JHwJa53Ne82UgG5g6XdgLWufZumogCNM8EQK_T-Qg9fZDeCEq7_R6DchHcfWXZQ',
+          serviceWorkerRegistration: registration // <-- ВОТ ЭТО ВАЖНО!
         });
         
         if (currentToken) {
@@ -992,6 +995,10 @@ async function requestNotificationPermissionAndGetToken() {
         }
       } catch (tokenError) {
         console.error('❌ Ошибка получения токена:', tokenError);
+        // Детальная информация об ошибке
+        if (tokenError.code === 'messaging/failed-service-worker-registration') {
+          console.error('💡 Firebase пытается использовать неправильный путь к Service Worker');
+        }
       }
     } else {
       console.warn('⚠️ Разрешение на уведомления отклонено.');
@@ -1001,18 +1008,6 @@ async function requestNotificationPermissionAndGetToken() {
   }
   return null;
 }
-    async function saveFCMTokenToFirestore(uid, token) {
-      if (!uid || !token) return;
-      try {
-        const userRef = doc(db, "users", uid);
-        await updateDoc(userRef, {
-          fcmTokens: arrayUnion(token)
-        });
-        console.log(`✅ FCM токен для пользователя ${uid} сохранен.`);
-      } catch (error) {
-        console.error('❌ Ошибка при сохранении FCM токена:', error);
-      }
-    }
 
     // Слушатель foreground сообщений
     onMessage(messaging, (payload) => {
