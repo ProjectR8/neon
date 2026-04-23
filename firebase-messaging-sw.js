@@ -1,4 +1,4 @@
-// firebase-messaging-sw.js
+// /neon/firebase-messaging-sw.js
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js');
 
@@ -14,13 +14,12 @@ firebase.initializeApp({
 const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage((payload) => {
-  console.log('[firebase-messaging-sw.js] Received background message ', payload);
-  
-  const notificationTitle = payload.notification.title;
-  const notificationOptions = {
-    body: payload.notification.body,
-    icon: '/firebase-logo.png'
-  };
-
-  self.registration.showNotification(notificationTitle, notificationOptions);
+  console.log('[sw] Background message: ', payload);
+  const { title, body } = payload.notification;
+  self.registration.showNotification(title, {
+    body,
+    icon: '/neon/icon-192x192.png',
+    badge: '/neon/icon-192x192.png',
+    tag: payload.data?.tag || 'default'
+  });
 });
