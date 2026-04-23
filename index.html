@@ -7,7 +7,6 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#0a0f1f">
   <title>NEON MESSENGER | чаты + стена</title>
-
   <style>
     * {
       margin: 0;
@@ -25,12 +24,16 @@
     }
 
     .glass {
-      background: rgba(15, 25, 45, 0.45);
+      background: rgba(15, 25, 45, 0.7);
       backdrop-filter: blur(16px) saturate(180%);
       border-radius: 32px;
       border: 1px solid rgba(0, 255, 255, 0.35);
       box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 0 18px rgba(0, 255, 255, 0.2);
       transition: all 0.3s;
+    }
+
+    @supports not (backdrop-filter: blur(16px)) {
+      .glass { background: rgba(15, 25, 45, 0.9); }
     }
 
     .glass:hover {
@@ -232,1186 +235,636 @@
     }
 
     @media (max-width: 480px) {
-      .messages-area {
-        height: calc(100vh - 200px);
-      }
-      
-      .glass {
-        padding: 12px !important;
-      }
-      
-      .bottom-nav {
-        padding: 4px 8px;
-      }
-      
-      .nav-item {
-        padding: 4px 8px;
-        font-size: 10px;
-      }
-      
-      .nav-icon {
-        font-size: 22px;
-      }
-      
-      .avatar { 
-        width: 44px; 
-        height: 44px; 
-        font-size: 24px; 
-      }
-      
-      .message { 
-        max-width: 85%; 
-      }
+      .messages-area { height: calc(100vh - 200px); }
+      .glass { padding: 12px !important; }
+      .bottom-nav { padding: 4px 8px; }
+      .nav-item { padding: 4px 8px; font-size: 10px; }
+      .nav-icon { font-size: 22px; }
+      .avatar { width: 44px; height: 44px; font-size: 24px; }
+      .message { max-width: 85%; }
     }
 
     @supports (-webkit-touch-callout: none) {
-      .messages-area {
-        height: calc(100vh - 220px);
-      }
-      
-      body {
-        min-height: -webkit-fill-available;
-      }
+      .messages-area { height: calc(100vh - 220px); }
+      body { min-height: -webkit-fill-available; }
     }
   </style>
 </head>
 <body>
-  <div id="root"><div class="loading">✨ Загрузка...</div></div>
+<div id="root"><div class="loading">✨ Загрузка...</div></div>
 
-  <script type="module">
-    // ========== ИМПОРТЫ ==========
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import {
-      getAuth,
-      onAuthStateChanged,
-      signOut,
-      RecaptchaVerifier,
-      signInWithPhoneNumber
-    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-    import {
-      initializeFirestore,
-      enableIndexedDbPersistence,
-      collection,
-      doc,
-      getDoc,
-      getDocs,
-      setDoc,
-      updateDoc,
-      addDoc,
-      query,
-      where,
-      orderBy,
-      onSnapshot,
-      serverTimestamp,
-      increment,
-      arrayUnion,
-      arrayRemove
-    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-    import {
-      getMessaging,
-      getToken,
-      onMessage
-    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
+<script type="module">
+  // ========== ИМПОРТЫ ==========
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+  import {
+    getAuth, onAuthStateChanged, signOut,
+    RecaptchaVerifier, signInWithPhoneNumber
+  } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+  import {
+    initializeFirestore, enableIndexedDbPersistence,
+    collection, doc, getDoc, getDocs, setDoc, updateDoc, addDoc,
+    query, where, orderBy, onSnapshot, serverTimestamp,
+    increment, arrayUnion
+  } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+  import {
+    getMessaging, getToken, onMessage
+  } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
 
-    // ========== КОНФИГУРАЦИЯ ==========
-    const firebaseConfig = {
-      apiKey: "AIzaSyA9gA_Nvei89csa7_YrmbnbnxFngb0UKoM",
-      authDomain: "neon-messenger-83ed4.firebaseapp.com",
-      projectId: "neon-messenger-83ed4",
-      storageBucket: "neon-messenger-83ed4.firebasestorage.app",
-      messagingSenderId: "954172505610",
-      appId: "1:954172505610:web:03f56a8a5b89f2d402a9f3"
-    };
+  // ========== КОНФИГУРАЦИЯ ==========
+  const firebaseConfig = {
+    apiKey: "AIzaSyA9gA_Nvei89csa7_YrmbnbnxFngb0UKoM",
+    authDomain: "neon-messenger-83ed4.firebaseapp.com",
+    projectId: "neon-messenger-83ed4",
+    storageBucket: "neon-messenger-83ed4.firebasestorage.app",
+    messagingSenderId: "954172505610",
+    appId: "1:954172505610:web:03f56a8a5b89f2d402a9f3"
+  };
 
-    // ВАЖНО: Замените на ваш Server Key из Firebase Console
-    const FCM_SERVER_KEY = "BDRTV4EZNNWVT9_dRipTDFG_JHwJa53Ne82UgG5g6XdgLWufZumogCNM8EQK_T-Qg9fZDeCEq7_R6DchHcfWXZQ";
+  // ========== ИНИЦИАЛИЗАЦИЯ ==========
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = initializeFirestore(app, {
+    experimentalForceLongPolling: true,
+    useFetchStreams: false
+  }, 'neonmess');
 
-    // ========== ИНИЦИАЛИЗАЦИЯ ==========
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = initializeFirestore(app, {
-      experimentalForceLongPolling: true, // ВАЖНО: Принудительно используем long polling для мобильных
-      useFetchStreams: false
-    }, 'neonmess');
-    
-    // Включаем офлайн-персистентность
-    enableIndexedDbPersistence(db).catch((err) => {
-      if (err.code === 'failed-precondition') {
-        console.warn("Множественные вкладки открыты");
-      } else if (err.code === 'unimplemented') {
-        console.warn("Браузер не поддерживает офлайн-режим");
-      }
+  enableIndexedDbPersistence(db).catch(err => console.warn("Persistence error:", err.code));
+
+  const messaging = getMessaging(app);
+  auth.languageCode = "ru";
+
+  // ========== ГЛОБАЛЬНОЕ СОСТОЯНИЕ ==========
+  const state = {
+    user: null,
+    profile: null,
+    page: "chats",
+    chats: [],
+    wallPosts: [],
+    activeChat: null,
+    chatUnsub: null,
+    captcha: null,
+    fcmToken: null,
+    globalChatsUnsub: null,
+    wallUnsub: null,
+    pollingInterval: null,
+    isIOS: /iPad|iPhone|iPod/.test(navigator.userAgent),
+    isAndroid: /Android/.test(navigator.userAgent)
+  };
+
+  const root = document.getElementById("root");
+
+  // ========== УТИЛИТЫ ==========
+  const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, function(m) {
+    return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#039;' }[m];
+  });
+
+  const directChatId = (uid1, uid2) => [uid1, uid2].sort().join("__");
+
+  function resetCaptcha() {
+    try { if (state.captcha) state.captcha.clear(); } catch {}
+    state.captcha = null;
+    const container = document.getElementById("recaptcha-container");
+    if (container) container.innerHTML = "";
+  }
+
+  async function createCaptcha(containerId) {
+    resetCaptcha();
+    state.captcha = new RecaptchaVerifier(auth, containerId, {
+      size: "normal",
+      callback: () => console.log("reCAPTCHA solved"),
+      "expired-callback": () => resetCaptcha()
     });
-    
-    const messaging = getMessaging(app);
-    auth.languageCode = "ru";
+    await state.captcha.render();
+    return state.captcha;
+  }
 
-    // ========== ГЛОБАЛЬНОЕ СОСТОЯНИЕ ==========
-    const state = {
-      user: null,
-      profile: null,
-      page: "chats",
-      chats: [],
-      wallPosts: [],
-      activeChat: null,
-      chatUnsub: null,
-      captcha: null,
-      fcmToken: null,
-      globalChatsUnsub: null,
-      wallUnsub: null
+  // ========== АУТЕНТИФИКАЦИЯ ==========
+  async function loginWithPhone(phone, containerId) {
+    const verifier = await createCaptcha(containerId);
+    const confirmation = await signInWithPhoneNumber(auth, phone, verifier);
+    const code = prompt("Введите код из SMS:");
+    if (!code) throw new Error("Код не введён");
+    const result = await confirmation.confirm(code);
+    resetCaptcha();
+    return result.user;
+  }
+
+  async function ensureProfile(user, username, avatar) {
+    const ref = doc(db, "users", user.uid);
+    const snap = await getDoc(ref);
+    const baseData = {
+      phone: user.phoneNumber || "",
+      username: username || snap.data()?.username || "Без имени",
+      avatar: avatar || snap.data()?.avatar || "👤",
+      updatedAt: serverTimestamp()
     };
-
-    const root = document.getElementById("root");
-    
-    // ========== УТИЛИТЫ ==========
-    const escapeHtml = (value) =>
-      String(value ?? "")
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
-
-    const directChatId = (uid1, uid2) => [uid1, uid2].sort().join("__");
-
-    // ========== ПРИНУДИТЕЛЬНОЕ ПОДДЕРЖАНИЕ СОЕДИНЕНИЯ ==========
-    function keepConnectionAlive() {
-      // На мобильных устройствах каждые 10 секунд проверяем соединение
-      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-        setInterval(async () => {
-          if (state.user && document.visibilityState === 'visible') {
-            try {
-              // Легкий запрос для поддержания WebSocket
-              const userRef = doc(db, "users", state.user.uid);
-              await getDoc(userRef);
-            } catch (e) {
-              // Игнорируем ошибки
-            }
-          }
-        }, 10000);
-      }
+    if (!snap.exists()) {
+      await setDoc(ref, { ...baseData, createdAt: serverTimestamp(), isSubscribed: false, fcmTokens: [] });
+    } else if (username || avatar) {
+      await updateDoc(ref, baseData);
     }
+    const fresh = await getDoc(ref);
+    const data = fresh.data() || {};
+    return {
+      uid: user.uid,
+      phoneNumber: user.phoneNumber || data.phone || "",
+      displayName: data.username || "Без имени",
+      photoURL: data.avatar || "👤"
+    };
+  }
 
-    // ========== ВОССТАНОВЛЕНИЕ ПРИ ВОЗВРАТЕ ==========
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible' && state.user) {
-        console.log('📱 Вкладка активна, восстанавливаем соединение...');
-        
-        // Переподписываемся на все
-        setTimeout(() => {
-          if (state.page === 'chats') {
-            if (state.globalChatsUnsub) {
-              state.globalChatsUnsub();
-              state.globalChatsUnsub = null;
-            }
-            setupGlobalMessageListener();
-            refreshChats();
-          }
-          
-          if (state.page === 'wall') {
-            if (state.wallUnsub) {
-              state.wallUnsub();
-              state.wallUnsub = null;
-            }
-            setupWallListener();
-            loadAndRenderWall();
-          }
-          
-          if (state.activeChat) {
-            const chat = state.activeChat;
-            if (state.chatUnsub) {
-              state.chatUnsub();
-              state.chatUnsub = null;
-            }
-            state.activeChat = null;
-            openChat(chat);
-          }
-        }, 500);
-      }
-    });
+  async function loadProfile(uid) {
+    const snap = await getDoc(doc(db, "users", uid));
+    if (!snap.exists()) return null;
+    const data = snap.data();
+    return { uid, phoneNumber: data.phone || "", displayName: data.username || "Без имени", photoURL: data.avatar || "👤" };
+  }
 
-    // Блокируем pull-to-refresh на мобильных
-    document.body.addEventListener('touchmove', (e) => {
-      if (e.target.closest('.messages-area')) return;
-    }, { passive: false });
-
-    function resetCaptcha() {
+  function showLogin() {
+    root.innerHTML = `
+      <div class="glass" style="max-width:520px; margin:56px auto; padding:30px;">
+        <h2 style="color:#0ff; text-align:center;">🔮 NEON LOGIN</h2>
+        <input id="phone" class="neon-input" placeholder="Номер телефона (+79991234567)" style="margin-top:16px;">
+        <input id="name" class="neon-input" placeholder="Ваше имя" style="margin-top:10px;">
+        <input id="avatar" class="neon-input" placeholder="Аватар-эмодзи (например 👾)" style="margin-top:10px;">
+        <div id="recaptcha-container"></div>
+        <button id="loginBtn" class="neon-btn" style="width:100%; margin-top:10px;">Войти / Регистрация</button>
+        <div style="margin-top:12px; font-size:12px; color:#88aaff;">Для Phone Auth в Firebase должен быть включён номерной вход.</div>
+      </div>
+    `;
+    document.getElementById("loginBtn").onclick = async () => {
+      const btn = document.getElementById("loginBtn");
+      const phone = document.getElementById("phone").value.trim();
+      const name = document.getElementById("name").value.trim();
+      const avatar = document.getElementById("avatar").value.trim();
+      if (!phone || !name) { alert("Введите номер и имя"); return; }
+      btn.disabled = true; btn.textContent = "...";
       try {
-        if (state.captcha) state.captcha.clear();
-      } catch {}
-      state.captcha = null;
-      const container = document.getElementById("recaptcha-container");
-      if (container) container.innerHTML = "";
-    }
-
-    async function createCaptcha(containerId) {
-      resetCaptcha();
-      state.captcha = new RecaptchaVerifier(auth, containerId, {
-        size: "normal",
-        callback: () => console.log("reCAPTCHA solved"),
-        "expired-callback": () => resetCaptcha()
-      });
-      await state.captcha.render();
-      return state.captcha;
-    }
-
-    // ========== АУТЕНТИФИКАЦИЯ ==========
-    async function loginWithPhone(phone, containerId) {
-      const verifier = await createCaptcha(containerId);
-      const confirmation = await signInWithPhoneNumber(auth, phone, verifier);
-      const code = prompt("Введите код из SMS:");
-      if (!code) throw new Error("Код не введён");
-      const result = await confirmation.confirm(code);
-      resetCaptcha();
-      return result.user;
-    }
-
-    async function ensureProfile(user, username, avatar) {
-      const ref = doc(db, "users", user.uid);
-      const snap = await getDoc(ref);
-
-      const baseData = {
-        phone: user.phoneNumber || "",
-        username: username || snap.data()?.username || "Без имени",
-        avatar: avatar || snap.data()?.avatar || "👤",
-        updatedAt: serverTimestamp()
-      };
-
-      if (!snap.exists()) {
-        await setDoc(ref, {
-          ...baseData,
-          createdAt: serverTimestamp(),
-          isSubscribed: false,
-          fcmTokens: []
-        });
-      } else if (username || avatar) {
-        await updateDoc(ref, baseData);
+        const user = await loginWithPhone(phone, "recaptcha-container");
+        const profile = await ensureProfile(user, name, avatar || "👤");
+        state.user = { uid: profile.uid, phoneNumber: profile.phoneNumber, displayName: profile.displayName, photoURL: profile.photoURL };
+        state.profile = profile;
+        renderApp();
+        const token = await requestNotificationPermissionAndGetToken();
+        if (token && state.user) await saveFCMTokenToFirestore(state.user.uid, token);
+      } catch (err) {
+        alert("Ошибка входа: " + (err?.message || "неизвестная ошибка"));
+        showLogin();
+      } finally {
+        const currentBtn = document.getElementById("loginBtn");
+        if (currentBtn) { currentBtn.disabled = false; currentBtn.textContent = "Войти / Регистрация"; }
       }
+    };
+  }
 
-      const fresh = await getDoc(ref);
-      const data = fresh.data() || {};
-
-      return {
-        uid: user.uid,
-        phoneNumber: user.phoneNumber || data.phone || "",
-        displayName: data.username || "Без имени",
-        photoURL: data.avatar || "👤"
-      };
-    }
-
-    async function loadProfile(uid) {
-      const snap = await getDoc(doc(db, "users", uid));
-      if (!snap.exists()) return null;
-      const data = snap.data();
-      return {
-        uid,
-        phoneNumber: data.phone || "",
-        displayName: data.username || "Без имени",
-        photoURL: data.avatar || "👤"
-      };
-    }
-
-    function showLogin() {
-      root.innerHTML = `
-        <div class="glass" style="max-width:520px; margin:56px auto; padding:30px;">
-          <h2 style="color:#0ff; text-align:center;">🔮 NEON LOGIN</h2>
-
-          <input id="phone" class="neon-input" placeholder="Номер телефона (+79991234567)" style="margin-top:16px;">
-          <input id="name" class="neon-input" placeholder="Ваше имя" style="margin-top:10px;">
-          <input id="avatar" class="neon-input" placeholder="Аватар-эмодзи (например 👾)" style="margin-top:10px;">
-
-          <div id="recaptcha-container"></div>
-
-          <button id="loginBtn" class="neon-btn" style="width:100%; margin-top:10px;">Войти / Регистрация</button>
-
-          <div style="margin-top:12px; font-size:12px; color:#88aaff; line-height:1.4;">
-            Для Phone Auth в Firebase должен быть включён номерной вход и добавлен домен сайта в разрешённые домены.
-          </div>
-        </div>
-      `;
-
-      document.getElementById("loginBtn").onclick = async () => {
-        const btn = document.getElementById("loginBtn");
-        const phone = document.getElementById("phone").value.trim();
-        const name = document.getElementById("name").value.trim();
-        const avatar = document.getElementById("avatar").value.trim();
-
-        if (!phone || !name) {
-          alert("Введите номер телефона и имя");
-          return;
+  // ========== ЗАГРУЗКА ДАННЫХ ==========
+  async function loadChats() {
+    if (!state.user) return [];
+    const snap = await getDocs(query(collection(db, "chats"), where("members", "array-contains", state.user.uid)));
+    const chats = await Promise.all(snap.docs.map(async (chatDoc) => {
+      const data = chatDoc.data();
+      let title = data.title || "Чат", avatar = "👤";
+      if (data.type === "direct") {
+        const otherUid = (data.members || []).find(m => m !== state.user.uid);
+        if (otherUid) {
+          const otherProfile = await loadProfile(otherUid);
+          if (otherProfile) { title = otherProfile.displayName; avatar = otherProfile.photoURL; }
         }
-
-        btn.disabled = true;
-        btn.textContent = "...";
-
-        try {
-          const user = await loginWithPhone(phone, "recaptcha-container");
-          const profile = await ensureProfile(user, name, avatar || "👤");
-          state.user = {
-            uid: profile.uid,
-            phoneNumber: profile.phoneNumber,
-            displayName: profile.displayName,
-            photoURL: profile.photoURL
-          };
-          state.profile = profile;
-          renderApp();
-          
-          const token = await requestNotificationPermissionAndGetToken();
-          if (token && state.user) {
-            await saveFCMTokenToFirestore(state.user.uid, token);
-          }
-        } catch (err) {
-          console.error(err);
-          alert("Ошибка входа: " + (err?.message || "неизвестная ошибка"));
-          showLogin();
-        } finally {
-          const currentBtn = document.getElementById("loginBtn");
-          if (currentBtn) {
-            currentBtn.disabled = false;
-            currentBtn.textContent = "Войти / Регистрация";
-          }
-        }
-      };
-    }
-
-    // ========== ЗАГРУЗКА ДАННЫХ ==========
-    async function loadChats() {
-      if (!state.user) return [];
-      const snap = await getDocs(
-        query(collection(db, "chats"), where("members", "array-contains", state.user.uid))
-      );
-
-      const chats = await Promise.all(
-        snap.docs.map(async (chatDoc) => {
-          const data = chatDoc.data();
-          let title = data.title || "Чат";
-          let avatar = "👤";
-
-          if (data.type === "direct") {
-            const otherUid = (data.members || []).find((m) => m !== state.user.uid);
-            if (otherUid) {
-              const otherProfile = await loadProfile(otherUid);
-              if (otherProfile) {
-                title = otherProfile.displayName;
-                avatar = otherProfile.photoURL;
-              }
-            }
-          }
-
-          return {
-            id: chatDoc.id,
-            ...data,
-            title,
-            avatar
-          };
-        })
-      );
-
-      chats.sort((a, b) => {
-        const ta = a.updatedAt?.toMillis ? a.updatedAt.toMillis() : 0;
-        const tb = b.updatedAt?.toMillis ? b.updatedAt.toMillis() : 0;
-        return tb - ta;
-      });
-
-      return chats;
-    }
-
-    async function loadWallPosts() {
-      const snap = await getDocs(query(collection(db, "wall"), orderBy("createdAt", "desc")));
-      return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-    }
-
-    async function refreshChats() {
-      state.chats = await loadChats();
-      renderChatsList();
-    }
-
-    function setupWallListener() {
-      if (!state.user || state.wallUnsub) return;
-      
-      const wallQuery = query(collection(db, "wall"), orderBy("createdAt", "desc"));
-      
-      state.wallUnsub = onSnapshot(wallQuery, (snapshot) => {
-        state.wallPosts = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
-        if (state.page === 'wall') {
-          renderWallPostsList();
-        }
-      });
-    }
-
-    async function loadAndRenderWall() {
-      const container = document.getElementById("wallPostsContainer");
-      if (!container) return;
-      
-      container.innerHTML = `<div class="loading">📡 Загрузка постов...</div>`;
-      
-      state.wallPosts = await loadWallPosts();
-      renderWallPostsList();
-      setupWallListener();
-    }
-
-    function renderWallPostsList() {
-      const container = document.getElementById("wallPostsContainer");
-      if (!container) return;
-
-      if (!state.wallPosts.length) {
-        container.innerHTML = `<div class="loading">📡 Ещё нет постов. Напиши первый!</div>`;
-        return;
       }
+      return { id: chatDoc.id, ...data, title, avatar };
+    }));
+    chats.sort((a, b) => (b.updatedAt?.toMillis() || 0) - (a.updatedAt?.toMillis() || 0));
+    return chats;
+  }
 
-      container.innerHTML = state.wallPosts.map((post) => {
-        const comments = post.comments || [];
-        return `
-          <div class="wall-post" data-post-id="${post.id}">
-            <div class="post-header" style="display:flex; gap:12px; align-items:center; margin-bottom:12px;">
-              <div class="avatar" style="width:44px; height:44px; font-size:24px;">${escapeHtml(post.avatar || "👤")}</div>
-              <strong style="color:#fff;">${escapeHtml(post.author || "Аноним")}</strong>
-            </div>
+  async function loadWallPosts() {
+    const snap = await getDocs(query(collection(db, "wall"), orderBy("createdAt", "desc")));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  }
 
-            <div style="white-space:pre-wrap; line-height:1.45;">${escapeHtml(post.content || "")}</div>
+  async function refreshChats() {
+    state.chats = await loadChats();
+    renderChatsList();
+  }
 
-            <div style="display:flex; gap:16px; margin-top:12px;">
-              <button class="like-btn neon-btn" data-post-id="${post.id}" style="padding:8px 14px;">❤️ ${post.likesCount || 0}</button>
-              <button class="comment-btn neon-btn" data-post-id="${post.id}" style="padding:8px 14px;">💬 ${comments.length}</button>
-            </div>
+  function setupWallListener() {
+    if (!state.user || state.wallUnsub) return;
+    const q = query(collection(db, "wall"), orderBy("createdAt", "desc"));
+    state.wallUnsub = onSnapshot(q, (snapshot) => {
+      state.wallPosts = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      if (state.page === 'wall') renderWallPostsList();
+    });
+  }
 
-            <div class="comments" style="margin-top:12px;">
-              ${comments.map((c) => `
-                <div style="background:rgba(0,255,255,0.1); border-radius:20px; padding:6px 12px; margin-top:6px;">
-                  💬 ${escapeHtml(c)}
-                </div>
-              `).join("")}
-            </div>
-          </div>
-        `;
-      }).join("");
+  async function loadAndRenderWall() {
+    const container = document.getElementById("wallPostsContainer");
+    if (!container) return;
+    container.innerHTML = `<div class="loading">📡 Загрузка постов...</div>`;
+    state.wallPosts = await loadWallPosts();
+    renderWallPostsList();
+    setupWallListener();
+  }
 
-      container.querySelectorAll(".like-btn").forEach((btn) => {
-        btn.onclick = async () => {
-          const postId = btn.dataset.postId;
-          await updateDoc(doc(db, "wall", postId), { likesCount: increment(1) });
-        };
-      });
-
-      container.querySelectorAll(".comment-btn").forEach((btn) => {
-        btn.onclick = async () => {
-          const postId = btn.dataset.postId;
-          const comment = prompt("Ваш комментарий:");
-          if (!comment || !comment.trim()) return;
-          await updateDoc(doc(db, "wall", postId), {
-            comments: arrayUnion(comment.trim())
-          });
-        };
-      });
-    }
-
-    async function publishPost() {
-      const input = document.getElementById("postContent");
-      if (!input) return;
-      const content = input.value.trim();
-      if (!content) return;
-
-      await addDoc(collection(db, "wall"), {
-        author: state.profile?.displayName || state.user?.displayName || "Без имени",
-        avatar: state.profile?.photoURL || state.user?.photoURL || "👤",
-        content,
-        likesCount: 0,
-        comments: [],
-        createdAt: serverTimestamp(),
-        userId: state.user.uid
-      });
-
-      input.value = "";
-    }
-
-    // ========== РЕНДЕРИНГ ==========
-    function renderNav(active) {
+  function renderWallPostsList() {
+    const container = document.getElementById("wallPostsContainer");
+    if (!container) return;
+    if (!state.wallPosts.length) { container.innerHTML = `<div class="loading">📡 Ещё нет постов. Напиши первый!</div>`; return; }
+    container.innerHTML = state.wallPosts.map(post => {
+      const comments = post.comments || [];
       return `
-        <div class="bottom-nav">
-          <button class="nav-item ${active === "chats" ? "active" : ""}" data-page="chats">
-            <span class="nav-icon">💬</span><span>ЧАТЫ</span>
-          </button>
-          <button class="nav-item ${active === "wall" ? "active" : ""}" data-page="wall">
-            <span class="nav-icon">📡</span><span>СТЕНА</span>
-          </button>
-          <button class="nav-item ${active === "profile" ? "active" : ""}" data-page="profile">
-            <span class="nav-icon">👾</span><span>ПРОФИЛЬ</span>
-          </button>
+        <div class="wall-post" data-post-id="${post.id}">
+          <div style="display:flex; gap:12px; align-items:center; margin-bottom:12px;">
+            <div class="avatar" style="width:44px; height:44px; font-size:24px;">${escapeHtml(post.avatar || "👤")}</div>
+            <strong style="color:#fff;">${escapeHtml(post.author || "Аноним")}</strong>
+          </div>
+          <div style="white-space:pre-wrap;">${escapeHtml(post.content || "")}</div>
+          <div style="display:flex; gap:16px; margin-top:12px;">
+            <button class="like-btn neon-btn" data-post-id="${post.id}" style="padding:8px 14px;">❤️ ${post.likesCount || 0}</button>
+            <button class="comment-btn neon-btn" data-post-id="${post.id}" style="padding:8px 14px;">💬 ${comments.length}</button>
+          </div>
+          <div class="comments" style="margin-top:12px;">
+            ${comments.map(c => `<div style="background:rgba(0,255,255,0.1); border-radius:20px; padding:6px 12px; margin-top:6px;">💬 ${escapeHtml(c)}</div>`).join("")}
+          </div>
         </div>
       `;
-    }
+    }).join("");
+    container.querySelectorAll(".like-btn").forEach(btn => {
+      btn.onclick = async () => {
+        await updateDoc(doc(db, "wall", btn.dataset.postId), { likesCount: increment(1) });
+      };
+    });
+    container.querySelectorAll(".comment-btn").forEach(btn => {
+      btn.onclick = async () => {
+        const comment = prompt("Ваш комментарий:");
+        if (!comment?.trim()) return;
+        await updateDoc(doc(db, "wall", btn.dataset.postId), { comments: arrayUnion(comment.trim()) });
+      };
+    });
+  }
 
-    function renderChatsList() {
-      const list = document.getElementById("chatsList");
-      if (!list) return;
+  async function publishPost() {
+    const input = document.getElementById("postContent");
+    if (!input) return;
+    const content = input.value.trim();
+    if (!content) return;
+    await addDoc(collection(db, "wall"), {
+      author: state.profile?.displayName || state.user?.displayName || "Без имени",
+      avatar: state.profile?.photoURL || state.user?.photoURL || "👤",
+      content,
+      likesCount: 0,
+      comments: [],
+      createdAt: serverTimestamp(),
+      userId: state.user.uid
+    });
+    input.value = "";
+  }
 
-      if (!state.chats.length) {
-        list.innerHTML = `<div class="loading">✨ Нет чатов. Нажмите + чтобы создать новый.</div>`;
-        return;
-      }
+  // ========== РЕНДЕРИНГ ==========
+  function renderNav(active) {
+    return `
+      <div class="bottom-nav">
+        <button class="nav-item ${active==='chats'?'active':''}" data-page="chats"><span class="nav-icon">💬</span><span>ЧАТЫ</span></button>
+        <button class="nav-item ${active==='wall'?'active':''}" data-page="wall"><span class="nav-icon">📡</span><span>СТЕНА</span></button>
+        <button class="nav-item ${active==='profile'?'active':''}" data-page="profile"><span class="nav-icon">👾</span><span>ПРОФИЛЬ</span></button>
+      </div>
+    `;
+  }
 
-      list.innerHTML = state.chats.map((chat) => {
-        return `
-          <div class="chat-item" data-chat-id="${chat.id}">
-            <div class="avatar">${escapeHtml(chat.avatar || "👤")}</div>
-            <div style="min-width:0; flex:1;">
-              <div style="font-weight:700; color:#fff;">
-                ${escapeHtml(chat.title || "Чат")}
-              </div>
-              <div style="font-size:13px; color:#9db7d3; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                ${escapeHtml(chat.lastMessage || "Нет сообщений")}
-              </div>
-            </div>
-          </div>
-        `;
-      }).join("");
-
-      list.querySelectorAll(".chat-item").forEach((el) => {
-        el.onclick = () => {
-          const chat = state.chats.find((c) => c.id === el.dataset.chatId);
-          if (chat) openChat(chat);
-        };
-      });
-    }
-
-    function renderChatsPage() {
-      root.innerHTML = `
-        <div style="max-width:1300px; margin:0 auto; padding:16px; padding-bottom:90px;">
-          <div id="chatsPage" class="page active-page">
-            <div class="glass" style="padding:18px;">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                <h2 style="text-shadow:0 0 5px #0ff; color:#fff;">💬 NEON CHATS</h2>
-                <button id="newChatBtn" style="background:none; color:cyan; font-size:28px; border:1px solid cyan; border-radius:40px; padding:4px 16px; cursor:pointer;">+</button>
-              </div>
-              <div id="chatsList"><div class="loading">Загрузка чатов...</div></div>
-            </div>
-          </div>
-
-          <div id="wallPage" class="page"></div>
-          <div id="profilePage" class="page"></div>
+  function renderChatsList() {
+    const list = document.getElementById("chatsList");
+    if (!list) return;
+    if (!state.chats.length) { list.innerHTML = `<div class="loading">✨ Нет чатов. Нажмите + чтобы создать новый.</div>`; return; }
+    list.innerHTML = state.chats.map(chat => `
+      <div class="chat-item" data-chat-id="${chat.id}">
+        <div class="avatar">${escapeHtml(chat.avatar || "👤")}</div>
+        <div style="min-width:0; flex:1;">
+          <div style="font-weight:700; color:#fff;">${escapeHtml(chat.title || "Чат")}</div>
+          <div style="font-size:13px; color:#9db7d3; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(chat.lastMessage || "Нет сообщений")}</div>
         </div>
-        ${renderNav("chats")}
-      `;
+      </div>
+    `).join("");
+    list.querySelectorAll(".chat-item").forEach(el => {
+      el.onclick = () => {
+        const chat = state.chats.find(c => c.id === el.dataset.chatId);
+        if (chat) openChat(chat);
+      };
+    });
+  }
 
-      document.getElementById("newChatBtn").onclick = createNewChat;
-
-      document.querySelectorAll(".nav-item").forEach((btn) => {
-        btn.onclick = async () => {
-          const page = btn.dataset.page;
-          state.page = page;
-          if (page === "chats") {
-            if (state.wallUnsub) {
-              state.wallUnsub();
-              state.wallUnsub = null;
-            }
-            renderApp();
-          } else if (page === "wall") {
-            if (state.globalChatsUnsub) {
-              state.globalChatsUnsub();
-              state.globalChatsUnsub = null;
-            }
-            renderWallPage();
-          } else if (page === "profile") {
-            renderProfilePage();
-          }
-        };
-      });
-
-      renderChatsList();
-    }
-
-    function renderWallPage() {
-      root.innerHTML = `
-        <div style="max-width:1300px; margin:0 auto; padding:16px; padding-bottom:90px;">
-          <div id="wallPage" class="page active-page">
-            <div class="glass" style="padding:18px;">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                <h2 style="text-shadow:0 0 5px #0ff; color:#fff;">📡 КИБЕР-СТЕНА</h2>
-              </div>
-
-              <textarea id="postContent" rows="2" placeholder="Опубликовать пост..." style="width:100%; border-radius:28px; background:#0a0f1f; border:1px solid cyan; color:cyan; padding:12px;"></textarea>
-
-              <div style="display:flex; justify-content:flex-end; margin-top:10px;">
-                <button id="publishPostBtn" class="neon-btn">⚡ ЗАПУСТИТЬ</button>
-              </div>
-
-              <div id="wallPostsContainer" style="margin-top:18px;"><div class="loading">Загрузка постов...</div></div>
+  function renderChatsPage() {
+    root.innerHTML = `
+      <div style="max-width:1300px; margin:0 auto; padding:16px; padding-bottom:90px;">
+        <div id="chatsPage" class="page active-page">
+          <div class="glass" style="padding:18px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+              <h2 style="text-shadow:0 0 5px #0ff; color:#fff;">💬 NEON CHATS</h2>
+              <button id="newChatBtn" style="background:none; color:cyan; font-size:28px; border:1px solid cyan; border-radius:40px; padding:4px 16px; cursor:pointer;">+</button>
             </div>
+            <div id="chatsList"><div class="loading">Загрузка чатов...</div></div>
           </div>
-
-          <div id="chatsPage" class="page"></div>
-          <div id="profilePage" class="page"></div>
         </div>
-        ${renderNav("wall")}
-      `;
+        <div id="wallPage" class="page"></div>
+        <div id="profilePage" class="page"></div>
+      </div>
+      ${renderNav("chats")}
+    `;
+    document.getElementById("newChatBtn").onclick = createNewChat;
+    document.querySelectorAll(".nav-item").forEach(btn => {
+      btn.onclick = async () => {
+        const page = btn.dataset.page;
+        state.page = page;
+        if (page === "chats") { if (state.wallUnsub) { state.wallUnsub(); state.wallUnsub = null; } renderApp(); }
+        else if (page === "wall") { if (state.globalChatsUnsub) { state.globalChatsUnsub(); state.globalChatsUnsub = null; } renderWallPage(); }
+        else renderProfilePage();
+      };
+    });
+    renderChatsList();
+  }
 
-      document.getElementById("publishPostBtn").onclick = publishPost;
-
-      document.querySelectorAll(".nav-item").forEach((btn) => {
-        btn.onclick = async () => {
-          const page = btn.dataset.page;
-          state.page = page;
-          if (page === "chats") {
-            if (state.wallUnsub) {
-              state.wallUnsub();
-              state.wallUnsub = null;
-            }
-            renderApp();
-          } else if (page === "wall") {
-            renderWallPage();
-          } else if (page === "profile") {
-            renderProfilePage();
-          }
-        };
-      });
-
-      loadAndRenderWall();
-    }
-
-    function renderProfilePage() {
-      const profile = state.profile || state.user || { displayName: "Без имени", phoneNumber: "", photoURL: "👤" };
-      const notificationStatus = Notification.permission;
-      
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-      const isAndroid = /Android/.test(navigator.userAgent);
-
-      root.innerHTML = `
-        <div style="max-width:1300px; margin:0 auto; padding:16px; padding-bottom:90px;">
-          <div id="profilePage" class="page active-page">
-            <div class="glass" style="padding:28px; text-align:center;">
-              <div id="profileAvatar" style="width:100px; height:100px; border-radius:50%; margin:0 auto 20px; background:linear-gradient(135deg, cyan, magenta); display:flex; align-items:center; justify-content:center; font-size:48px;">
-                ${escapeHtml(profile.photoURL || "👤")}
-              </div>
-
-              <h3 id="profileUsername" style="font-size:26px; color:#fff;">${escapeHtml(profile.displayName || "Без имени")}</h3>
-              <p style="color:#99f; margin-top:8px;">${escapeHtml(profile.phoneNumber || "")}</p>
-
-              <hr style="margin:24px 0; border-color:cyan;">
-
-              <div style="background: rgba(0,0,0,0.3); border-radius: 20px; padding: 15px; margin-bottom: 15px;">
-                ${isIOS ? `
-                  <div style="color: #ff0; font-size: 14px; margin-bottom: 10px;">
-                    ⚠️ iOS не поддерживает уведомления в браузере
-                  </div>
-                  <p style="color: #88aaff; font-size: 12px; margin-bottom: 10px;">
-                    Добавьте сайт на домашний экран через кнопку "Поделиться" → "На экран Домой"
-                  </p>
-                ` : `
-                  <div style="color: ${notificationStatus === 'granted' ? '#0f0' : '#ff0'}; font-size: 14px; margin-bottom: 10px;">
-                    ${notificationStatus === 'granted' ? '✅ Уведомления включены' : '⚠️ Уведомления не настроены'}
-                  </div>
-                  <button id="enableNotificationsBtn" class="neon-btn" style="width:100%;">
-                    🔔 ${notificationStatus === 'granted' ? 'ОБНОВИТЬ УВЕДОМЛЕНИЯ' : 'ВКЛЮЧИТЬ УВЕДОМЛЕНИЯ'}
-                  </button>
-                  ${isAndroid ? `
-                    <p style="color: #88aaff; font-size: 11px; margin-top: 8px;">
-                      Если уведомления не приходят, проверьте настройки браузера
-                    </p>
-                  ` : ''}
-                `}
-              </div>
-
-              <button id="editProfileBtn" class="neon-btn" style="margin-top:10px; width:100%;">✏️ Изменить профиль</button>
-              <button id="logoutBtn" style="background:none; border:1px solid magenta; color:magenta; margin-top:20px; width:100%; padding:10px; border-radius:40px; cursor:pointer;">ВЫЙТИ</button>
+  function renderWallPage() {
+    root.innerHTML = `
+      <div style="max-width:1300px; margin:0 auto; padding:16px; padding-bottom:90px;">
+        <div id="wallPage" class="page active-page">
+          <div class="glass" style="padding:18px;">
+            <h2 style="text-shadow:0 0 5px #0ff; color:#fff; margin-bottom:20px;">📡 КИБЕР-СТЕНА</h2>
+            <textarea id="postContent" rows="2" placeholder="Опубликовать пост..." style="width:100%; border-radius:28px; background:#0a0f1f; border:1px solid cyan; color:cyan; padding:12px;"></textarea>
+            <div style="display:flex; justify-content:flex-end; margin-top:10px;">
+              <button id="publishPostBtn" class="neon-btn">⚡ ЗАПУСТИТЬ</button>
             </div>
+            <div id="wallPostsContainer" style="margin-top:18px;"><div class="loading">Загрузка постов...</div></div>
           </div>
+        </div>
+        <div id="chatsPage" class="page"></div>
+        <div id="profilePage" class="page"></div>
+      </div>
+      ${renderNav("wall")}
+    `;
+    document.getElementById("publishPostBtn").onclick = publishPost;
+    document.querySelectorAll(".nav-item").forEach(btn => {
+      btn.onclick = async () => {
+        const page = btn.dataset.page;
+        state.page = page;
+        if (page === "chats") { if (state.wallUnsub) { state.wallUnsub(); state.wallUnsub = null; } renderApp(); }
+        else if (page === "wall") renderWallPage();
+        else renderProfilePage();
+      };
+    });
+    loadAndRenderWall();
+  }
 
-          <div id="chatsPage" class="page"></div>
-          <div id="wallPage" class="page"></div>
+  function renderProfilePage() {
+    const profile = state.profile || state.user || { displayName: "Без имени", phoneNumber: "", photoURL: "👤" };
+    const notificationStatus = Notification.permission;
+    root.innerHTML = `
+      <div style="max-width:1300px; margin:0 auto; padding:16px; padding-bottom:90px;">
+        <div id="profilePage" class="page active-page">
+          <div class="glass" style="padding:28px; text-align:center;">
+            <div style="width:100px; height:100px; border-radius:50%; margin:0 auto 20px; background:linear-gradient(135deg, cyan, magenta); display:flex; align-items:center; justify-content:center; font-size:48px;">${escapeHtml(profile.photoURL)}</div>
+            <h3 style="font-size:26px; color:#fff;">${escapeHtml(profile.displayName)}</h3>
+            <p style="color:#99f;">${escapeHtml(profile.phoneNumber)}</p>
+            <hr style="margin:24px 0; border-color:cyan;">
+            <div style="background: rgba(0,0,0,0.3); border-radius:20px; padding:15px; margin-bottom:15px;">
+              ${state.isIOS ? `
+                <div style="color:#ff0; font-size:14px; margin-bottom:10px;">⚠️ iOS: уведомления работают только если сайт добавлен на домашний экран (PWA).</div>
+                <p style="color:#88aaff; font-size:12px;">Нажмите «Поделиться» → «На экран Домой», затем откройте приложение с иконки.</p>
+              ` : `
+                <div style="color:${notificationStatus==='granted'?'#0f0':'#ff0'}; font-size:14px; margin-bottom:10px;">${notificationStatus==='granted'?'✅ Уведомления включены':'⚠️ Уведомления не настроены'}</div>
+                <button id="enableNotificationsBtn" class="neon-btn" style="width:100%;">🔔 ${notificationStatus==='granted'?'ОБНОВИТЬ':'ВКЛЮЧИТЬ УВЕДОМЛЕНИЯ'}</button>
+                ${state.isAndroid ? `<p style="color:#88aaff; font-size:11px; margin-top:8px;">Если не приходят: проверьте настройки браузера и системы.</p>` : ''}
+              `}
+            </div>
+            <button id="editProfileBtn" class="neon-btn" style="margin-top:10px; width:100%;">✏️ Изменить профиль</button>
+            <button id="logoutBtn" style="background:none; border:1px solid magenta; color:magenta; margin-top:20px; width:100%; padding:10px; border-radius:40px;">ВЫЙТИ</button>
+          </div>
         </div>
         ${renderNav("profile")}
-      `;
-
-      if (!isIOS) {
-        document.getElementById("enableNotificationsBtn").onclick = async () => {
-          const token = await requestNotificationPermissionAndGetToken();
-          if (token) {
-            await saveFCMTokenToFirestore(state.user.uid, token);
-            alert('✅ Уведомления включены!');
-            renderProfilePage();
-          } else {
-            alert('❌ Не удалось включить уведомления. Проверьте настройки браузера.');
-          }
-        };
-      }
-
-      document.getElementById("editProfileBtn").onclick = async () => {
-        const username = prompt("Новое имя:", profile.displayName || "");
-        if (username === null) return;
-        const avatar = prompt("Новый аватар-эмодзи:", profile.photoURL || "👤");
-        if (avatar === null) return;
-
-        await updateDoc(doc(db, "users", state.user.uid), {
-          username: username.trim() || "Без имени",
-          avatar: avatar.trim() || "👤",
-          updatedAt: serverTimestamp()
-        });
-
-        state.profile = {
-          ...profile,
-          displayName: username.trim() || "Без имени",
-          photoURL: avatar.trim() || "👤"
-        };
-        state.user.displayName = state.profile.displayName;
-        state.user.photoURL = state.profile.photoURL;
-        renderProfilePage();
+      </div>
+    `;
+    if (!state.isIOS) {
+      document.getElementById("enableNotificationsBtn").onclick = async () => {
+        const token = await requestNotificationPermissionAndGetToken();
+        if (token) { await saveFCMTokenToFirestore(state.user.uid, token); alert('✅ Уведомления включены!'); renderProfilePage(); }
+        else alert('❌ Не удалось включить. Проверьте разрешения браузера.');
       };
+    }
+    document.getElementById("editProfileBtn").onclick = async () => {
+      const username = prompt("Новое имя:", profile.displayName || "");
+      if (username === null) return;
+      const avatar = prompt("Новый аватар-эмодзи:", profile.photoURL || "👤");
+      if (avatar === null) return;
+      await updateDoc(doc(db, "users", state.user.uid), { username: username.trim() || "Без имени", avatar: avatar.trim() || "👤", updatedAt: serverTimestamp() });
+      state.profile = { ...profile, displayName: username.trim(), photoURL: avatar.trim() };
+      state.user.displayName = state.profile.displayName;
+      state.user.photoURL = state.profile.photoURL;
+      renderProfilePage();
+    };
+    document.getElementById("logoutBtn").onclick = async () => {
+      await signOut(auth);
+      stopPolling();
+      state.user = null; state.profile = null; state.chats = []; state.wallPosts = [];
+      if (state.chatUnsub) state.chatUnsub();
+      if (state.globalChatsUnsub) state.globalChatsUnsub();
+      if (state.wallUnsub) state.wallUnsub();
+      showLogin();
+    };
+    document.querySelectorAll(".nav-item").forEach(btn => {
+      btn.onclick = () => {
+        const page = btn.dataset.page;
+        state.page = page;
+        if (page === "chats") { if (state.wallUnsub) { state.wallUnsub(); state.wallUnsub = null; } renderApp(); }
+        else if (page === "wall") { if (state.globalChatsUnsub) { state.globalChatsUnsub(); state.globalChatsUnsub = null; } renderWallPage(); }
+        else renderProfilePage();
+      };
+    });
+  }
 
-      document.getElementById("logoutBtn").onclick = async () => {
-        await signOut(auth);
-        state.user = null;
-        state.profile = null;
-        state.chats = [];
-        state.wallPosts = [];
+  function renderApp() {
+    if (state.page === "wall") return renderWallPage();
+    if (state.page === "profile") return renderProfilePage();
+    renderChatsPage();
+    refreshChats();
+    setupGlobalMessageListener();
+  }
+
+  // ========== ЧАТ ==========
+  async function openChat(chat) {
+    if (state.chatUnsub) { state.chatUnsub(); state.chatUnsub = null; }
+    state.activeChat = chat;
+    const chatTitle = chat.type === "direct" ? chat.title : (chat.title || "Чат");
+    const chatAvatar = chat.avatar || "👤";
+    root.innerHTML = `
+      <div style="max-width:1300px; margin:0 auto; padding:16px; padding-bottom:90px;">
+        <div class="glass" style="padding:12px; height:calc(100vh - 120px); display:flex; flex-direction:column;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap:12px;">
+            <button id="backToChatsBtn" style="background:none; font-size:28px; color:cyan; border:none; cursor:pointer;">←</button>
+            <div style="display:flex; align-items:center; gap:10px; flex:1; justify-content:center;">
+              <div class="avatar" style="width:40px; height:40px; font-size:22px;">${escapeHtml(chatAvatar)}</div>
+              <h3 style="color:#fff;">${escapeHtml(chatTitle)}</h3>
+            </div>
+            <div style="width:28px;"></div>
+          </div>
+          <div id="chatMessagesArea" class="messages-area" style="flex:1;"></div>
+          <div style="display:flex; gap:8px; margin-top:12px;">
+            <input type="text" id="messageInput" class="neon-input" style="flex:1;" placeholder="Сообщение...">
+            <button id="sendMsgBtn" class="neon-btn">➤</button>
+          </div>
+        </div>
+      </div>
+    `;
+    const messagesContainer = document.getElementById("chatMessagesArea");
+    const messagesRef = collection(db, "chats", chat.id, "messages");
+    const messagesQuery = query(messagesRef, orderBy("createdAt", "asc"));
+    state.chatUnsub = onSnapshot(messagesQuery, (snapshot) => {
+      messagesContainer.innerHTML = "";
+      snapshot.forEach(msgDoc => {
+        const msg = msgDoc.data();
+        const isOut = msg.userId === state.user.uid;
+        const time = msg.createdAt?.toDate ? new Date(msg.createdAt.toDate()).toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" }) : "";
+        const div = document.createElement("div");
+        div.className = `message ${isOut ? "out" : "in"}`;
+        div.innerHTML = `<div>${escapeHtml(msg.text || "")}</div><div style="font-size:10px; opacity:0.7; margin-top:4px;">${time}</div>`;
+        messagesContainer.appendChild(div);
+      });
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }, (error) => {
+      console.error('Ошибка подписки:', error);
+      setTimeout(() => { if (state.activeChat?.id === chat.id) openChat(chat); }, 1000);
+    });
+    document.getElementById("backToChatsBtn").onclick = () => {
+      if (state.chatUnsub) { state.chatUnsub(); state.chatUnsub = null; }
+      state.activeChat = null; state.page = "chats"; renderApp();
+    };
+    const sendMessage = async () => {
+      const input = document.getElementById("messageInput");
+      const text = input.value.trim();
+      if (!text) return;
+      try {
+        await addDoc(messagesRef, { text, userId: state.user.uid, createdAt: serverTimestamp() });
+        await updateDoc(doc(db, "chats", chat.id), { lastMessage: text, lastMessageUserId: state.user.uid, updatedAt: serverTimestamp() });
+        input.value = "";
+      } catch (error) { console.error('Ошибка отправки:', error); }
+    };
+    document.getElementById("sendMsgBtn").onclick = sendMessage;
+    document.getElementById("messageInput").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); sendMessage(); } });
+  }
+
+  async function createNewChat() {
+    const usersSnap = await getDocs(collection(db, "users"));
+    const users = [];
+    usersSnap.forEach(d => { if (d.id !== state.user.uid) { const data = d.data(); users.push({ uid: d.id, username: data.username || "Пользователь", avatar: data.avatar || "👤" }); } });
+    if (!users.length) { alert("Нет других пользователей"); return; }
+    const choice = prompt("Выберите пользователя:\n\n" + users.map((u,i) => `${i+1}. ${u.username} ${u.avatar}`).join("\n") + "\n\nВведите номер:");
+    const index = parseInt(choice, 10) - 1;
+    const selected = users[index];
+    if (!selected) return;
+    const chatId = directChatId(state.user.uid, selected.uid);
+    const chatRef = doc(db, "chats", chatId);
+    if (!(await getDoc(chatRef)).exists()) {
+      await setDoc(chatRef, { type: "direct", members: [state.user.uid, selected.uid], createdAt: serverTimestamp(), updatedAt: serverTimestamp(), lastMessage: "" });
+    }
+    state.chats = await loadChats();
+    const chat = state.chats.find(c => c.id === chatId);
+    if (chat) openChat(chat);
+  }
+
+  function setupGlobalMessageListener() {
+    if (!state.user || state.globalChatsUnsub) return;
+    const q = query(collection(db, "chats"), where("members", "array-contains", state.user.uid));
+    state.globalChatsUnsub = onSnapshot(q, async (snapshot) => {
+      snapshot.docChanges().forEach(async (change) => {
+        if (change.type === "modified") {
+          const chat = change.doc.data();
+          const chatId = change.doc.id;
+          if (chat.lastMessageUserId && chat.lastMessageUserId !== state.user.uid && state.activeChat?.id !== chatId) {
+            if (Notification.permission === 'granted') {
+              const sender = await loadProfile(chat.lastMessageUserId);
+              new Notification(`${sender?.displayName || 'NEON'} 💬`, { body: chat.lastMessage, icon: '/neon/icon-192x192.png', tag: chatId }).onclick = () => {
+                window.focus();
+                const chatData = state.chats.find(c => c.id === chatId);
+                if (chatData) openChat(chatData);
+              };
+            }
+            refreshChats();
+          }
+        }
+      });
+    }, (error) => { console.error('Ошибка глобального слушателя:', error); setTimeout(() => { if (state.user) { state.globalChatsUnsub = null; setupGlobalMessageListener(); } }, 1000); });
+  }
+
+  // ========== УВЕДОМЛЕНИЯ ==========
+  async function requestNotificationPermissionAndGetToken() {
+    try {
+      if (!('serviceWorker' in navigator)) return null;
+      const swPath = '/neon/firebase-messaging-sw.js';
+      const registration = await navigator.serviceWorker.register(swPath);
+      await navigator.serviceWorker.ready;
+      const permission = await Notification.requestPermission();
+      if (permission === 'granted') {
+        const currentToken = await getToken(messaging, {
+          vapidKey: 'BDRTV4EZNNWVT9_dRipTDFG_JHwJa53Ne82UgG5g6XdgLWufZumogCNM8EQK_T-Qg9fZDeCEq7_R6DchHcfWXZQ',
+          serviceWorkerRegistration: registration
+        });
+        if (currentToken) { state.fcmToken = currentToken; return currentToken; }
+      }
+    } catch (error) { console.error('Ошибка получения токена:', error); }
+    return null;
+  }
+
+  async function saveFCMTokenToFirestore(uid, token) {
+    if (!uid || !token) return;
+    try { await updateDoc(doc(db, "users", uid), { fcmTokens: arrayUnion(token) }); } catch (error) { console.error('Ошибка сохранения токена:', error); }
+  }
+
+  onMessage(messaging, (payload) => {
+    if (payload.notification) new Notification(payload.notification.title, { body: payload.notification.body, icon: '/neon/icon-192x192.png' });
+  });
+
+  // ========== POLLING ==========
+  function startPolling() {
+    if (state.pollingInterval) clearInterval(state.pollingInterval);
+    state.pollingInterval = setInterval(async () => {
+      if (!state.user || document.visibilityState !== 'visible') return;
+      if (state.page === 'chats') await refreshChats();
+      if (state.page === 'wall') await loadAndRenderWall();
+    }, 5000);
+  }
+  function stopPolling() {
+    if (state.pollingInterval) { clearInterval(state.pollingInterval); state.pollingInterval = null; }
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && state.user) {
+      if (state.page === 'chats') { if (state.globalChatsUnsub) { state.globalChatsUnsub(); state.globalChatsUnsub = null; } setupGlobalMessageListener(); refreshChats(); }
+      if (state.page === 'wall') { if (state.wallUnsub) { state.wallUnsub(); state.wallUnsub = null; } setupWallListener(); loadAndRenderWall(); }
+      if (state.activeChat) { const chat = state.activeChat; if (state.chatUnsub) { state.chatUnsub(); state.chatUnsub = null; } state.activeChat = null; openChat(chat); }
+    }
+  });
+
+  // ========== ЗАПУСК ==========
+  async function boot() {
+    startPolling();
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        stopPolling();
+        state.user = null; state.profile = null; state.chats = []; state.wallPosts = [];
         if (state.chatUnsub) state.chatUnsub();
         if (state.globalChatsUnsub) state.globalChatsUnsub();
         if (state.wallUnsub) state.wallUnsub();
         showLogin();
-      };
-
-      document.querySelectorAll(".nav-item").forEach((btn) => {
-        btn.onclick = async () => {
-          const page = btn.dataset.page;
-          state.page = page;
-          if (page === "chats") {
-            if (state.wallUnsub) {
-              state.wallUnsub();
-              state.wallUnsub = null;
-            }
-            renderApp();
-          } else if (page === "wall") {
-            if (state.globalChatsUnsub) {
-              state.globalChatsUnsub();
-              state.globalChatsUnsub = null;
-            }
-            renderWallPage();
-          } else if (page === "profile") {
-            renderProfilePage();
-          }
-        };
-      });
-    }
-
-    function renderApp() {
-      if (state.page === "wall") return renderWallPage();
-      if (state.page === "profile") return renderProfilePage();
-      renderChatsPage();
-      refreshChats();
-      setupGlobalMessageListener();
-    }
-
-    // ========== ЧАТ ==========
-    async function openChat(chat) {
-      if (state.chatUnsub) {
-        state.chatUnsub();
-        state.chatUnsub = null;
-      }
-
-      state.activeChat = chat;
-
-      const chatTitle = chat.type === "direct" ? chat.title : (chat.title || "Чат");
-      const chatAvatar = chat.avatar || "👤";
-
-      root.innerHTML = `
-        <div style="max-width:1300px; margin:0 auto; padding:16px; padding-bottom:90px;">
-          <div class="glass" style="padding:12px; height:calc(100vh - 120px); display:flex; flex-direction:column;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap:12px;">
-              <button id="backToChatsBtn" style="background:none; font-size:28px; color:cyan; border:none; cursor:pointer;">←</button>
-              <div style="display:flex; align-items:center; gap:10px; flex:1; justify-content:center;">
-                <div class="avatar" style="width:40px; height:40px; font-size:22px;">${escapeHtml(chatAvatar)}</div>
-                <h3 style="color:#fff; text-align:center;">${escapeHtml(chatTitle)}</h3>
-              </div>
-              <div style="width:28px;"></div>
-            </div>
-
-            <div id="chatMessagesArea" class="messages-area" style="flex:1;"></div>
-
-            <div style="display:flex; gap:8px; margin-top:12px;">
-              <input type="text" id="messageInput" class="neon-input" style="flex:1;" placeholder="Сообщение...">
-              <button id="sendMsgBtn" class="neon-btn">➤</button>
-            </div>
-          </div>
-        </div>
-      `;
-
-      const messagesContainer = document.getElementById("chatMessagesArea");
-      const messagesRef = collection(db, "chats", chat.id, "messages");
-      const messagesQuery = query(messagesRef, orderBy("createdAt", "asc"));
-
-      state.chatUnsub = onSnapshot(messagesQuery, (snapshot) => {
-        messagesContainer.innerHTML = "";
-        snapshot.forEach((msgDoc) => {
-          const msg = msgDoc.data();
-          const isOut = msg.userId === state.user.uid;
-          const time = msg.createdAt?.toDate
-            ? new Date(msg.createdAt.toDate()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-            : "";
-
-          const div = document.createElement("div");
-          div.className = `message ${isOut ? "out" : "in"}`;
-          div.innerHTML = `
-            <div>${escapeHtml(msg.text || "")}</div>
-            <div style="font-size:10px; opacity:0.7; margin-top:4px;">${time}</div>
-          `;
-          messagesContainer.appendChild(div);
-        });
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-      }, (error) => {
-        console.error('Ошибка подписки:', error);
-        // Автоматически переподключаемся при ошибке
-        setTimeout(() => {
-          if (state.activeChat?.id === chat.id) {
-            if (state.chatUnsub) {
-              state.chatUnsub();
-              state.chatUnsub = null;
-            }
-            openChat(chat);
-          }
-        }, 1000);
-      });
-
-      document.getElementById("backToChatsBtn").onclick = () => {
-        if (state.chatUnsub) {
-          state.chatUnsub();
-          state.chatUnsub = null;
-        }
-        state.activeChat = null;
-        state.page = "chats";
-        renderApp();
-      };
-
-      document.getElementById("sendMsgBtn").onclick = sendMessage;
-      document.getElementById("messageInput").addEventListener("keydown", (e) => {
-        if (e.key === "Enter") {
-          e.preventDefault();
-          sendMessage();
-        }
-      });
-
-      async function sendMessage() {
-        const input = document.getElementById("messageInput");
-        const text = input.value.trim();
-        if (!text) return;
-
-        const recipientId = chat.members.find(uid => uid !== state.user.uid);
-        
-        try {
-          await addDoc(messagesRef, {
-            text,
-            userId: state.user.uid,
-            createdAt: serverTimestamp()
-          });
-
-          await updateDoc(doc(db, "chats", chat.id), {
-            lastMessage: text,
-            lastMessageUserId: state.user.uid,
-            updatedAt: serverTimestamp()
-          });
-
-          if (recipientId) {
-            await sendNotificationToUser(recipientId, {
-              title: `${state.user.displayName} 💬`,
-              body: text,
-              chatId: chat.id
-            });
-          }
-
-          input.value = "";
-        } catch (error) {
-          console.error('Ошибка отправки:', error);
-          input.value = "";
-        }
-      }
-    }
-
-    async function createNewChat() {
-      const usersSnap = await getDocs(collection(db, "users"));
-      const users = [];
-
-      usersSnap.forEach((d) => {
-        if (d.id !== state.user.uid) {
-          const data = d.data();
-          users.push({
-            uid: d.id,
-            username: data.username || "Пользователь",
-            avatar: data.avatar || "👤"
-          });
-        }
-      });
-
-      if (!users.length) {
-        alert("Нет других пользователей для чата");
         return;
       }
-
-      const choice = prompt(
-        "Выберите пользователя для чата:\n\n" +
-        users.map((u, i) => `${i + 1}. ${u.username} ${u.avatar}`).join("\n") +
-        "\n\nВведите номер:"
-      );
-
-      const index = parseInt(choice, 10) - 1;
-      const selected = users[index];
-      if (!selected) return;
-
-      const chatId = directChatId(state.user.uid, selected.uid);
-      const chatRef = doc(db, "chats", chatId);
-      const snap = await getDoc(chatRef);
-
-      if (!snap.exists()) {
-        await setDoc(chatRef, {
-          type: "direct",
-          members: [state.user.uid, selected.uid],
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-          lastMessage: ""
-        });
-      }
-
-      state.chats = await loadChats();
-      const chat = state.chats.find((c) => c.id === chatId);
-      if (chat) openChat(chat);
-    }
-
-    // ========== УВЕДОМЛЕНИЯ ==========
-    async function sendNotificationToUser(uid, notification) {
-      try {
-        const userRef = doc(db, "users", uid);
-        const userDoc = await getDoc(userRef);
-        
-        if (!userDoc.exists()) return;
-        
-        const userData = userDoc.data();
-        const fcmTokens = userData.fcmTokens || [];
-        
-        if (fcmTokens.length === 0) return;
-        
-        for (const token of fcmTokens) {
-          await sendFCMNotification(token, notification);
-        }
-        
-      } catch (error) {
-        console.error('Ошибка отправки уведомления:', error);
-      }
-    }
-
-    async function sendFCMNotification(token, notification) {
-      try {
-        const response = await fetch('https://fcm.googleapis.com/fcm/send', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `key=${FCM_SERVER_KEY}`
-          },
-          body: JSON.stringify({
-            to: token,
-            notification: {
-              title: notification.title,
-              body: notification.body,
-              click_action: `https://projectr8.github.io/neon/`
-            },
-            webpush: {
-              notification: {
-                icon: '/neon/icon-192x192.png',
-                badge: '/neon/icon-192x192.png',
-                vibrate: [200, 100, 200],
-                tag: `chat-${notification.chatId}`,
-                renotify: true,
-                requireInteraction: true
-              },
-              fcm_options: {
-                link: `https://projectr8.github.io/neon/`
-              }
-            }
-          })
-        });
-        
-        const result = await response.json();
-        
-        if (result.failure && result.results) {
-          result.results.forEach((res) => {
-            if (res.error === 'NotRegistered') {
-              removeInvalidToken(token);
-            }
-          });
-        }
-        
-      } catch (error) {
-        console.error('Ошибка FCM:', error);
-      }
-    }
-
-    async function removeInvalidToken(token) {
-      try {
-        const usersSnap = await getDocs(query(
-          collection(db, "users"),
-          where("fcmTokens", "array-contains", token)
-        ));
-        
-        usersSnap.forEach(async (userDoc) => {
-          await updateDoc(doc(db, "users", userDoc.id), {
-            fcmTokens: arrayRemove(token)
-          });
-        });
-        
-      } catch (error) {
-        console.error('Ошибка удаления токена:', error);
-      }
-    }
-
-    function setupGlobalMessageListener() {
-      if (!state.user || state.globalChatsUnsub) return;
-      
-      const chatsQuery = query(
-        collection(db, "chats"),
-        where("members", "array-contains", state.user.uid)
-      );
-      
-      state.globalChatsUnsub = onSnapshot(chatsQuery, async (snapshot) => {
-        snapshot.docChanges().forEach(async (change) => {
-          if (change.type === "modified") {
-            const chat = change.doc.data();
-            const chatId = change.doc.id;
-            
-            if (chat.lastMessageUserId && 
-                chat.lastMessageUserId !== state.user.uid && 
-                state.activeChat?.id !== chatId) {
-              
-              if (Notification.permission === 'granted') {
-                const sender = await loadProfile(chat.lastMessageUserId);
-                
-                new Notification(`${sender?.displayName || 'NEON'} 💬`, {
-                  body: chat.lastMessage,
-                  icon: '/neon/icon-192x192.png',
-                  badge: '/neon/icon-192x192.png',
-                  tag: chatId,
-                  requireInteraction: true
-                }).onclick = () => {
-                  window.focus();
-                  if (chatId) {
-                    const chatData = state.chats.find(c => c.id === chatId);
-                    if (chatData) openChat(chatData);
-                  }
-                };
-              }
-              
-              refreshChats();
-            }
-          }
-        });
-      }, (error) => {
-        console.error('Ошибка глобального слушателя:', error);
-        // Переподключаемся при ошибке
-        setTimeout(() => {
-          if (state.user) {
-            state.globalChatsUnsub = null;
-            setupGlobalMessageListener();
-          }
-        }, 1000);
-      });
-    }
-
-    async function requestNotificationPermissionAndGetToken() {
-      try {
-        if (!('serviceWorker' in navigator)) {
-          return null;
-        }
-
-        let registration;
-        try {
-          const swPath = '/neon/firebase-messaging-sw.js';
-          registration = await navigator.serviceWorker.register(swPath);
-          await navigator.serviceWorker.ready;
-        } catch (err) {
-          console.error('Ошибка регистрации SW:', err);
-          return null;
-        }
-
-        const permission = await Notification.requestPermission();
-        
-        if (permission === 'granted') {
-          try {
-            const currentToken = await getToken(messaging, {
-              vapidKey: 'BDRTV4EZNNWVT9_dRipTDFG_JHwJa53Ne82UgG5g6XdgLWufZumogCNM8EQK_T-Qg9fZDeCEq7_R6DchHcfWXZQ',
-              serviceWorkerRegistration: registration
-            });
-            
-            if (currentToken) {
-              state.fcmToken = currentToken;
-              return currentToken;
-            }
-          } catch (tokenError) {
-            console.error('Ошибка токена:', tokenError);
-          }
-        }
-      } catch (error) {
-        console.error('Ошибка:', error);
-      }
-      return null;
-    }
-
-    async function saveFCMTokenToFirestore(uid, token) {
-      if (!uid || !token) return;
-      try {
-        const userRef = doc(db, "users", uid);
-        await updateDoc(userRef, {
-          fcmTokens: arrayUnion(token)
-        });
-      } catch (error) {
-        console.error('Ошибка сохранения токена:', error);
-      }
-    }
-
-    onMessage(messaging, (payload) => {
-      if (payload.notification) {
-        new Notification(payload.notification.title, {
-          body: payload.notification.body,
-          icon: '/neon/icon-192x192.png'
-        });
-      }
+      let profile = await loadProfile(user.uid);
+      if (!profile) profile = await ensureProfile(user, user.displayName || "Без имени", user.photoURL || "👤");
+      state.user = { uid: user.uid, phoneNumber: user.phoneNumber || profile.phoneNumber, displayName: profile.displayName, photoURL: profile.photoURL };
+      state.profile = profile;
+      state.page = "chats";
+      renderApp();
+      const token = await requestNotificationPermissionAndGetToken();
+      if (token) await saveFCMTokenToFirestore(state.user.uid, token);
     });
+  }
 
-    // ========== ЗАПУСК ==========
-    async function boot() {
-      keepConnectionAlive();
-      
-      onAuthStateChanged(auth, async (user) => {
-        if (!user) {
-          state.user = null;
-          state.profile = null;
-          state.chats = [];
-          state.wallPosts = [];
-          if (state.chatUnsub) state.chatUnsub();
-          if (state.globalChatsUnsub) state.globalChatsUnsub();
-          if (state.wallUnsub) state.wallUnsub();
-          showLogin();
-          return;
-        }
-
-        let profile = await loadProfile(user.uid);
-        if (!profile) {
-          profile = await ensureProfile(user, user.displayName || "Без имени", user.photoURL || "👤");
-        }
-
-        state.user = {
-          uid: user.uid,
-          phoneNumber: user.phoneNumber || profile.phoneNumber || "",
-          displayName: profile.displayName || "Без имени",
-          photoURL: profile.photoURL || "👤"
-        };
-        state.profile = profile;
-        state.page = "chats";
-        
-        renderApp();
-
-        const token = await requestNotificationPermissionAndGetToken();
-        if (token && state.user) {
-          await saveFCMTokenToFirestore(state.user.uid, token);
-        }
-      });
-    }
-
-    boot();
-  </script>
+  boot();
+</script>
 </body>
 </html>
