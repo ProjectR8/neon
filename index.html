@@ -10,6 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet" />
   <title>NEON MESSENGER | PREMIUM</title>
   <style>
+    /* ... все стили без изменений ... */
     :root {
       --bg: #0a0f1f;
       --surface: rgba(15, 25, 45, 0.7);
@@ -439,15 +440,56 @@
   }
 
   // ====== ЗАГРУЗКА ДАННЫХ ======
+  async function loadAllUsers() {
+    if (state.cachedUsers) return state.cachedUsers;
+    const snap = await getDocs(collection(db, "users"));
+    const users = [];
+    snap.forEach(doc => {
+      if (doc.id !== state.user?.uid) {
+        const data = doc.data();
+        users.push({ uid: doc.id, username: data.username || "Без имени", avatar: data.avatar || "👤", isPremium: data.isPremium || false });
+      }
+    });
+    state.cachedUsers = users;
+    return users;
+  }
+
+  // Оптимизированная загрузка чатов – использует кэш пользователей и поля title/avatar в документе
   async function loadChats() {
     if (!state.user) return [];
+    // Ленивая загрузка кэша пользователей
+    if (!state.cachedUsers) await loadAllUsers();
+
     const snap = await getDocs(query(collection(db, "chats"), where("members", "array-contains", state.user.uid)));
     const chats = await Promise.all(snap.docs.map(async d => {
       const data = d.data();
       if (data.type === "direct" || !data.type) {
-        let title = data.title || "Чат", av = "👤", otherUid = null;
+        let title = data.title || "Чат";
+        let av = data.avatar || "👤";
+        let otherUid = null;
         const other = (data.members || []).find(m => m !== state.user.uid);
-        if (other) { otherUid = other; const p = await loadProfile(other); if (p) { title = p.displayName; av = p.photoURL; } }
+        if (other) {
+          otherUid = other;
+          // Если в чате уже сохранены title и avatar (не дефолтные) – используем их
+          if (!data.title || data.title === "Чат" || !data.avatar || data.avatar === "👤") {
+            // Ищем в кэше
+            const cached = state.cachedUsers?.find(u => u.uid === otherUid);
+            if (cached) {
+              title = cached.username;
+              av = cached.avatar;
+            } else {
+              // Редкий fallback – загружаем профиль (только для старых чатов без данных)
+              const p = await loadProfile(otherUid);
+              if (p) {
+                title = p.displayName;
+                av = p.photoURL;
+                // Обновим кэш
+                if (!state.cachedUsers) state.cachedUsers = [];
+                state.cachedUsers.push({ uid: p.uid, username: p.displayName, avatar: p.photoURL, isPremium: p.isPremium });
+              }
+            }
+          }
+        }
         return { id: d.id, ...data, title, avatar: av, otherUid };
       } else {
         let title = data.title || "Чат", av = data.avatar || "👥";
@@ -490,7 +532,7 @@
       .sort((a, b) => (a.createdAt?.toMillis()||0) - (b.createdAt?.toMillis()||0));
   }
 
-  // Убрана надпись "Загрузка комментариев..." – рендер происходит без моргания
+  // Рендер стены без лишних надписей
   async function renderWall() {
     const c = document.getElementById("wallPostsContainer");
     if (!c) return;
@@ -572,7 +614,6 @@
 
   async function loadAndRenderWall() {
     const container = document.getElementById("wallPostsContainer"); if (!container) return;
-    // Показываем загрузку только при первой отрисовке (пустой контейнер)
     if (!container.hasChildNodes()) {
       container.innerHTML = `<div class="loading">Загрузка...</div>`;
     }
@@ -768,19 +809,7 @@
   async function uploadAudioAndSendMessage(chatId, blob) { /* ... */ }
 
   // ====== ПОИСК ПОЛЬЗОВАТЕЛЕЙ ======
-  async function loadAllUsers() {
-    if (state.cachedUsers) return state.cachedUsers;
-    const snap = await getDocs(collection(db, "users"));
-    const users = [];
-    snap.forEach(doc => {
-      if (doc.id !== state.user?.uid) {
-        const data = doc.data();
-        users.push({ uid: doc.id, username: data.username || "Без имени", avatar: data.avatar || "👤", isPremium: data.isPremium || false });
-      }
-    });
-    state.cachedUsers = users;
-    return users;
-  }
+  // loadAllUsers уже определен выше
 
   function openUserSearch() {
     const overlay = document.getElementById("search-modal-overlay");
@@ -829,14 +858,34 @@
     document.getElementById("user-search-input").value = "";
   }
 
+  // При создании чата сохраняем заголовок и аватар собеседника
   async function createDirectChat(otherUid) {
     const chatId = directChatId(state.user.uid, otherUid);
     const chatRef = doc(db, "chats", chatId);
     const snap = await getDoc(chatRef);
     if (!snap.exists()) {
+      // Получаем данные собеседника из кэша или загружаем
+      let otherName = "Чат";
+      let otherAvatar = "👤";
+      if (state.cachedUsers) {
+        const cached = state.cachedUsers.find(u => u.uid === otherUid);
+        if (cached) {
+          otherName = cached.username;
+          otherAvatar = cached.avatar;
+        }
+      }
+      if (otherName === "Чат") {
+        const profile = await loadProfile(otherUid);
+        if (profile) {
+          otherName = profile.displayName;
+          otherAvatar = profile.photoURL;
+        }
+      }
       await setDoc(chatRef, {
         type: "direct",
         members: [state.user.uid, otherUid],
+        title: otherName,
+        avatar: otherAvatar,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         lastMessage: ""
@@ -869,6 +918,8 @@
       state.user = { uid: user.uid, phoneNumber: user.phoneNumber || profile.phoneNumber, displayName: profile.displayName, photoURL: profile.photoURL, isPremium: profile.isPremium };
       state.profile = profile;
       startHeartbeat();
+      // Предзагрузим кэш пользователей при входе (опционально, можно и без await)
+      loadAllUsers().catch(() => {});
       if (state.page === 'profile') renderProfilePage();
       else { state.page = 'chats'; renderChatsPage(); }
       if (!state.isIOS) { const token = await requestNotificationPermissionAndGetToken(); if (token) await saveFCMTokenToFirestore(state.user.uid, token); }
