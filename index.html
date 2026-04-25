@@ -469,6 +469,7 @@
 
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
         body { min-height: 100vh; min-height: calc(var(--vh, 1vh) * 100); background: var(--bg-body); color: var(--text-primary); -webkit-tap-highlight-color: transparent; touch-action: manipulation; transition: background 0.5s ease, color 0.3s ease; }
+        body.no-scroll { overflow: hidden; }
         .glass { background: var(--glass-bg); backdrop-filter: blur(16px) saturate(180%); border-radius: 32px; border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow); transition: all 0.3s; }
         @supports not (backdrop-filter: blur(16px)) { .glass { background: var(--glass-bg); } }
         .glass:hover { border-color: var(--glass-hover-border); box-shadow: var(--glass-hover-shadow); }
@@ -478,28 +479,26 @@
         .neon-btn:hover:not(:disabled) { background: var(--btn-hover-bg); color: var(--btn-hover-text); box-shadow: var(--btn-hover-shadow); }
         .neon-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
-        /* Нижняя панель Telegram style, теперь прижата к нулю и выше */
+        /* Нижняя панель больше и плотно прижата */
         .bottom-nav {
             position: fixed; bottom: 0; left: 0; right: 0; width: 100%;
             background: var(--nav-bg); backdrop-filter: blur(20px);
             display: flex; justify-content: space-around; align-items: center;
-            padding: 6px 0 8px; border-top: 1px solid var(--nav-border);
+            padding: 8px 0 12px; border-top: 1px solid var(--nav-border);
             box-shadow: 0 -2px 12px rgba(0,0,0,0.2); z-index: 100;
-            height: 70px; border-radius: 0;
+            height: 80px; border-radius: 0;
         }
-        .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0px; font-size: 10px; color: var(--nav-text); background: none; border: none; padding: 4px 12px; border-radius: 20px; cursor: pointer; font-weight: 500; transition: all 0.2s; position: relative; min-width: 60px; }
+        .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 12px; color: var(--nav-text); background: none; border: none; padding: 4px 12px; border-radius: 20px; cursor: pointer; font-weight: 500; transition: all 0.2s; position: relative; min-width: 64px; }
         .nav-item.active { color: var(--nav-active-text); }
-        .nav-item.active::before { content: ''; position: absolute; top: -4px; width: 20px; height: 3px; background: var(--nav-active-text); border-radius: 0 0 3px 3px; box-shadow: 0 0 6px var(--nav-active-text); }
-        .nav-icon { font-size: 22px; line-height: 1; }
-        .nav-item span:not(.nav-icon) { font-size: 10px; line-height: 1; }
+        .nav-item.active::before { content: ''; position: absolute; top: -4px; width: 24px; height: 3px; background: var(--nav-active-text); border-radius: 0 0 3px 3px; box-shadow: 0 0 6px var(--nav-active-text); }
+        .nav-icon { font-size: 26px; line-height: 1; }
+        .nav-item span:not(.nav-icon) { font-size: 12px; line-height: 1; }
 
         .page { display: none; animation: fade 0.3s; }
         .page.active-page { display: block; }
         @keyframes fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         .chat-item { display: flex; align-items: center; gap: 14px; padding: 14px 16px; cursor: pointer; border-bottom: 1px solid var(--chat-item-border); transition: 0.2s; }
-        .chat-item.animate-in {
-            animation: fadeInUp 0.3s ease both;
-        }
+        .chat-item.animate-in { animation: fadeInUp 0.3s ease both; }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
         .chat-item:active { background: var(--chat-item-active); }
         .avatar { width: 52px; height: 52px; border-radius: 50%; background: var(--avatar-gradient); display: flex; align-items: center; justify-content: center; font-size: 28px; box-shadow: var(--avatar-shadow); flex-shrink: 0; }
@@ -534,15 +533,19 @@
         .theme-dot.dark { background: linear-gradient(135deg, #444, #111); color: #aaa; }
         .theme-dot.subtle-gold { background: linear-gradient(135deg, #7a6a4e, #3a3028); color: #b48c50; }
 
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 20px; }
+        .modal-content { background: var(--glass-bg); backdrop-filter: blur(18px); border-radius: 32px; border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow); padding: 24px; width: 100%; max-width: 420px; max-height: 80vh; overflow-y: auto; color: var(--text-primary); }
+
         ::-webkit-scrollbar { width: 5px; }
         ::-webkit-scrollbar-track { background: var(--scrollbar-track); border-radius: 10px; }
         ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 10px; }
 
         @media (max-width: 480px) {
             .glass { padding: 12px !important; }
-            .bottom-nav { padding: 4px 0 6px; height: 60px; }
-            .nav-item { padding: 2px 8px; font-size: 9px; }
-            .nav-icon { font-size: 20px; }
+            .bottom-nav { padding: 6px 0 10px; height: 70px; }
+            .nav-item { padding: 2px 10px; }
+            .nav-icon { font-size: 24px; }
+            .nav-item span:not(.nav-icon) { font-size: 11px; }
             .avatar { width: 44px; height: 44px; font-size: 24px; }
             .message { max-width: 85%; }
             .theme-dot { width: 32px; height: 32px; }
@@ -584,7 +587,7 @@
         isIOS: /iPad|iPhone|iPod/.test(navigator.userAgent),
         isAndroid: /Android/.test(navigator.userAgent),
         mediaRecorder: null, audioChunks: [], recordingChatId: null,
-        currentTheme: 'neon-cyan'
+        currentTheme: 'neon-cyan', chatsAnimated: false, allUsers: null
     };
     const root = document.getElementById("root");
 
@@ -733,6 +736,86 @@
         };
     }
 
+    async function loadAllUsers() {
+        const usersSnap = await getDocs(collection(db, "users"));
+        state.allUsers = [];
+        usersSnap.forEach(d => { if (d.id !== state.user.uid) { const data = d.data(); state.allUsers.push({ uid: d.id, username: data.username || "Пользователь", avatar: data.avatar || "👤", phone: data.phone || "" }); } });
+    }
+
+    function openUserSearch() {
+        loadAllUsers().then(() => {
+            const overlay = document.createElement('div');
+            overlay.className = 'modal-overlay';
+            overlay.id = 'userSearchOverlay';
+            overlay.innerHTML = `
+              <div class="modal-content" style="max-width:420px; width:100%;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                  <h3 style="color:var(--text-heading);">🔍 Поиск пользователя</h3>
+                  <button id="closeSearchBtn" style="background:none; border:none; font-size:24px; color:var(--accent); cursor:pointer;">✕</button>
+                </div>
+                <input id="searchInput" class="neon-input" placeholder="Имя или номер..." style="margin-bottom:16px;" autofocus>
+                <div id="searchResults" style="max-height:50vh; overflow-y:auto;"></div>
+              </div>
+            `;
+            document.body.appendChild(overlay);
+            document.body.classList.add('no-scroll');
+
+            const closeBtn = document.getElementById('closeSearchBtn');
+            const searchInput = document.getElementById('searchInput');
+            const resultsDiv = document.getElementById('searchResults');
+
+            const filterAndRender = () => {
+                const query = searchInput.value.trim().toLowerCase();
+                const filtered = state.allUsers.filter(u =>
+                    u.username.toLowerCase().includes(query) || u.phone.includes(query)
+                );
+                if (filtered.length === 0) {
+                    resultsDiv.innerHTML = '<div style="color:var(--text-secondary); text-align:center;">Никого не найдено</div>';
+                    return;
+                }
+                resultsDiv.innerHTML = filtered.map(u => `
+                  <div class="chat-item" data-uid="${u.uid}" style="display:flex; align-items:center; gap:12px; padding:12px; border-bottom:1px solid var(--chat-item-border); cursor:pointer;">
+                    <div class="avatar" style="width:44px; height:44px; font-size:24px;">${escapeHtml(u.avatar)}</div>
+                    <div style="flex:1; min-width:0;">
+                      <div style="font-weight:700; color:var(--text-heading);">${escapeHtml(u.username)}</div>
+                      <div style="font-size:13px; color:var(--text-secondary);">${escapeHtml(u.phone || '')}</div>
+                    </div>
+                    <button class="neon-btn" style="padding:8px 16px;">Написать</button>
+                  </div>
+                `).join('');
+                resultsDiv.querySelectorAll('.chat-item').forEach(el => {
+                    el.addEventListener('click', async () => {
+                        const uid = el.dataset.uid;
+                        await startDirectChat(uid);
+                        closeModal();
+                    });
+                });
+            };
+
+            searchInput.addEventListener('input', filterAndRender);
+            filterAndRender(); // initial
+
+            function closeModal() {
+                document.body.removeChild(overlay);
+                document.body.classList.remove('no-scroll');
+            }
+            closeBtn.addEventListener('click', closeModal);
+            overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
+        });
+    }
+
+    async function startDirectChat(otherUid) {
+        const chatId = directChatId(state.user.uid, otherUid);
+        const chatRef = doc(db, "chats", chatId);
+        const chatSnap = await getDoc(chatRef);
+        if (!chatSnap.exists()) {
+            await setDoc(chatRef, { type:"direct", members:[state.user.uid, otherUid], createdAt:serverTimestamp(), updatedAt:serverTimestamp(), lastMessage:"" });
+        }
+        state.chats = await loadChats();
+        const chat = state.chats.find(c => c.id === chatId);
+        if (chat) openChat(chat);
+    }
+
     async function loadChats() {
         if (!state.user) return [];
         const snap = await getDocs(query(collection(db, "chats"), where("members", "array-contains", state.user.uid)));
@@ -841,25 +924,27 @@
     function renderChatsPage() {
         root.innerHTML = `
           <div style="display:flex; flex-direction:column; height: calc(var(--vh, 1vh) * 100);">
-            <div id="chatsPage" class="page active-page" style="flex:1; overflow-y:auto; padding:0 0 70px;">
+            <div id="chatsPage" class="page active-page" style="flex:1; overflow-y:auto; padding:0 0 80px;">
               <div style="padding:16px 16px 0;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
                   <h2 style="text-shadow:0 0 5px var(--accent); color:var(--text-heading);">💬 NEON CHATS</h2>
-                  <button id="newChatBtn" style="background:none; color:var(--accent); font-size:28px; border:1px solid var(--accent); border-radius:40px; padding:4px 16px;">+</button>
+                  <button id="openSearchBtn" style="background:none; color:var(--accent); font-size:28px; border:1px solid var(--accent); border-radius:40px; padding:4px 16px;">+</button>
                 </div>
                 <div id="chatsList"><div class="loading">Загрузка чатов...</div></div>
               </div>
             </div>
             ${renderNav("chats")}
           </div>`;
-        document.getElementById("newChatBtn").onclick = createNewChat;
+        document.getElementById("openSearchBtn").onclick = openUserSearch;
         document.querySelectorAll(".nav-item").forEach(btn => btn.onclick = () => switchPage(btn.dataset.page));
-        renderChatsList(true);
+        const shouldAnimate = !state.chatsAnimated;
+        renderChatsList(shouldAnimate);
+        if (shouldAnimate) state.chatsAnimated = true;
     }
     function renderWallPage() {
         root.innerHTML = `
           <div style="display:flex; flex-direction:column; height: calc(var(--vh, 1vh) * 100);">
-            <div id="wallPage" class="page active-page" style="flex:1; overflow-y:auto; padding:16px 16px 70px;">
+            <div id="wallPage" class="page active-page" style="flex:1; overflow-y:auto; padding:16px 16px 80px;">
               <div class="glass" style="padding:18px;">
                 <h2 style="text-shadow:0 0 5px var(--accent); color:var(--text-heading); margin-bottom:20px;">📡 КИБЕР-СТЕНА</h2>
                 <textarea id="postContent" rows="2" placeholder="Опубликовать пост..." style="width:100%; border-radius:28px; background:var(--input-bg); border:1px solid var(--input-border); color:var(--accent); padding:12px;"></textarea>
@@ -878,7 +963,7 @@
         const notifStatus = Notification.permission;
         root.innerHTML = `
           <div style="display:flex; flex-direction:column; height: calc(var(--vh, 1vh) * 100);">
-            <div id="profilePage" class="page active-page" style="flex:1; overflow-y:auto; padding:16px 16px 70px;">
+            <div id="profilePage" class="page active-page" style="flex:1; overflow-y:auto; padding:16px 16px 80px;">
               <div class="glass" style="padding:28px; text-align:center;">
                 <div style="width:100px; height:100px; border-radius:50%; margin:0 auto 20px; background:var(--profile-avatar-gradient); display:flex; align-items:center; justify-content:center; font-size:48px;">${escapeHtml(profile.photoURL||"👤")}</div>
                 <h3 style="font-size:26px; color:var(--text-heading);">${escapeHtml(profile.displayName||"Без имени")}</h3>
@@ -924,6 +1009,7 @@
         document.getElementById("logoutBtn").onclick = async () => {
             await signOut(auth); stopPolling();
             state.user = null; state.profile = null; state.chats = []; state.wallPosts = [];
+            state.chatsAnimated = false;
             if (state.chatUnsub) state.chatUnsub();
             if (state.globalChatsUnsub) state.globalChatsUnsub();
             if (state.wallUnsub) state.wallUnsub();
@@ -954,26 +1040,31 @@
         state.activeChat = chat;
         const title = chat.type === "direct" ? chat.title : (chat.title || "Чат");
         const av = chat.avatar || "👤";
-        root.innerHTML = `
-          <div style="display:flex; flex-direction:column; height: calc(var(--vh, 1vh) * 100);">
-            <div class="glass" style="margin:0; border-radius:0; flex:1; display:flex; flex-direction:column; border:none; box-shadow:none;">
-              <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px; border-bottom:1px solid var(--chat-item-border);">
-                <button id="backToChatsBtn" style="background:none; font-size:28px; color:var(--accent); border:none;">←</button>
-                <div style="display:flex; align-items:center; gap:10px; flex:1; justify-content:center;">
-                  <div class="avatar" style="width:40px; height:40px; font-size:22px;">${escapeHtml(av)}</div>
-                  <h3 style="color:var(--text-heading);">${escapeHtml(title)}</h3>
-                </div>
-                <div style="width:28px;"></div>
+
+        document.body.classList.add('no-scroll');
+        const fullscreen = document.createElement('div');
+        fullscreen.id = 'chat-fullscreen';
+        fullscreen.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:999;display:flex;flex-direction:column;background:var(--bg-body);';
+        fullscreen.innerHTML = `
+          <div class="glass" style="margin:0;border-radius:0;flex:1;display:flex;flex-direction:column;border:none;box-shadow:none;">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--chat-item-border);">
+              <button id="backToChatsBtn" style="background:none;font-size:28px;color:var(--accent);border:none;">←</button>
+              <div style="display:flex;align-items:center;gap:10px;flex:1;justify-content:center;">
+                <div class="avatar" style="width:40px;height:40px;font-size:22px;">${escapeHtml(av)}</div>
+                <h3 style="color:var(--text-heading);">${escapeHtml(title)}</h3>
               </div>
-              <div id="chatMessagesArea" class="messages-area" style="flex:1;"></div>
-              <div style="display:flex; gap:6px; padding:12px; align-items:center; border-top:1px solid var(--chat-item-border);">
-                <button id="voiceRecordBtn" class="voice-btn">🎤</button>
-                <input type="text" id="messageInput" class="neon-input" style="flex:1;" placeholder="Сообщение...">
-                <button id="sendMsgBtn" class="voice-btn" style="font-size:18px;">➤</button>
-              </div>
-              <div id="recordingIndicator" style="text-align:center; color:var(--voice-recording-bg); margin-top:4px; display:none;">🔴 Запись...</div>
+              <div style="width:28px;"></div>
             </div>
+            <div id="chatMessagesArea" class="messages-area" style="flex:1;"></div>
+            <div style="display:flex;gap:6px;padding:12px;align-items:center;border-top:1px solid var(--chat-item-border);">
+              <button id="voiceRecordBtn" class="voice-btn">🎤</button>
+              <input type="text" id="messageInput" class="neon-input" style="flex:1;" placeholder="Сообщение...">
+              <button id="sendMsgBtn" class="voice-btn" style="font-size:18px;">➤</button>
+            </div>
+            <div id="recordingIndicator" style="text-align:center;color:var(--voice-recording-bg);margin-top:4px;display:none;">🔴 Запись...</div>
           </div>`;
+        document.body.appendChild(fullscreen);
+
         const messagesContainer = document.getElementById("chatMessagesArea");
         const messagesRef = collection(db, "chats", chat.id, "messages");
         const messagesQuery = query(messagesRef, orderBy("createdAt", "asc"));
@@ -986,18 +1077,25 @@
                 const div = document.createElement("div");
                 div.className = `message ${isOut ? "out" : "in"}`;
                 if (msg.type === 'audio') {
-                    div.innerHTML = `<div style="display:flex; align-items:center; gap:8px;"><audio controls src="${escapeHtml(msg.audioURL)}"></audio><span style="font-size:12px;">${msg.duration ? Math.round(msg.duration) + 'с' : ''}</span></div><div style="font-size:10px; opacity:0.7; margin-top:4px;">${time}</div>`;
+                    div.innerHTML = `<div style="display:flex;align-items:center;gap:8px;"><audio controls src="${escapeHtml(msg.audioURL)}"></audio><span style="font-size:12px;">${msg.duration ? Math.round(msg.duration) + 'с' : ''}</span></div><div style="font-size:10px;opacity:0.7;margin-top:4px;">${time}</div>`;
                 } else {
-                    div.innerHTML = `<div>${escapeHtml(msg.text||"")}</div><div style="font-size:10px; opacity:0.7; margin-top:4px;">${time}</div>`;
+                    div.innerHTML = `<div>${escapeHtml(msg.text||"")}</div><div style="font-size:10px;opacity:0.7;margin-top:4px;">${time}</div>`;
                 }
                 messagesContainer.appendChild(div);
             });
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
         });
-        document.getElementById("backToChatsBtn").onclick = () => {
+
+        const backBtn = document.getElementById("backToChatsBtn");
+        backBtn.onclick = () => {
             if (state.chatUnsub) { state.chatUnsub(); state.chatUnsub = null; }
-            state.activeChat = null; state.page = "chats"; renderApp();
+            state.activeChat = null;
+            document.body.removeChild(fullscreen);
+            document.body.classList.remove('no-scroll');
+            state.page = "chats";
+            renderApp();
         };
+
         const sendMsg = async () => {
             const input = document.getElementById("messageInput");
             const text = input.value.trim(); if (!text) return;
@@ -1065,24 +1163,6 @@
         } finally {
             btn.disabled = false; btn.textContent = "➤";
         }
-    }
-
-    async function createNewChat() {
-        const usersSnap = await getDocs(collection(db, "users"));
-        const users = [];
-        usersSnap.forEach(d => { if (d.id !== state.user.uid) { const data = d.data(); users.push({ uid: d.id, username: data.username || "Пользователь", avatar: data.avatar || "👤" }); } });
-        if (!users.length) { alert("Нет других пользователей"); return; }
-        const choice = prompt("Выберите пользователя:\n" + users.map((u,i)=>`${i+1}. ${u.username} ${u.avatar}`).join("\n") + "\nВведите номер:");
-        const index = parseInt(choice,10)-1;
-        const selected = users[index]; if (!selected) return;
-        const chatId = directChatId(state.user.uid, selected.uid);
-        const chatRef = doc(db, "chats", chatId);
-        if (!(await getDoc(chatRef)).exists()) {
-            await setDoc(chatRef, { type:"direct", members:[state.user.uid, selected.uid], createdAt:serverTimestamp(), updatedAt:serverTimestamp(), lastMessage:"" });
-        }
-        state.chats = await loadChats();
-        const chat = state.chats.find(c => c.id === chatId);
-        if (chat) openChat(chat);
     }
 
     function setupGlobalMessageListener() {
@@ -1153,6 +1233,7 @@
             if (!user) {
                 stopPolling();
                 state.user = null; state.profile = null; state.chats = []; state.wallPosts = [];
+                state.chatsAnimated = false;
                 if (state.chatUnsub) state.chatUnsub();
                 if (state.globalChatsUnsub) state.globalChatsUnsub();
                 if (state.wallUnsub) state.wallUnsub();
