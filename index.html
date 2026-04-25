@@ -8,7 +8,7 @@
   <meta name="theme-color" content="#0a0a0a" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet" />
-  <title>NEON MESSENGER | PREMIUM</title>
+  <title>NEON MESSENGER | STABLE</title>
   <style>
     /* === общие стили (без изменений) === */
     :root { --bg: #0a0f1f; --surface: rgba(15, 25, 45, 0.7); --surface-border: rgba(0, 255, 255, 0.35); --text-primary: #d8f8ff; --text-secondary: #9db7d3; --accent: #0ff; --accent-glow: rgba(0, 255, 255, 0.5); --danger: #ff5580; --premium: #f5c542; --safe-bottom: env(safe-area-inset-bottom, 20px); --radius-lg: 32px; --radius-md: 24px; --radius-sm: 18px; --font: 'Montserrat', system-ui, -apple-system, sans-serif; --transition: 0.3s cubic-bezier(0.23, 1, 0.32, 1); --glass-blur: 22px; --bg-image: radial-gradient(circle at 20% 30%, #0a0f1f, #03050b); }
@@ -110,9 +110,10 @@
 </div>
 
 <script type="module">
+  // ===================== 1. FIREBASE ИНИЦИАЛИЗАЦИЯ =====================
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
   import { getAuth, onAuthStateChanged, signOut, RecaptchaVerifier, signInWithPhoneNumber } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-  import { initializeFirestore, enableIndexedDbPersistence, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, addDoc, query, where, orderBy, limit, startAfter, onSnapshot, serverTimestamp, increment } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+  import { initializeFirestore, enableIndexedDbPersistence, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, addDoc, query, where, orderBy, limit, onSnapshot, serverTimestamp, increment } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
   import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
   import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
@@ -134,526 +135,567 @@
   try { messaging = getMessaging(app); } catch (e) { console.warn("Messaging not supported"); }
   auth.languageCode = "ru";
 
-  const THEME_KEY = 'neon_theme';
-  function applyTheme(theme) {
-    document.body.className = '';
-    if (theme === 'neon') document.body.classList.add('theme-neon');
-    else if (theme === 'minimal') document.body.classList.add('theme-minimal');
-    else document.body.classList.add('theme-glass');
-    localStorage.setItem(THEME_KEY, theme);
-  }
-  const savedTheme = localStorage.getItem(THEME_KEY) || 'glass';
-  applyTheme(savedTheme);
+  // ===================== 2. DATA LAYER (чистые запросы к Firebase) =====================
+  const Data = {
+    // Профиль
+    async loadProfile(uid) {
+      const snap = await getDoc(doc(db, "users", uid));
+      if (!snap.exists()) return null;
+      const d = snap.data();
+      return { uid, phoneNumber: d.phone || "", displayName: d.username || "Без имени", photoURL: d.avatar || "👤", online: d.online || false, lastSeen: d.lastSeen, isPremium: d.isPremium || false };
+    },
+    async ensureProfile(user, username, avatar) {
+      const ref = doc(db, "users", user.uid);
+      const snap = await getDoc(ref);
+      const base = {
+        phone: user.phoneNumber || "",
+        username: username || snap.data()?.username || "Без имени",
+        avatar: avatar || snap.data()?.avatar || "👤",
+        online: true,
+        lastSeen: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        isPremium: snap.data()?.isPremium || false
+      };
+      if (!snap.exists()) await setDoc(ref, { ...base, createdAt: serverTimestamp(), fcmTokens: [] });
+      else await updateDoc(ref, base);
+      return (await getDoc(ref)).data();
+    },
+    async saveFCMToken(uid, token) {
+      await updateDoc(doc(db, "users", uid), { fcmTokens: [token] });
+    },
 
-  const USER_CACHE_TTL = 60_000;
-  const CHATS_PAGE_SIZE = 30;
-
-  const state = {
-    user: null, profile: null, page: "chats", chats: [], wallPosts: [],
-    activeChat: null, chatUnsub: null, captcha: null, fcmToken: null,
-    globalChatsUnsub: null, wallUnsub: null, pollingInterval: null, heartbeatInterval: null,
-    isIOS: /iPad|iPhone|iPod/.test(navigator.userAgent),
-    isAndroid: /Android/.test(navigator.userAgent),
-    mediaRecorder: null, audioChunks: [], recordingChatId: null,
-    typingTimers: {}, typingUnsub: null, presenceUnsub: null,
-    cachedUsers: { data: null, lastFetch: 0 },
-    chatsCursor: null,
-    loadingMoreChats: false,
-    allChatsLoaded: false,
-    renderedMessages: new Set()
+    // Чаты
+    subscribeChats(uid, callback) {
+      const q = query(collection(db, "chats"), where("members", "array-contains", uid), orderBy("updatedAt", "desc"));
+      return onSnapshot(q, callback, error => { console.error("Chats sub error", error); callback({ docs: [] }); });
+    },
+    subscribeMessages(chatId, callback) {
+      const q = query(collection(db, "chats", chatId, "messages"), orderBy("createdAt", "asc"));
+      return onSnapshot(q, callback);
+    },
+    subscribeTyping(chatId, callback) {
+      const q = collection(db, "chats", chatId, "typing");
+      return onSnapshot(q, callback);
+    },
+    subscribePresence(uid, callback) {
+      return onSnapshot(doc(db, "users", uid), callback);
+    },
+    subscribeWall(callback) {
+      return onSnapshot(collection(db, "wall"), callback);
+    },
+    async sendMessage(chatId, text) {
+      await addDoc(collection(db, "chats", chatId, "messages"), {
+        text,
+        userId: auth.currentUser.uid,
+        createdAt: serverTimestamp()
+      });
+      await updateDoc(doc(db, "chats", chatId), {
+        lastMessage: text,
+        updatedAt: serverTimestamp()
+      });
+    },
+    async deleteChat(chatId) {
+      await deleteDoc(doc(db, "chats", chatId));
+    },
+    async createDirectChat(uid1, uid2) {
+      const chatId = [uid1, uid2].sort().join("__");
+      const ref = doc(db, "chats", chatId);
+      if (!(await getDoc(ref)).exists()) {
+        await setDoc(ref, {
+          type: "direct",
+          members: [uid1, uid2],
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          lastMessage: ""
+        });
+      }
+      return chatId;
+    },
+    // Стена
+    async publishPost(author, avatar, content) {
+      await addDoc(collection(db, "wall"), {
+        author, avatar, content,
+        likesCount: 0, commentsCount: 0,
+        createdAt: serverTimestamp(),
+        userId: auth.currentUser.uid
+      });
+    },
+    async likePost(postId) {
+      await updateDoc(doc(db, "wall", postId), { likesCount: increment(1) });
+    },
+    async addComment(postId, authorId, authorName, authorAvatar, text) {
+      await addDoc(collection(db, "wall_comments"), {
+        postId, authorId, authorName, authorAvatar, text,
+        replyTo: null, createdAt: serverTimestamp()
+      });
+      await updateDoc(doc(db, "wall", postId), { commentsCount: increment(1) });
+    },
+    async loadComments(postId) {
+      const snap = await getDocs(query(collection(db, "wall_comments"), where("postId", "==", postId)));
+      return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    }
   };
 
-  const root = document.getElementById("root");
-  const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;' }[m]));
-  const directChatId = (uid1, uid2) => [uid1, uid2].sort().join("__");
-
-  function setViewportHeight() {
-    const vh = window.innerHeight * 0.01;
-    document.documentElement.style.setProperty('--vh', `${vh}px`);
+  // ===================== 3. STATE LAYER (централизованное состояние) =====================
+  class AppState {
+    constructor() {
+      this.state = {
+        user: null,
+        profile: null,
+        page: "chats",
+        chats: [],
+        wallPosts: [],
+        activeChat: null,
+        allUsers: []
+      };
+      this.listeners = {};
+      this.subscriptions = [];
+    }
+    get(key) { return this.state[key]; }
+    set(key, value) {
+      this.state[key] = value;
+      (this.listeners[key] || []).forEach(fn => fn(value));
+    }
+    onChange(key, fn) {
+      if (!this.listeners[key]) this.listeners[key] = [];
+      this.listeners[key].push(fn);
+      return () => { this.listeners[key] = this.listeners[key].filter(f => f !== fn); };
+    }
+    addSub(unsub) { this.subscriptions.push(unsub); }
+    clearSubs() {
+      this.subscriptions.forEach(fn => fn());
+      this.subscriptions = [];
+    }
   }
-  window.addEventListener('resize', setViewportHeight);
-  window.addEventListener('orientationchange', setViewportHeight);
-  setViewportHeight();
+  const State = new AppState();
 
-  function resetCaptcha() { try { if (state.captcha) state.captcha.clear(); } catch {} state.captcha = null; const c = document.getElementById("recaptcha-container"); if (c) c.innerHTML = ""; }
-  async function createCaptcha(containerId) { resetCaptcha(); state.captcha = new RecaptchaVerifier(auth, containerId, { size: "normal", callback: () => console.log("reCAPTCHA solved"), "expired-callback": () => resetCaptcha() }); await state.captcha.render(); return state.captcha; }
-  async function loginWithPhone(phone, containerId) { const verifier = await createCaptcha(containerId); const confirmation = await signInWithPhoneNumber(auth, phone, verifier); const code = prompt("Введите код из SMS:"); if (!code) throw new Error("Код не введён"); const result = await confirmation.confirm(code); resetCaptcha(); return result.user; }
-  async function ensureProfile(user, username, avatar) { const ref = doc(db, "users", user.uid); const snap = await getDoc(ref); const baseData = { phone: user.phoneNumber || "", username: username || snap.data()?.username || "Без имени", avatar: avatar || snap.data()?.avatar || "👤", online: true, lastSeen: serverTimestamp(), updatedAt: serverTimestamp(), isPremium: snap.data()?.isPremium || false }; if (!snap.exists()) await setDoc(ref, { ...baseData, createdAt: serverTimestamp(), fcmTokens: [] }); else await updateDoc(ref, baseData); const fresh = await getDoc(ref); const d = fresh.data() || {}; return { uid: user.uid, phoneNumber: user.phoneNumber || d.phone || "", displayName: d.username || "Без имени", photoURL: d.avatar || "👤", isPremium: d.isPremium || false }; }
-  async function loadProfile(uid) { const snap = await getDoc(doc(db, "users", uid)); if (!snap.exists()) return null; const d = snap.data(); return { uid, phoneNumber: d.phone || "", displayName: d.username || "Без имени", photoURL: d.avatar || "👤", online: d.online || false, lastSeen: d.lastSeen, isPremium: d.isPremium || false }; }
+  // ===================== 4. UI LAYER (рендеринг и обработчики) =====================
+  const UI = {
+    escapeHtml: (s) => String(s ?? "").replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;' }[m])),
+    setViewportHeight() {
+      document.documentElement.style.setProperty('--vh', `${window.innerHeight * 0.01}px`);
+    },
+    // Переключение тем
+    applyTheme(theme) {
+      document.body.className = '';
+      document.body.classList.add('theme-' + theme);
+      localStorage.setItem('neon_theme', theme);
+    },
+    // Инициализация интерфейса (навигация, страницы)
+    initPages() {
+      document.getElementById('root').innerHTML = `
+        <div id="pages-container" style="max-width:1300px;margin:0 auto;padding:16px;padding-bottom:0;">
+          <div id="page-chats" class="page visible-page">
+            <div class="glass" style="padding:20px;margin-bottom:80px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
+                <h2 style="font-weight:800;color:var(--text-primary);text-shadow:0 0 8px var(--accent-glow);">Сообщения</h2>
+                <button id="newChatBtn" style="background:none;border:1px solid var(--surface-border);color:var(--text-primary);font-size:24px;border-radius:50%;width:44px;height:44px;">+</button>
+              </div>
+              <div id="chatsList"></div>
+              <div id="chatsLoader" class="loading" style="display:none;">Загрузка...</div>
+            </div>
+          </div>
+          <div id="page-wall" class="page">
+            <div class="glass" style="padding:20px;margin-bottom:80px;">
+              <h2 style="font-weight:800;color:var(--text-primary);margin-bottom:20px;text-shadow:0 0 8px var(--accent-glow);">🔗 Стена</h2>
+              <textarea id="postContent" class="neon-input" rows="2" placeholder="Что нового?"></textarea>
+              <div style="display:flex;justify-content:flex-end;margin-top:12px;"><button id="publishPostBtn" class="neon-btn">Опубликовать</button></div>
+              <div id="wallPostsContainer" style="margin-top:24px;"></div>
+            </div>
+          </div>
+          <div id="page-profile" class="page">
+            <div class="glass" style="padding:32px;text-align:center;margin-bottom:80px;"></div>
+          </div>
+          <div id="page-chat" class="page"></div>
+        </div>
+        <div class="bottom-nav">
+          <button class="nav-item active" data-page="chats"><span class="nav-icon">💬</span><span class="nav-label">Чаты</span></button>
+          <button class="nav-item" data-page="wall"><span class="nav-icon">📡</span><span class="nav-label">Стена</span></button>
+          <button class="nav-item" data-page="profile"><span class="nav-icon">👤</span><span class="nav-label">Профиль</span></button>
+        </div>`;
+      document.getElementById('newChatBtn').onclick = () => UI.openSearchModal();
+      document.getElementById('publishPostBtn').onclick = () => {
+        const content = document.getElementById('postContent').value.trim();
+        if (content) Data.publishPost(State.get('profile')?.displayName || "Аноним", State.get('profile')?.photoURL || "👤", content).then(() => {
+          document.getElementById('postContent').value = "";
+        });
+      };
+      document.querySelectorAll('.nav-item').forEach(btn => btn.onclick = () => UI.switchPage(btn.dataset.page));
+    },
+    switchPage(page) {
+      if (State.get('page') === page && page !== 'chat') return;
+      // Отписываемся от всех слушателей, кроме глобального списка чатов (если нужен)
+      State.clearSubs();
+      State.set('page', page);
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('visible-page'));
+      const target = document.getElementById(`page-${page}`);
+      if (target) target.classList.add('visible-page');
+      document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+      const activeBtn = document.querySelector(`.nav-item[data-page="${page}"]`);
+      if (activeBtn) activeBtn.classList.add('active');
 
-  function startHeartbeat() { if (state.heartbeatInterval) clearInterval(state.heartbeatInterval); if (!state.user) return; const updateOnline = () => updateDoc(doc(db, "users", state.user.uid), { online: true, lastSeen: serverTimestamp() }).catch(()=>{}); updateOnline(); state.heartbeatInterval = setInterval(updateOnline, 30000); }
-  function stopHeartbeat() { if (state.heartbeatInterval) { clearInterval(state.heartbeatInterval); state.heartbeatInterval = null; } if (state.user) updateDoc(doc(db, "users", state.user.uid), { online: false, lastSeen: serverTimestamp() }).catch(()=>{}); }
-  window.addEventListener('beforeunload', () => { if (state.user) updateDoc(doc(db, "users", state.user.uid), { online: false, lastSeen: serverTimestamp() }); });
+      // Запускаем соответствующие подписки
+      if (page === 'chats') {
+        UI.startChatsSubscription();
+      } else if (page === 'wall') {
+        UI.startWallSubscription();
+      } else if (page === 'profile') {
+        UI.renderProfile();
+      }
+    },
+    // Подписка на чаты (real-time)
+    startChatsSubscription() {
+      const unsub = Data.subscribeChats(State.get('user').uid, snap => {
+        const chats = snap.docs.map(d => {
+          const data = d.data();
+          const otherId = data.members?.find(m => m !== State.get('user').uid);
+          let title = data.title || "Чат", avatar = data.avatar || "👤";
+          if (otherId) {
+            const cached = State.get('allUsers')?.find(u => u.uid === otherId);
+            if (cached) { title = cached.username; avatar = cached.avatar; }
+          }
+          return { id: d.id, ...data, title, avatar, otherUid: otherId };
+        });
+        State.set('chats', chats);
+        UI.renderChatsList();
+      });
+      State.addSub(unsub);
+    },
+    // Список чатов в DOM
+    renderChatsList() {
+      const list = document.getElementById('chatsList');
+      if (!list) return;
+      const chats = State.get('chats');
+      if (!chats.length) { list.innerHTML = `<div class="loading">Нет чатов</div>`; return; }
+      list.innerHTML = chats.map(chat => {
+        const premiumIcon = chat.isPremium ? '<span class="premium-badge">💎</span>' : '';
+        return `<div class="chat-item" data-chat-id="${chat.id}">
+          <div class="avatar">${UI.escapeHtml(chat.avatar)}${premiumIcon}</div>
+          <div style="min-width:0;flex:1;"><div style="font-weight:600;color:var(--text-primary);">${UI.escapeHtml(chat.title)}</div><div style="font-size:13px;color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${UI.escapeHtml(chat.lastMessage||"")}</div></div>
+        </div>`;
+      }).join('');
+      list.querySelectorAll('.chat-item').forEach(el => {
+        el.onclick = () => {
+          const chat = State.get('chats').find(c => c.id === el.dataset.chatId);
+          if (chat) UI.openChat(chat);
+        };
+      });
+    },
+    // Открытие чата
+    async openChat(chat) {
+      State.clearSubs();
+      State.set('activeChat', chat);
+      const pageChat = document.getElementById('page-chat');
+      pageChat.innerHTML = `
+        <div class="chat-container">
+          <div class="chat-header">
+            <button id="backToChatsBtn" class="back-btn">‹</button>
+            <div class="avatar" style="width:40px;height:40px;font-size:20px;">${UI.escapeHtml(chat.avatar)}</div>
+            <div class="header-info"><div class="header-title">${UI.escapeHtml(chat.title)}</div><div id="userStatus" class="header-status"></div></div>
+            <button id="deleteChatBtn" class="delete-btn">🗑</button>
+          </div>
+          <div class="chat-messages" id="chatMessagesArea"></div>
+          <div id="typingIndicator" class="typing-indicator" style="display:none;"><span>печатает</span></div>
+          <div class="chat-input-area">
+            <button id="voiceRecordBtn" class="voice-btn">🎤</button>
+            <input type="text" id="messageInput" placeholder="Сообщение..." autocomplete="off" />
+            <button id="sendMsgBtn" class="send-btn">➤</button>
+          </div>
+          <div id="recordingIndicator" class="recording-indicator" style="display:none;">Запись...</div>
+        </div>`;
+      UI.switchPage('chat');
+
+      // Подписка на сообщения
+      const unsubMessages = Data.subscribeMessages(chat.id, snap => {
+        const area = document.getElementById('chatMessagesArea');
+        if (!area) return;
+        const wasNearBottom = area.scrollHeight - area.scrollTop - area.clientHeight < 120;
+        snap.docChanges().forEach(change => {
+          if (change.type === 'added') {
+            const msg = change.doc.data();
+            const isOut = msg.userId === State.get('user').uid;
+            const time = msg.createdAt?.toDate ? new Date(msg.createdAt.toDate()).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"}) : "";
+            const div = document.createElement('div');
+            div.className = `message ${isOut ? "out" : "in"}`;
+            div.setAttribute('data-id', change.doc.id);
+            div.innerHTML = `<div>${UI.escapeHtml(msg.text||"")}</div><div style="font-size:10px;opacity:0.6;text-align:right;">${time} ${msg.edited?'(ред.)':''}</div>`;
+            if (isOut) {
+              const editBtn = document.createElement('button');
+              editBtn.className = 'edit-btn';
+              editBtn.innerHTML = '✎';
+              editBtn.onclick = (e) => { e.stopPropagation(); UI.editMessage(change.doc.id, msg.text || ''); };
+              div.appendChild(editBtn);
+            }
+            area.appendChild(div);
+          } else if (change.type === 'modified') {
+            const el = document.querySelector(`[data-id="${change.doc.id}"]`);
+            if (el) {
+              const msg = change.doc.data();
+              const isOut = msg.userId === State.get('user').uid;
+              const time = msg.createdAt?.toDate ? new Date(msg.createdAt.toDate()).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"}) : "";
+              el.className = `message ${isOut ? "out" : "in"}`;
+              el.innerHTML = `<div>${UI.escapeHtml(msg.text||"")}</div><div style="font-size:10px;opacity:0.6;text-align:right;">${time} ${msg.edited?'(ред.)':''}</div>`;
+              if (isOut) {
+                const editBtn = document.createElement('button');
+                editBtn.className = 'edit-btn';
+                editBtn.innerHTML = '✎';
+                editBtn.onclick = (e) => { e.stopPropagation(); UI.editMessage(change.doc.id, msg.text || ''); };
+                el.appendChild(editBtn);
+              }
+            }
+          }
+        });
+        if (wasNearBottom) area.scrollTop = area.scrollHeight;
+      });
+      State.addSub(unsubMessages);
+
+      // Typing
+      const unsubTyping = Data.subscribeTyping(chat.id, snap => {
+        const now = Date.now();
+        let show = false;
+        snap.forEach(d => { if (d.id !== State.get('user').uid && d.data().timestamp && now - d.data().timestamp.toMillis() < 5000) show = true; });
+        document.getElementById('typingIndicator').style.display = show ? 'flex' : 'none';
+      });
+      State.addSub(unsubTyping);
+
+      // Presence (если есть другой участник)
+      if (chat.otherUid) {
+        const unsubPresence = Data.subscribePresence(chat.otherUid, snap => {
+          const data = snap.data();
+          const statusDiv = document.getElementById('userStatus');
+          if (data && statusDiv) {
+            const online = data.online;
+            const lastSeen = data.lastSeen?.toMillis();
+            let text = '';
+            if (online && lastSeen && Date.now() - lastSeen < 60000) text = 'в сети';
+            else if (lastSeen) {
+              const diff = Math.floor((Date.now() - lastSeen)/1000);
+              text = diff < 60 ? 'был(а) только что' : diff < 3600 ? `был(а) ${Math.floor(diff/60)} мин назад` : `был(а) ${Math.floor(diff/3600)} ч назад`;
+            }
+            statusDiv.textContent = text;
+          }
+        });
+        State.addSub(unsubPresence);
+      }
+
+      // Обработчики
+      document.getElementById('backToChatsBtn').onclick = () => UI.switchPage('chats');
+      document.getElementById('deleteChatBtn').onclick = async () => {
+        if (confirm('Удалить чат?')) {
+          await Data.deleteChat(chat.id);
+          UI.switchPage('chats');
+        }
+      };
+      const sendMsg = async () => {
+        const input = document.getElementById('messageInput');
+        const text = input.value.trim();
+        if (!text) return;
+        await Data.sendMessage(chat.id, text);
+        input.value = "";
+      };
+      document.getElementById('sendMsgBtn').onclick = sendMsg;
+      document.getElementById('messageInput').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); sendMsg(); } });
+      document.getElementById('messageInput').addEventListener('input', () => {
+        clearTimeout(chat._typingTimer);
+        chat._typingTimer = setTimeout(() => {
+          setDoc(doc(db, "chats", chat.id, "typing", State.get('user').uid), { timestamp: serverTimestamp() });
+        }, 300);
+      });
+    },
+    async editMessage(msgId, oldText) {
+      const newText = prompt("Редактировать:", oldText);
+      if (newText !== null && newText !== oldText) {
+        await updateDoc(doc(db, "chats", State.get('activeChat').id, "messages", msgId), { text: newText, edited: true });
+      }
+    },
+    // Стена
+    startWallSubscription() {
+      const unsub = Data.subscribeWall(snap => {
+        const posts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        posts.sort((a,b) => (b.createdAt?.toMillis()||0) - (a.createdAt?.toMillis()||0));
+        State.set('wallPosts', posts);
+        UI.renderWall();
+      });
+      State.addSub(unsub);
+    },
+    async renderWall() {
+      const container = document.getElementById('wallPostsContainer');
+      if (!container) return;
+      const posts = State.get('wallPosts');
+      if (!posts.length) { container.innerHTML = `<div class="loading">Пока тихо...</div>`; return; }
+      container.innerHTML = '';
+      for (const post of posts) {
+        const comments = await Data.loadComments(post.id);
+        const postDiv = document.createElement('div');
+        postDiv.className = 'wall-post';
+        postDiv.innerHTML = `
+          <div style="display:flex; gap:12px; align-items:center; margin-bottom:14px;"><div class="avatar" style="width:44px;height:44px;font-size:24px;">${UI.escapeHtml(post.avatar||"👤")}</div><div><strong style="color:var(--text-primary);">${UI.escapeHtml(post.author||"Аноним")}</strong></div></div>
+          <div style="white-space:pre-wrap; color:var(--text-secondary);">${UI.escapeHtml(post.content)}</div>
+          <div style="display:flex; gap:16px; margin-top:16px;">
+            <button class="like-btn neon-btn" data-post-id="${post.id}" style="padding:8px 16px;">❤️ ${post.likesCount||0}</button>
+            <button class="comment-toggle neon-btn" data-post-id="${post.id}" style="padding:8px 16px;">💬 ${post.commentsCount||0}</button>
+          </div>
+          <div class="comment-thread" style="display:none;">
+            ${comments.map(c => `<div class="comment-item"><div style="display:flex;align-items:center;gap:8px;"><div class="avatar" style="width:28px;height:28px;font-size:16px;">${UI.escapeHtml(c.authorAvatar)}</div><strong style="font-size:14px;">${UI.escapeHtml(c.authorName)}</strong></div><div style="margin-top:6px;">${UI.escapeHtml(c.text)}</div></div>`).join('')||'<div style="color:var(--text-secondary);">Нет комментариев</div>'}
+            <div style="margin-top:12px;"><input type="text" class="comment-input neon-input" placeholder="Комментарий..."><button class="add-comment-btn neon-btn">Отправить</button></div>
+          </div>`;
+        // Обработчики
+        postDiv.querySelector('.like-btn').onclick = () => Data.likePost(post.id);
+        const toggleBtn = postDiv.querySelector('.comment-toggle');
+        toggleBtn.onclick = () => {
+          const thread = postDiv.querySelector('.comment-thread');
+          thread.style.display = thread.style.display === 'none' ? 'block' : 'none';
+        };
+        postDiv.querySelector('.add-comment-btn').onclick = () => {
+          const input = postDiv.querySelector('.comment-input');
+          const text = input.value.trim();
+          if (text) {
+            Data.addComment(post.id, State.get('user').uid, State.get('profile')?.displayName, State.get('profile')?.photoURL, text);
+            input.value = '';
+          }
+        };
+        container.appendChild(postDiv);
+      }
+    },
+    // Профиль
+    renderProfile() {
+      const container = document.querySelector('#page-profile .glass');
+      if (!container) return;
+      const p = State.get('profile') || State.get('user') || { displayName:"", phoneNumber:"", photoURL:"👤", isPremium:false };
+      container.innerHTML = `
+        <div style="position:relative; width:100px; margin:0 auto 24px;"><div class="avatar" style="width:100px;height:100px;font-size:48px;">${UI.escapeHtml(p.photoURL)}</div>${p.isPremium?'<span class="premium-badge" style="top:-8px;right:-8px;font-size:28px;">💎</span>':''}</div>
+        <h3 style="font-weight:800;color:var(--text-primary);text-shadow:0 0 8px var(--accent-glow);">${UI.escapeHtml(p.displayName)}</h3>
+        <p style="color:var(--text-secondary);">${UI.escapeHtml(p.phoneNumber)}</p>
+        <hr style="margin:28px 0;border-color:var(--surface-border);">
+        <div style="background:var(--surface);border-radius:24px;padding:18px;margin-bottom:20px;">
+          <p style="color:var(--text-secondary);font-size:14px;margin-bottom:12px;">Тема</p>
+          <div style="display:flex;gap:8px;justify-content:center;">
+            <button class="theme-btn neon-btn" data-theme="neon">NEON</button>
+            <button class="theme-btn neon-btn" data-theme="minimal">MINIMAL</button>
+            <button class="theme-btn neon-btn" data-theme="glass">GLASS</button>
+          </div>
+        </div>
+        ${!p.isPremium ? `<button id="premiumBtn" class="neon-btn" style="width:100%;background:var(--premium);color:#000;margin-bottom:20px;">💎 Оформить NEON PREMIUM</button>` : ''}
+        <button id="editProfileBtn" class="neon-btn" style="width:100%;">Изменить профиль</button>
+        <button id="logoutBtn" style="background:none;border:1px solid var(--surface-border);color:var(--danger);margin-top:24px;width:100%;padding:10px;border-radius:60px;">Выйти</button>`;
+      container.querySelectorAll('.theme-btn').forEach(btn => btn.onclick = () => { UI.applyTheme(btn.dataset.theme); UI.renderProfile(); });
+      container.querySelector('#editProfileBtn')?.addEventListener('click', async () => {
+        const name = prompt("Имя:", p.displayName);
+        const av = prompt("Аватар:", p.photoURL);
+        if (name !== null && av !== null) {
+          await updateDoc(doc(db, "users", State.get('user').uid), { username: name, avatar: av });
+          const newProfile = { ...p, displayName: name, photoURL: av };
+          State.set('profile', newProfile);
+          State.set('user', { ...State.get('user'), displayName: name, photoURL: av });
+          UI.renderProfile();
+        }
+      });
+      if (container.querySelector('#premiumBtn')) {
+        container.querySelector('#premiumBtn').onclick = async () => {
+          await updateDoc(doc(db, "users", State.get('user').uid), { isPremium: true });
+          p.isPremium = true;
+          State.set('profile', p);
+          UI.renderProfile();
+        };
+      }
+      container.querySelector('#logoutBtn').onclick = async () => {
+        await signOut(auth);
+      };
+    },
+    // Поиск пользователей
+    async openSearchModal() {
+      const overlay = document.getElementById('search-modal-overlay');
+      overlay.classList.remove('hidden');
+      const users = await (async () => {
+        const snap = await getDocs(collection(db, "users"));
+        return snap.docs.map(d => ({ uid: d.id, ...d.data() })).filter(u => u.uid !== State.get('user').uid);
+      })();
+      State.set('allUsers', users);
+      UI.renderSearchResults(users);
+      document.getElementById('user-search-input').oninput = (e) => {
+        const term = e.target.value.toLowerCase();
+        const filtered = term ? users.filter(u => u.username.toLowerCase().includes(term)) : users;
+        UI.renderSearchResults(filtered);
+      };
+      document.getElementById('close-search-modal').onclick = () => overlay.classList.add('hidden');
+    },
+    renderSearchResults(users) {
+      const container = document.getElementById('search-results-container');
+      if (!users.length) { container.innerHTML = `<div style="color:var(--text-secondary);text-align:center;padding:20px;">Никого нет</div>`; return; }
+      container.innerHTML = users.map(u => `<div class="search-user-item" data-uid="${u.uid}"><div class="avatar" style="width:40px;height:40px;font-size:22px;">${UI.escapeHtml(u.avatar)}</div><div style="flex:1;">${UI.escapeHtml(u.username)}</div></div>`).join('');
+      container.querySelectorAll('.search-user-item').forEach(el => {
+        el.onclick = async () => {
+          document.getElementById('search-modal-overlay').classList.add('hidden');
+          const otherUid = el.dataset.uid;
+          const chatId = await Data.createDirectChat(State.get('user').uid, otherUid);
+          UI.switchPage('chats');
+        };
+      });
+    }
+  };
+
+  // ===================== 5. ЗАПУСК ПРИЛОЖЕНИЯ =====================
+  window.addEventListener('resize', UI.setViewportHeight);
+  window.addEventListener('orientationchange', UI.setViewportHeight);
+  UI.setViewportHeight();
+  UI.applyTheme(localStorage.getItem('neon_theme') || 'glass');
 
   function showLogin() {
-    stopHeartbeat();
-    root.innerHTML = `
+    State.clearSubs();
+    document.getElementById('root').innerHTML = `
       <div class="glass" style="max-width:480px; margin:60px auto; padding:32px;">
-        <h2 style="color:var(--text-primary); text-align:center; font-weight:800; letter-spacing:2px; text-shadow:0 0 12px var(--accent-glow);">NEON</h2>
+        <h2 style="text-align:center;">NEON</h2>
         <input id="phone" class="neon-input" placeholder="+7 999 123-45-67" style="margin-top:20px;">
         <input id="name" class="neon-input" placeholder="Ваше имя" style="margin-top:12px;">
         <input id="avatar" class="neon-input" placeholder="Аватар-эмодзи (👾)" style="margin-top:12px;">
         <div id="recaptcha-container"></div>
         <button id="loginBtn" class="neon-btn" style="width:100%; margin-top:16px;">Войти</button>
-        <div style="margin-top:16px; font-size:12px; color:var(--text-secondary); text-align:center;">Вход через SMS</div>
       </div>`;
-    document.getElementById("loginBtn").onclick = async () => {
-      const btn = document.getElementById("loginBtn"), phone = document.getElementById("phone").value.trim(), name = document.getElementById("name").value.trim(), avatar = document.getElementById("avatar").value.trim();
-      if (!phone || !name) { alert("Введите номер и имя"); return; }
-      btn.disabled = true; btn.textContent = "...";
+    document.getElementById('loginBtn').onclick = async () => {
+      const phone = document.getElementById('phone').value.trim();
+      const name = document.getElementById('name').value.trim();
+      const avatar = document.getElementById('avatar').value.trim();
+      if (!phone || !name) return alert("Введите номер и имя");
       try {
-        const user = await loginWithPhone(phone, "recaptcha-container");
-        const profile = await ensureProfile(user, name, avatar || "👤");
-        state.user = { uid: profile.uid, phoneNumber: profile.phoneNumber, displayName: profile.displayName, photoURL: profile.photoURL, isPremium: profile.isPremium };
-        state.profile = profile;
-        startHeartbeat();
-        renderApp();
-        if (!state.isIOS) { const token = await requestNotificationPermissionAndGetToken(); if (token) await saveFCMTokenToFirestore(state.user.uid, token); }
-      } catch (err) { alert("Ошибка: " + (err?.message || "неизвестная")); showLogin(); }
-      finally { const cur = document.getElementById("loginBtn"); if (cur) { cur.disabled = false; cur.textContent = "Войти"; } }
+        const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', { size:'normal' });
+        const confirmation = await signInWithPhoneNumber(auth, phone, verifier);
+        const code = prompt("Код из SMS:");
+        if (!code) return;
+        await confirmation.confirm(code);
+      } catch (e) { alert("Ошибка: " + e.message); }
     };
   }
 
-  // Кэш пользователей
-  async function loadAllUsers() {
-    const now = Date.now();
-    if (state.cachedUsers.data && (now - state.cachedUsers.lastFetch) < USER_CACHE_TTL) return state.cachedUsers.data;
-    const snap = await getDocs(collection(db, "users"));
-    const users = [];
-    snap.forEach(doc => {
-      if (doc.id !== state.user?.uid) {
-        const data = doc.data();
-        users.push({ uid: doc.id, username: data.username || "Без имени", avatar: data.avatar || "👤", isPremium: data.isPremium || false });
-      }
-    });
-    state.cachedUsers = { data: users, lastFetch: now };
-    return users;
-  }
-
-  function invalidateUserCache() { state.cachedUsers = { data: null, lastFetch: 0 }; }
-
-  async function loadMoreChats() {
-    if (state.loadingMoreChats || state.allChatsLoaded) return;
-    state.loadingMoreChats = true;
-    try {
-      let q = query(collection(db, "chats"), where("members", "array-contains", state.user.uid), orderBy("updatedAt", "desc"), limit(CHATS_PAGE_SIZE));
-      if (state.chatsCursor) q = query(q, startAfter(state.chatsCursor));
-      const snap = await getDocs(q);
-      if (snap.docs.length < CHATS_PAGE_SIZE) state.allChatsLoaded = true;
-      const newChats = await Promise.all(snap.docs.map(async d => {
-        const data = d.data();
-        if (data.type === "direct" || !data.type) {
-          let title = data.title || "Чат", av = data.avatar || "👤", otherUid = null;
-          const other = (data.members || []).find(m => m !== state.user.uid);
-          if (other) {
-            otherUid = other;
-            if (!data.title || data.title === "Чат" || !data.avatar || data.avatar === "👤") {
-              const cached = state.cachedUsers.data?.find(u => u.uid === otherUid);
-              if (cached) { title = cached.username; av = cached.avatar; }
-              else {
-                const p = await loadProfile(otherUid);
-                if (p) { title = p.displayName; av = p.photoURL; if (!state.cachedUsers.data) state.cachedUsers.data = []; state.cachedUsers.data.push({ uid: p.uid, username: p.displayName, avatar: p.photoURL, isPremium: p.isPremium }); }
-              }
-            }
-          }
-          return { id: d.id, ...data, title, avatar: av, otherUid };
-        } else {
-          return { id: d.id, ...data, title: data.title || "Чат", avatar: data.avatar || "👥" };
-        }
-      }));
-      state.chats = [...state.chats, ...newChats];
-      if (snap.docs.length) state.chatsCursor = snap.docs[snap.docs.length - 1];
-    } catch(e) {}
-    state.loadingMoreChats = false;
-    renderChatsList();
-  }
-
-  async function refreshChatsFromScratch() {
-    state.chats = [];
-    state.chatsCursor = null;
-    state.allChatsLoaded = false;
-    await loadMoreChats();
-  }
-
-  async function loadWallPosts() {
-    const snap = await getDocs(collection(db, "wall"));
-    return snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.createdAt?.toMillis()||0) - (a.createdAt?.toMillis()||0));
-  }
-
-  function setupWallListener() {
-    if (!state.user || state.wallUnsub) return;
-    const q = collection(db, "wall");
-    state.wallUnsub = onSnapshot(q, snapshot => {
-      state.wallPosts = snapshot.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.createdAt?.toMillis()||0) - (a.createdAt?.toMillis()||0));
-      if (state.page === 'wall') renderWall();
-    }, err => { state.wallPosts = []; if (state.page === 'wall') renderWall(); });
-  }
-
-  async function loadComments(postId) {
-    const q = query(collection(db, "wall_comments"), where("postId", "==", postId));
-    const snap = await getDocs(q);
-    return snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.createdAt?.toMillis()||0) - (b.createdAt?.toMillis()||0));
-  }
-
-  async function renderWall() {
-    const c = document.getElementById("wallPostsContainer");
-    if (!c) return;
-    if (!state.wallPosts.length) { c.innerHTML = `<div class="loading">Пока тихо...</div>`; return; }
-    try {
-      const postsWithComments = await Promise.all(state.wallPosts.map(async post => ({ ...post, comments: await loadComments(post.id) })));
-      let html = '';
-      for (const post of postsWithComments) {
-        const comments = post.comments;
-        html += `<div class="wall-post">
-          <div style="display:flex; gap:12px; align-items:center; margin-bottom:14px;"><div class="avatar" style="width:44px;height:44px;font-size:24px;">${escapeHtml(post.avatar||"👤")}</div><div><strong style="color:var(--text-primary);">${escapeHtml(post.author||"Аноним")}</strong></div></div>
-          <div style="white-space:pre-wrap; color:var(--text-secondary);">${escapeHtml(post.content||"")}</div>
-          <div style="display:flex; gap:16px; margin-top:16px;">
-            <button class="like-btn neon-btn" data-post-id="${post.id}" style="padding:8px 16px;">❤️ ${post.likesCount||0}</button>
-            <button class="comment-toggle neon-btn" data-post-id="${post.id}" style="padding:8px 16px;">💬 ${post.commentsCount||0}</button>
-          </div>
-          <div class="comment-thread" id="comments-${post.id}" style="display:none;">
-            ${comments.length ? comments.map(com => `<div class="comment-item"><div style="display:flex; align-items:center; gap:8px;"><div class="avatar" style="width:28px;height:28px;font-size:16px;">${escapeHtml(com.authorAvatar||"👤")}</div><strong style="font-size:14px;">${escapeHtml(com.authorName||"")}</strong></div><div style="margin-top:6px; white-space:pre-wrap;">${escapeHtml(com.text)}</div></div>`).join('') : '<div style="color:var(--text-secondary); margin:10px 0;">Нет комментариев</div>'}
-            <div style="margin-top:12px;"><input type="text" class="neon-input comment-input" data-post-id="${post.id}" placeholder="Написать комментарий..." style="margin-bottom:8px;"><button class="neon-btn add-comment-btn" data-post-id="${post.id}">Отправить</button></div>
-          </div>
-        </div>`;
-      }
-      c.innerHTML = html;
-    } catch (e) { c.innerHTML = `<div class="loading">Пока тихо...</div>`; }
-    c.querySelectorAll(".like-btn").forEach(btn => btn.onclick = async () => { await updateDoc(doc(db, "wall", btn.dataset.postId), { likesCount: increment(1) }); });
-    c.querySelectorAll(".comment-toggle").forEach(btn => { btn.onclick = () => { const thread = document.getElementById(`comments-${btn.dataset.postId}`); thread.style.display = thread.style.display === 'none' ? 'block' : 'none'; }; });
-    c.querySelectorAll(".add-comment-btn").forEach(btn => { btn.onclick = async () => {
-      const postId = btn.dataset.postId, input = document.querySelector(`.comment-input[data-post-id="${postId}"]`), text = input?.value.trim();
-      if (!text) return;
-      await addDoc(collection(db, "wall_comments"), { postId, authorId: state.user.uid, authorName: state.profile?.displayName, authorAvatar: state.profile?.photoURL, text, replyTo: null, createdAt: serverTimestamp() });
-      await updateDoc(doc(db, "wall", postId), { commentsCount: increment(1) });
-      input.value = '';
-      loadAndRenderWall();
-    }; });
-  }
-
-  async function loadAndRenderWall() {
-    const container = document.getElementById("wallPostsContainer"); if (!container) return;
-    container.innerHTML = `<div class="loading">Загрузка...</div>`;
-    try { state.wallPosts = await loadWallPosts(); await renderWall(); setupWallListener(); } catch (e) { container.innerHTML = `<div class="loading">Пока тихо...</div>`; }
-  }
-
-  async function publishPost() {
-    const input = document.getElementById("postContent"); if (!input) return;
-    const content = input.value.trim(); if (!content) return;
-    await addDoc(collection(db, "wall"), { author: state.profile?.displayName || "Без имени", avatar: state.profile?.photoURL || "👤", content, likesCount: 0, commentsCount: 0, createdAt: serverTimestamp(), userId: state.user.uid });
-    input.value = "";
-    loadAndRenderWall();
-  }
-
-  function renderChatsList() {
-    const list = document.getElementById("chatsList"); if (!list) return;
-    if (!state.chats.length) { list.innerHTML = `<div class="loading">Нет чатов</div>`; return; }
-    let html = state.chats.map(chat => {
-      const premiumIcon = chat.isPremium ? '<span class="premium-badge">💎</span>' : '';
-      return `<div class="chat-item" data-chat-id="${chat.id}"><div class="avatar">${escapeHtml(chat.avatar||"👤")}${premiumIcon}</div><div style="min-width:0;flex:1;"><div style="font-weight:600;color:var(--text-primary);">${escapeHtml(chat.title||"Чат")}</div><div style="font-size:13px;color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(chat.lastMessage||"")}</div></div></div>`;
-    }).join("");
-    if (!state.allChatsLoaded) html += `<div id="chatsLoader" class="loading">Загрузка...</div>`;
-    list.innerHTML = html;
-    list.querySelectorAll(".chat-item").forEach(el => el.onclick = () => { const chat = state.chats.find(c => c.id === el.dataset.chatId); if (chat) openChat(chat); });
-    const loader = document.getElementById("chatsLoader");
-    if (loader) new IntersectionObserver(entries => { if (entries[0].isIntersecting) loadMoreChats(); }).observe(loader);
-  }
-
-  function initPages() {
-    root.innerHTML = `
-      <div id="pages-container" style="max-width:1300px;margin:0 auto;padding:16px;padding-bottom:0;">
-        <div id="page-chats" class="page visible-page">
-          <div class="glass" style="padding:20px;margin-bottom:80px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;"><h2 style="font-weight:800;color:var(--text-primary);text-shadow:0 0 8px var(--accent-glow);">Сообщения</h2><button id="newChatBtn" style="background:none;border:1px solid var(--surface-border);color:var(--text-primary);font-size:24px;border-radius:50%;width:44px;height:44px;">+</button></div>
-            <div id="chatsList"></div>
-          </div>
-        </div>
-        <div id="page-wall" class="page">
-          <div class="glass" style="padding:20px;margin-bottom:80px;">
-            <h2 style="font-weight:800;color:var(--text-primary);margin-bottom:20px;text-shadow:0 0 8px var(--accent-glow);">🔗 Стена</h2>
-            <textarea id="postContent" class="neon-input" rows="2" placeholder="Что нового?"></textarea>
-            <div style="display:flex;justify-content:flex-end;margin-top:12px;"><button id="publishPostBtn" class="neon-btn">Опубликовать</button></div>
-            <div id="wallPostsContainer" style="margin-top:24px;"></div>
-          </div>
-        </div>
-        <div id="page-profile" class="page">
-          <div class="glass" style="padding:32px;text-align:center;margin-bottom:80px;"></div>
-        </div>
-        <div id="page-chat" class="page"></div>
-      </div>
-      <div class="bottom-nav">
-        <button class="nav-item active" data-page="chats"><span class="nav-icon">💬</span><span class="nav-label">Чаты</span></button>
-        <button class="nav-item" data-page="wall"><span class="nav-icon">📡</span><span class="nav-label">Стена</span></button>
-        <button class="nav-item" data-page="profile"><span class="nav-icon">👤</span><span class="nav-label">Профиль</span></button>
-      </div>`;
-    document.getElementById("newChatBtn").onclick = openUserSearch;
-    document.getElementById("publishPostBtn").onclick = publishPost;
-    document.querySelectorAll(".nav-item").forEach(btn => btn.onclick = () => switchPage(btn.dataset.page));
-  }
-
-  function switchPage(page) {
-    if (state.page === page) return;
-    state.page = page;
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('visible-page'));
-    document.getElementById(`page-${page}`).classList.add('visible-page');
-    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
-    const activeBtn = document.querySelector(`.nav-item[data-page="${page}"]`);
-    if (activeBtn) activeBtn.classList.add('active');
-    if (page === 'wall' && !state.wallUnsub) loadAndRenderWall();
-    if (page === 'chats') {
-      if (!state.chats.length) refreshChatsFromScratch();
-      else renderChatsList();
-    }
-    if (page === 'profile') renderProfileContent();
-  }
-
-  function renderProfileContent() {
-    const container = document.querySelector("#page-profile .glass");
-    if (!container) return;
-    const profile = state.profile || state.user || { displayName: "Без имени", phoneNumber: "", photoURL: "👤", isPremium: false };
-    const notifStatus = Notification.permission;
-    container.innerHTML = `
-      <div style="position:relative; width:100px; margin:0 auto 24px;"><div class="avatar" style="width:100px;height:100px;font-size:48px;">${escapeHtml(profile.photoURL||"👤")}</div>${profile.isPremium ? '<span class="premium-badge" style="top:-8px;right:-8px;font-size:28px;">💎</span>' : ''}</div>
-      <h3 style="font-weight:800;color:var(--text-primary);text-shadow:0 0 8px var(--accent-glow);">${escapeHtml(profile.displayName||"")}</h3>
-      <p style="color:var(--text-secondary);">${escapeHtml(profile.phoneNumber||"")}</p>
-      ${profile.isPremium ? '<p style="color:var(--premium); margin-top:8px;">NEON PREMIUM</p>' : ''}
-      <hr style="margin:28px 0;border-color:var(--surface-border);">
-      <div style="background:var(--surface);border-radius:24px;padding:18px;margin-bottom:20px;">
-        <p style="color:var(--text-secondary);font-size:14px;margin-bottom:12px;">Тема оформления</p>
-        <div style="display:flex;gap:8px;justify-content:center;">
-          <button class="theme-btn neon-btn" data-theme="neon">NEON</button>
-          <button class="theme-btn neon-btn" data-theme="minimal">MINIMAL</button>
-          <button class="theme-btn neon-btn" data-theme="glass">GLASS</button>
-        </div>
-      </div>
-      ${!state.isIOS ? `<div style="background:var(--surface);border-radius:24px;padding:18px;margin-bottom:20px;"><p style="color:${notifStatus==='granted'?'#4caf50':'var(--text-secondary)'};font-size:14px;">${notifStatus==='granted'?'✅ Уведомления включены':'⚠️ Уведомления не настроены'}</p><button id="enableNotificationsBtn" class="neon-btn" style="width:100%;margin-top:8px;">${notifStatus==='granted'?'Обновить':'Включить уведомления'}</button></div>` : ''}
-      ${!profile.isPremium ? `<button id="premiumBtn" class="neon-btn" style="width:100%; margin-bottom:20px; background:var(--premium); color:#000;">💎 Оформить NEON PREMIUM</button>` : ''}
-      <button id="editProfileBtn" class="neon-btn" style="width:100%;">Изменить профиль</button>
-      <button id="logoutBtn" style="background:none;border:1px solid var(--surface-border);color:var(--danger);margin-top:24px;width:100%;padding:10px;border-radius:60px;font-weight:700;">Выйти</button>`;
-    document.querySelectorAll('.theme-btn').forEach(btn => btn.onclick = () => { applyTheme(btn.dataset.theme); renderProfileContent(); });
-    if (!state.isIOS) {
-      document.getElementById("enableNotificationsBtn")?.addEventListener('click', async () => {
-        const token = await requestNotificationPermissionAndGetToken();
-        if (token) { await saveFCMTokenToFirestore(state.user.uid, token); alert('Готово'); renderProfileContent(); }
-        else alert('Ошибка');
-      });
-    }
-    document.getElementById("editProfileBtn").onclick = async () => {
-      const newName = prompt("Имя:", profile.displayName||""); if (newName === null) return;
-      const newAvatar = prompt("Аватар:", profile.photoURL||"👤"); if (newAvatar === null) return;
-      await updateDoc(doc(db, "users", state.user.uid), { username: newName.trim() || "Без имени", avatar: newAvatar.trim() || "👤", updatedAt: serverTimestamp() });
-      state.profile = { ...profile, displayName: newName.trim(), photoURL: newAvatar.trim() };
-      state.user.displayName = state.profile.displayName; state.user.photoURL = state.profile.photoURL;
-      invalidateUserCache();
-      renderProfileContent();
-    };
-    const premiumBtn = document.getElementById("premiumBtn");
-    if (premiumBtn) premiumBtn.onclick = async () => {
-      await updateDoc(doc(db, "users", state.user.uid), { isPremium: true });
-      state.profile.isPremium = true; state.user.isPremium = true;
-      alert("Поздравляем! Теперь вы NEON PREMIUM 💎");
-      invalidateUserCache(); renderProfileContent();
-    };
-    document.getElementById("logoutBtn").onclick = async () => {
-      stopHeartbeat(); await signOut(auth); state.user = null; state.profile = null; state.chats = []; state.wallPosts = [];
-      if (state.chatUnsub) state.chatUnsub(); if (state.globalChatsUnsub) state.globalChatsUnsub(); if (state.wallUnsub) state.wallUnsub();
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) {
       showLogin();
-    };
-  }
-
-  // ============== ЧАТ (с группировкой и умным скроллом) ==============
-  async function openChat(chat) {
-    if (state.chatUnsub) { state.chatUnsub(); state.typingUnsub?.(); state.presenceUnsub?.(); }
-    state.activeChat = chat;
-    state.renderedMessages.clear();
-    const title = chat.title || "Чат", av = chat.avatar || "👤";
-    const pageChat = document.getElementById("page-chat");
-    pageChat.innerHTML = `
-      <div class="chat-container">
-        <div class="chat-header">
-          <button id="backToChatsBtn" class="back-btn">‹</button>
-          <div class="avatar" style="width:40px;height:40px;font-size:20px;">${escapeHtml(av)}</div>
-          <div class="header-info">
-            <div class="header-title">${escapeHtml(title)}</div>
-            <div id="userStatus" class="header-status"></div>
-          </div>
-          <button id="deleteChatBtn" class="delete-btn">🗑</button>
-        </div>
-        <div class="chat-messages" id="chatMessagesArea"></div>
-        <div id="typingIndicator" class="typing-indicator" style="display:none;"><span>печатает</span><span class="typing-dots"><span></span><span></span><span></span></span></div>
-        <div class="chat-input-area">
-          <button id="voiceRecordBtn" class="voice-btn">🎤</button>
-          <input type="text" id="messageInput" placeholder="Сообщение..." autocomplete="off" />
-          <button id="sendMsgBtn" class="send-btn">➤</button>
-        </div>
-        <div id="recordingIndicator" class="recording-indicator" style="display:none;">Запись...</div>
-      </div>`;
-    switchPage('chat');
-
-    const messagesRef = collection(db, "chats", chat.id, "messages");
-    const messagesQuery = query(messagesRef, orderBy("createdAt", "asc"));
-    state.chatUnsub = onSnapshot(messagesQuery, snap => {
-      const container = document.getElementById("chatMessagesArea");
-      if (!container) return;
-      const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 120;
-
-      snap.docChanges().forEach(change => {
-        if (change.type === 'added' && !state.renderedMessages.has(change.doc.id)) {
-          state.renderedMessages.add(change.doc.id);
-          const msg = change.doc.data(); const isOut = msg.userId === state.user.uid;
-          const time = msg.createdAt?.toDate ? new Date(msg.createdAt.toDate()).toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" }) : "";
-          const div = document.createElement("div"); div.className = `message ${isOut ? "out" : "in"}`;
-          div.setAttribute('data-id', change.doc.id);
-          if (msg.type === 'audio') {
-            div.innerHTML = `<div style="display:flex;align-items:center;gap:8px;"><audio controls src="${escapeHtml(msg.audioURL)}"></audio><span style="font-size:12px;">${msg.duration ? Math.round(msg.duration)+'с' : ''}</span></div><div style="font-size:10px;opacity:0.6;margin-top:2px;">${time} ${msg.edited?'(ред.)':''}</div>`;
-          } else {
-            div.innerHTML = `<div>${escapeHtml(msg.text||"")}</div><div style="font-size:10px;opacity:0.6;margin-top:2px;text-align:right;">${time} ${msg.edited?'(ред.)':''}</div>`;
-            if (isOut) {
-              const editBtn = document.createElement('button'); editBtn.className = 'edit-btn'; editBtn.innerHTML = '✎';
-              editBtn.onclick = (e) => { e.stopPropagation(); editMessage(change.doc.id, msg.text || ''); };
-              div.appendChild(editBtn);
-            }
-          }
-          container.appendChild(div);
-        }
-        if (change.type === 'modified') {
-          const existing = document.querySelector(`[data-id="${change.doc.id}"]`);
-          if (existing) {
-            const msg = change.doc.data(); const isOut = msg.userId === state.user.uid;
-            const time = msg.createdAt?.toDate ? new Date(msg.createdAt.toDate()).toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" }) : "";
-            existing.className = `message ${isOut ? "out" : "in"}`;
-            if (msg.type === 'audio') {
-              existing.innerHTML = `<div style="display:flex;align-items:center;gap:8px;"><audio controls src="${escapeHtml(msg.audioURL)}"></audio><span style="font-size:12px;">${msg.duration ? Math.round(msg.duration)+'с' : ''}</span></div><div style="font-size:10px;opacity:0.6;margin-top:2px;">${time} ${msg.edited?'(ред.)':''}</div>`;
-            } else {
-              existing.innerHTML = `<div>${escapeHtml(msg.text||"")}</div><div style="font-size:10px;opacity:0.6;margin-top:2px;text-align:right;">${time} ${msg.edited?'(ред.)':''}</div>`;
-              if (isOut) {
-                const editBtn = document.createElement('button'); editBtn.className = 'edit-btn'; editBtn.innerHTML = '✎';
-                editBtn.onclick = (e) => { e.stopPropagation(); editMessage(change.doc.id, msg.text || ''); };
-                existing.appendChild(editBtn);
-              }
-            }
-          }
-        }
-      });
-
-      if (isNearBottom) {
-        container.scrollTop = container.scrollHeight;
-      }
-    });
-
-    document.getElementById("backToChatsBtn").onclick = () => {
-      if (state.chatUnsub) state.chatUnsub();
-      state.typingUnsub?.(); state.presenceUnsub?.();
-      state.activeChat = null;
-      switchPage('chats');
-    };
-    document.getElementById("deleteChatBtn").onclick = async () => {
-      if (confirm('Удалить чат?')) {
-        await deleteDoc(doc(db, "chats", chat.id));
-        if (state.chatUnsub) state.chatUnsub();
-        state.typingUnsub?.(); state.presenceUnsub?.();
-        state.activeChat = null;
-        state.chats = state.chats.filter(c => c.id !== chat.id);
-        renderChatsList();
-        switchPage('chats');
-      }
-    };
-
-    const sendMsg = async () => {
-      const input = document.getElementById("messageInput"); const text = input.value.trim(); if (!text) return;
-      await addDoc(messagesRef, { text, userId: state.user.uid, createdAt: serverTimestamp() });
-      await updateDoc(doc(db, "chats", chat.id), { lastMessage: text, lastMessageUserId: state.user.uid, updatedAt: serverTimestamp() });
-      input.value = "";
-    };
-    document.getElementById("sendMsgBtn").onclick = sendMsg;
-    document.getElementById("messageInput").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); sendMsg(); } });
-    const typingRef = collection(db, "chats", chat.id, "typing");
-    state.typingUnsub = onSnapshot(typingRef, (snap) => {
-      const now = Date.now(); let someone = false;
-      snap.forEach(d => { const data = d.data(); if (data.timestamp && now - data.timestamp.toMillis() < 5000 && d.id !== state.user.uid) someone = true; });
-      document.getElementById("typingIndicator").style.display = someone ? 'flex' : 'none';
-    });
-    document.getElementById("messageInput").addEventListener('input', () => { clearTimeout(state.typingTimers[chat.id]); state.typingTimers[chat.id] = setTimeout(() => setDoc(doc(db, "chats", chat.id, "typing", state.user.uid), { timestamp: serverTimestamp() }), 300); });
-    document.getElementById("voiceRecordBtn").onclick = () => toggleVoiceRecording(chat.id);
-
-    if (chat.otherUid) {
-      state.presenceUnsub = onSnapshot(doc(db, "users", chat.otherUid), (docSnap) => {
-        const data = docSnap.data(); const statusDiv = document.getElementById("userStatus");
-        if (data && statusDiv) {
-          const online = data.online || false; const lastSeen = data.lastSeen?.toMillis();
-          let text = ''; if (online && lastSeen && Date.now() - lastSeen < 60000) text = 'в сети'; else if (lastSeen) { const diff = Math.floor((Date.now() - lastSeen)/1000); text = diff < 60 ? 'был(а) только что' : diff < 3600 ? `был(а) ${Math.floor(diff/60)} мин назад` : `был(а) ${Math.floor(diff/3600)} ч назад`; }
-          statusDiv.textContent = text;
-        }
-      });
+      return;
     }
-  }
-
-  async function editMessage(msgId, oldText) { const newText = prompt("Редактировать:", oldText); if (newText !== null && newText !== oldText) await updateDoc(doc(db, "chats", state.activeChat.id, "messages", msgId), { text: newText, edited: true }); }
-  async function toggleVoiceRecording(chatId) { /* ... */ }
-  async function uploadAudioAndSendMessage(chatId, blob) { /* ... */ }
-
-  function openUserSearch() {
-    const overlay = document.getElementById("search-modal-overlay");
-    overlay.classList.remove("hidden");
-    loadAllUsers().then(users => renderSearchResults(users));
-    document.getElementById("user-search-input").oninput = () => {
-      const term = document.getElementById("user-search-input").value.trim().toLowerCase();
-      const all = state.cachedUsers.data || [];
-      const filtered = term ? all.filter(u => u.username.toLowerCase().includes(term)) : all;
-      renderSearchResults(filtered);
-    };
-    document.getElementById("close-search-modal").onclick = () => overlay.classList.add("hidden");
-  }
-  function renderSearchResults(users) {
-    const container = document.getElementById("search-results-container");
-    if (!users.length) { container.innerHTML = `<div style="color:var(--text-secondary); text-align:center; padding:20px;">Пользователи не найдены</div>`; return; }
-    container.innerHTML = users.map(u => `<div class="search-user-item" data-uid="${u.uid}"><div class="avatar" style="width:40px;height:40px;font-size:22px;">${escapeHtml(u.avatar)}</div><div style="flex:1;font-weight:600;">${escapeHtml(u.username)}</div>${u.isPremium?'<span style="color:var(--premium);">💎</span>':''}</div>`).join("");
-    container.querySelectorAll(".search-user-item").forEach(item => item.onclick = async () => {
-      document.getElementById("search-modal-overlay").classList.add("hidden");
-      await createDirectChat(item.dataset.uid);
-    });
-  }
-
-  async function createDirectChat(otherUid) {
-    const chatId = directChatId(state.user.uid, otherUid);
-    const chatRef = doc(db, "chats", chatId);
-    if (!(await getDoc(chatRef)).exists()) {
-      let name = "Чат", av = "👤";
-      const cached = state.cachedUsers.data?.find(u => u.uid === otherUid);
-      if (cached) { name = cached.username; av = cached.avatar; }
-      else { const p = await loadProfile(otherUid); if (p) { name = p.displayName; av = p.photoURL; } }
-      await setDoc(chatRef, { type:"direct", members:[state.user.uid, otherUid], title: name, avatar: av, createdAt: serverTimestamp(), updatedAt: serverTimestamp(), lastMessage: "" });
+    let profile = await Data.loadProfile(user.uid);
+    if (!profile) {
+      profile = await Data.ensureProfile(user, user.displayName || "Без имени", user.photoURL || "👤");
     }
-    await refreshChatsFromScratch();
-    const chat = state.chats.find(c => c.id === chatId);
-    if (chat) openChat(chat);
-  }
-
-  function boot() {
-    onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        stopHeartbeat(); state.user = null; state.profile = null; state.chats = []; state.wallPosts = [];
-        if (state.chatUnsub) state.chatUnsub(); if (state.wallUnsub) state.wallUnsub();
-        showLogin(); return;
-      }
-      let profile = await loadProfile(user.uid);
-      if (!profile) profile = await ensureProfile(user, user.displayName || "Без имени", user.photoURL || "👤");
-      state.user = { uid: user.uid, phoneNumber: user.phoneNumber || profile.phoneNumber, displayName: profile.displayName, photoURL: profile.photoURL, isPremium: profile.isPremium };
-      state.profile = profile;
-      startHeartbeat();
-      loadAllUsers().catch(() => {});
-      initPages();
-      switchPage('chats');
-      if (!state.isIOS) { const token = await requestNotificationPermissionAndGetToken(); if (token) await saveFCMTokenToFirestore(state.user.uid, token); }
-    });
-  }
-
-  function startPolling() {}
-  function stopPolling() {}
-  async function requestNotificationPermissionAndGetToken() {}
-  async function saveFCMTokenToFirestore(uid, token) {}
-  if (messaging) onMessage(messaging, payload => {});
-  boot();
+    State.set('user', { uid: user.uid, phoneNumber: user.phoneNumber || profile.phoneNumber, displayName: profile.displayName, photoURL: profile.photoURL, isPremium: profile.isPremium });
+    State.set('profile', profile);
+    UI.initPages();
+    UI.switchPage('chats');
+    // Сердцебиение
+    const setOnline = () => updateDoc(doc(db, "users", user.uid), { online: true, lastSeen: serverTimestamp() });
+    setOnline();
+    const heartbeat = setInterval(setOnline, 30000);
+    window.addEventListener('beforeunload', () => updateDoc(doc(db, "users", user.uid), { online: false, lastSeen: serverTimestamp() }));
+    State.addSub(() => clearInterval(heartbeat));
+    // Уведомления (по желанию)
+    if (Notification.permission === 'default') {
+      try {
+        const perm = await Notification.requestPermission();
+        if (perm === 'granted' && messaging) {
+          const token = await getToken(messaging, { vapidKey: '...' }); // при необходимости добавить VAPID ключ
+          if (token) await Data.saveFCMToken(user.uid, token);
+        }
+      } catch(e) {}
+    }
+  });
 </script>
 </body>
 </html>
