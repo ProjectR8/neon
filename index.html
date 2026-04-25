@@ -5,114 +5,76 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="theme-color" content="#0a0a0a" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet" />
-  <title>NEON MESSENGER | FIXED</title>
+  <meta name="theme-color" content="#0a0f1f" />
+  <title>NEON MESSENGER | чаты + стена</title>
   <style>
-    /* === общие стили (без изменений) === */
-    :root { --bg: #0a0f1f; --surface: rgba(15, 25, 45, 0.7); --surface-border: rgba(0, 255, 255, 0.35); --text-primary: #d8f8ff; --text-secondary: #9db7d3; --accent: #0ff; --accent-glow: rgba(0, 255, 255, 0.5); --danger: #ff5580; --premium: #f5c542; --safe-bottom: env(safe-area-inset-bottom, 20px); --radius-lg: 32px; --radius-md: 24px; --radius-sm: 18px; --font: 'Montserrat', system-ui, -apple-system, sans-serif; --transition: 0.3s cubic-bezier(0.23, 1, 0.32, 1); --glass-blur: 22px; --bg-image: radial-gradient(circle at 20% 30%, #0a0f1f, #03050b); }
-    body.theme-neon { --bg: #0a0f1f; --surface: rgba(15, 25, 45, 0.7); --surface-border: rgba(0, 255, 255, 0.35); --text-primary: #d8f8ff; --text-secondary: #9db7d3; --accent: #0ff; --accent-glow: rgba(0, 255, 255, 0.5); --danger: #ff5580; --bg-image: radial-gradient(circle at 20% 30%, #0a0f1f, #03050b); }
-    body.theme-minimal { --bg: #0a0a0a; --surface: rgba(18, 18, 18, 0.8); --surface-border: rgba(255, 255, 255, 0.06); --text-primary: #f0f0f0; --text-secondary: #a0a0a0; --accent: #c8a96e; --accent-glow: rgba(200, 169, 110, 0.3); --danger: #b05a5a; --bg-image: radial-gradient(ellipse at 50% 0%, #1a1a1a 0%, #0a0a0a 70%); }
-    body.theme-glass { --bg: #15202b; --surface: rgba(30, 40, 50, 0.65); --surface-border: rgba(255, 255, 255, 0.08); --text-primary: #e7e9ec; --text-secondary: #8b98a5; --accent: #1da1f2; --accent-glow: rgba(29, 161, 242, 0.35); --danger: #e0245e; --glass-blur: 28px; --bg-image: radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.03) 0%, transparent 70%); }
-    * { margin:0; padding:0; box-sizing:border-box; font-family:var(--font); }
-    body { min-height: 100vh; min-height: calc(var(--vh, 1vh) * 100); background: var(--bg); background-image: var(--bg-image); color: var(--text-primary); -webkit-tap-highlight-color: transparent; touch-action: manipulation; overflow-x: hidden; transition: background 0.3s, color 0.3s; }
-    .glass { background: var(--surface); backdrop-filter: blur(var(--glass-blur)) saturate(180%); -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%); border-radius: var(--radius-lg); border: 1px solid var(--surface-border); box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 12px var(--accent-glow); transition: var(--transition); }
-    .glass:hover { border-color: var(--accent); box-shadow: 0 0 28px var(--accent-glow), 0 8px 32px rgba(0,0,0,0.6); }
-    .neon-input { background: rgba(255,255,255,0.04); border: 1px solid var(--surface-border); border-radius: 60px; padding: 14px 20px; color: var(--text-primary); font-size: 16px; outline: none; width: 100%; transition: var(--transition); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); font-weight: 600; }
-    .neon-input:focus { border-color: var(--accent); box-shadow: 0 0 18px var(--accent-glow); }
-    textarea.neon-input { border-radius: 28px; resize: vertical; }
-    .neon-btn { background: rgba(255,255,255,0.04); border: 1px solid var(--surface-border); border-radius: 60px; padding: 12px 24px; font-weight: 700; color: var(--text-primary); cursor: pointer; transition: var(--transition); text-transform: uppercase; letter-spacing: 1px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); display: inline-flex; align-items: center; justify-content: center; gap: 8px; position: relative; overflow: hidden; }
-    .neon-btn::after { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at center, var(--accent-glow), transparent 70%); opacity: 0; transition: opacity 0.4s; }
-    .neon-btn:hover:not(:disabled) { background: rgba(255,255,255,0.08); border-color: var(--accent); box-shadow: 0 4px 20px var(--accent-glow); transform: translateY(-1px); }
-    .neon-btn:active:not(:disabled) { transform: scale(0.97); }
-    .neon-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-    .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; width: 100%; display: flex; justify-content: center; gap: 0; padding: 10px 0 calc(10px + var(--safe-bottom)); background: var(--surface); backdrop-filter: blur(var(--glass-blur)); -webkit-backdrop-filter: blur(var(--glass-blur)); border-radius: 34px 34px 0 0; border: 1px solid var(--surface-border); border-bottom: none; box-shadow: 0 -4px 20px rgba(0,0,0,0.5), 0 0 8px var(--accent-glow); z-index: 100; }
-    .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-secondary); border: none; background: transparent; cursor: pointer; transition: 0.3s; position: relative; height: 64px; }
-    .nav-item.active { color: var(--accent); text-shadow: 0 0 8px var(--accent-glow); }
-    .nav-item.active::after { content: ''; position: absolute; bottom: 4px; width: 40px; height: 4px; background: var(--accent); border-radius: 4px; box-shadow: 0 0 12px var(--accent-glow); animation: slideUp 0.3s ease; }
-    @keyframes slideUp { from { transform: translateY(10px); opacity:0; } to { transform: translateY(0); opacity:1; } }
-    .nav-icon { font-size: 24px; transition: transform 0.3s; }
-    .nav-item.active .nav-icon { transform: scale(1.15); }
-    .nav-label { font-size: 10px; font-weight: 700; margin-top: 4px; letter-spacing: 0.5px; }
+    /* === СТАРЫЕ СТИЛИ (без изменений) === */
+    :root { --vh: 1vh; }
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+    body { min-height: 100vh; min-height: calc(var(--vh, 1vh) * 100); background: radial-gradient(circle at 20% 30%, #0a0f1f, #03050b); color: #d8f8ff; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+    .glass { background: rgba(15, 25, 45, 0.7); backdrop-filter: blur(16px) saturate(180%); border-radius: 32px; border: 1px solid rgba(0, 255, 255, 0.35); box-shadow: 0 8px 32px rgba(0,0,0,0.3), 0 0 18px rgba(0,255,255,0.2); transition: all 0.3s; }
+    @supports not (backdrop-filter: blur(16px)) { .glass { background: rgba(15, 25, 45, 0.9); } }
+    .glass:hover { border-color: #0ff; box-shadow: 0 0 28px rgba(0,255,255,0.5); }
+    .neon-input { background: rgba(10,20,40,0.7); border: 1px solid #0ff; border-radius: 60px; padding: 14px 20px; color: #0ff; font-size: 16px; outline: none; width: 100%; }
+    .neon-input:focus { box-shadow: 0 0 14px #0ff; }
+    .neon-btn { background: linear-gradient(135deg, rgba(0,255,255,0.08), rgba(255,0,255,0.08)); border: 1px solid #0ff; border-radius: 60px; padding: 12px 24px; font-weight: bold; color: #0ff; cursor: pointer; transition: 0.2s; text-transform: uppercase; }
+    .neon-btn:hover:not(:disabled) { background: #0ff; color: black; box-shadow: 0 0 20px #0ff; }
+    .neon-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .bottom-nav { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); width: calc(100% - 32px); max-width: 480px; background: rgba(5,10,25,0.85); backdrop-filter: blur(20px); border-radius: 60px; display: flex; justify-content: space-around; padding: 8px 12px; border: 1px solid #0ff; box-shadow: 0 0 15px rgba(0,255,255,0.3); z-index: 100; }
+    .nav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; color: #88aaff; background: none; border: none; padding: 8px 16px; border-radius: 40px; cursor: pointer; font-weight: 600; }
+    .nav-item.active { background: rgba(0,255,255,0.2); color: #0ff; text-shadow: 0 0 5px #0ff; box-shadow: 0 0 8px #0ff; }
+    .nav-icon { font-size: 26px; }
+    .page { display: none; animation: fade 0.25s; }
+    .page.active-page { display: block; }
+    @keyframes fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .chat-item { display: flex; align-items: center; gap: 14px; padding: 14px; border-radius: 28px; cursor: pointer; border-bottom: 1px solid rgba(0,255,255,0.2); transition: 0.2s; }
+    .chat-item:active { background: rgba(0,255,255,0.2); }
+    .avatar { width: 52px; height: 52px; border-radius: 50%; background: linear-gradient(135deg, #0ff, #f0f); display: flex; align-items: center; justify-content: center; font-size: 28px; box-shadow: 0 0 8px cyan; flex-shrink: 0; }
+    .badge { background: #f0f; color: black; border-radius: 40px; padding: 2px 10px; font-size: 11px; margin-left: 8px; }
+    .message { max-width: 75%; padding: 10px 18px; border-radius: 24px; margin-bottom: 8px; word-break: break-word; }
+    .message.out { align-self: flex-end; background: #0a2a3a; border: 1px solid #0ff; color: #0ff; }
+    .message.in { align-self: flex-start; background: #1a1a2e; border: 1px solid #88f; color: #ccd; }
+    .messages-area { height: calc(100vh - 170px); height: calc(var(--vh, 1vh) * 100 - 170px); overflow-y: auto; display: flex; flex-direction: column; padding: 16px; -webkit-overflow-scrolling: touch; }
+    .wall-post { background: rgba(10,15,30,0.6); backdrop-filter: blur(12px); border-radius: 28px; padding: 18px; margin-bottom: 18px; border: 1px solid #0ff; }
+    .loading { text-align: center; color: #0ff; padding: 20px; }
+    #recaptcha-container { display: block !important; visibility: visible !important; min-height: 78px; width: 100%; margin: 16px 0 0 0; position: relative; z-index: 10000; }
+    textarea { resize: vertical; outline: none; }
+    button { outline: none; touch-action: manipulation; }
 
-    .page { display: none; }
-    .page.visible-page { display: block; animation: fadeSlide 0.3s ease; }
-    @keyframes fadeSlide { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    /* === НОВЫЕ СТИЛИ ДЛЯ ГОЛОСОВЫХ === */
+    .voice-btn {
+      background: none; border: 1px solid #0ff; border-radius: 50%; width: 44px; height: 44px;
+      display: flex; align-items: center; justify-content: center; cursor: pointer; color: #0ff;
+      font-size: 20px; margin-right: 6px; transition: 0.2s;
+    }
+    .voice-btn.recording { background: #f0f; border-color: #f0f; color: white; box-shadow: 0 0 12px #f0f; animation: pulse 1s infinite; }
+    @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255,0,255,0.7); } 70% { box-shadow: 0 0 0 10px rgba(255,0,255,0); } 100% { box-shadow: 0 0 0 0 rgba(255,0,255,0); } }
+    .voice-message audio { width: 200px; max-width: 100%; height: 36px; margin-top: 4px; }
+    .voice-message .duration { font-size: 12px; opacity: 0.8; margin-left: 8px; }
 
-    /* chat page fullscreen fix */
-    #page-chat { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 50; background: var(--bg); }
-
-    .chat-item { display: flex; align-items: center; gap: 16px; padding: 14px 18px; border-radius: var(--radius-md); cursor: pointer; transition: var(--transition); background: transparent; margin-bottom: 6px; }
-    .chat-item:active { background: rgba(255,255,255,0.03); transform: scale(0.98); }
-    .avatar { position: relative; width: 52px; height: 52px; min-width: 52px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), rgba(0,0,0,0.3)); background-size: 100% 100%; background-position: center; border: 1px solid var(--surface-border); display: flex; align-items: center; justify-content: center; font-size: 28px; box-shadow: 0 8px 16px rgba(0,0,0,0.4); overflow: hidden; transition: var(--transition); }
-    .avatar-fixed { background-size: 100% 100% !important; }
-    .online-dot { position: absolute; bottom: 4px; right: 4px; width: 13px; height: 13px; background: #4caf50; border-radius: 50%; border: 2px solid var(--bg); box-shadow: 0 0 8px rgba(76,175,80,0.6); animation: breathe 2s infinite; }
-    @keyframes breathe { 0%,100%{ transform:scale(1); opacity:1; } 50%{ transform:scale(1.2); opacity:0.8; } }
-    .premium-badge { position: absolute; top: -4px; right: -4px; font-size: 18px; filter: drop-shadow(0 0 6px var(--premium)); z-index: 2; }
-    .wall-post { background:var(--surface); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); border-radius:var(--radius-md); padding:20px; margin-bottom:16px; border:1px solid var(--surface-border); transition:var(--transition); box-shadow:0 10px 30px rgba(0,0,0,0.5); }
-    .comment-thread { margin-top:16px; padding-left:16px; border-left: 1px solid var(--surface-border); }
-    .comment-item { background: rgba(255,255,255,0.02); border-radius: 18px; padding: 10px 14px; margin-top: 12px; border: 1px solid var(--surface-border); }
-    .loading { text-align:center; color:var(--text-secondary); padding:28px; letter-spacing:1px; animation:pulseText 2.4s infinite; }
-    @keyframes pulseText { 0%,100%{ opacity:0.4; } 50%{ opacity:0.8; } }
-    #recaptcha-container { display:block!important; visibility:visible!important; min-height:78px; width:100%; margin:16px 0 0 0; }
-    #search-modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); display: flex; align-items: center; justify-content: center; z-index: 200; padding: 20px; }
-    #search-modal-overlay.hidden { display: none; }
-    #search-modal { background: var(--surface); border-radius: var(--radius-lg); border: 1px solid var(--surface-border); box-shadow: 0 12px 40px rgba(0,0,0,0.7), 0 0 20px var(--accent-glow); width: 100%; max-width: 420px; max-height: 80vh; display: flex; flex-direction: column; overflow: hidden; }
-    #search-modal .modal-header { padding: 16px 20px; border-bottom: 1px solid var(--surface-border); display: flex; justify-content: space-between; align-items: center; color: var(--text-primary); font-weight: 700; }
-    #search-modal .modal-body { flex: 1; overflow-y: auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 4px; }
-    .search-user-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: var(--radius-sm); cursor: pointer; transition: background 0.2s; }
-    .search-user-item:hover { background: rgba(255,255,255,0.04); }
-
-    /* === ЧАТ UI === */
-    .chat-container { height: 100%; display: flex; flex-direction: column; }
-    .chat-header { display: flex; align-items: center; padding: 10px 16px; background: var(--surface); backdrop-filter: blur(var(--glass-blur)); -webkit-backdrop-filter: blur(var(--glass-blur)); border-bottom: 1px solid var(--surface-border); height: 64px; flex-shrink: 0; }
-    .back-btn, .delete-btn { background: none; border: none; color: var(--text-primary); font-size: 24px; cursor: pointer; padding: 8px; line-height: 1; }
-    .back-btn { margin-right: 8px; }
-    .delete-btn { margin-left: auto; }
-    .header-info { margin-left: 12px; flex: 1; min-width: 0; }
-    .header-title { font-weight: 700; font-size: 16px; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .header-status { font-size: 12px; color: var(--text-secondary); }
-    .chat-messages { flex: 1; overflow-y: auto; padding: 12px 16px; display: flex; flex-direction: column; scrollbar-width: thin; scrollbar-color: var(--accent) var(--bg); -webkit-overflow-scrolling: touch; }
-
-    .message { max-width: 75%; padding: 10px 14px; border-radius: 18px; margin-bottom: 2px; word-break: break-word; position: relative; font-size: 15px; line-height: 1.4; animation: msgIn 0.25s ease-out; }
-    @keyframes msgIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-    .message.out { align-self: flex-end; background: rgba(29, 161, 242, 0.15); border: 1px solid rgba(29, 161, 242, 0.3); }
-    .message.in { align-self: flex-start; background: rgba(255, 255, 255, 0.04); }
-    .message.out + .message.out { border-top-right-radius: 6px; margin-top: -1px; }
-    .message.in + .message.in { border-top-left-radius: 6px; margin-top: -1px; }
-    .message .edit-btn { position: absolute; top: 4px; right: 8px; background: rgba(0,0,0,0.5); border: none; color: var(--accent); font-size: 13px; padding: 2px 6px; border-radius: 10px; opacity: 0; transition: opacity 0.2s; }
-    .message:hover .edit-btn, .message:active .edit-btn { opacity: 1; }
-
-    .chat-input-area { display: flex; align-items: center; margin: 10px 12px; margin-bottom: calc(10px + var(--safe-bottom)); border-radius: 28px; background: rgba(255,255,255,0.06); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid var(--surface-border); padding: 6px; box-shadow: 0 4px 16px rgba(0,0,0,0.3); flex-shrink: 0; }
-    .chat-input-area .voice-btn { background: none; border: none; color: var(--text-secondary); font-size: 22px; padding: 6px; margin-right: 4px; }
-    .chat-input-area .voice-btn.recording { color: var(--accent); }
-    #messageInput { flex: 1; background: transparent; border: none; color: var(--text-primary); font-size: 15px; outline: none; padding: 6px 8px; }
-    .send-btn { background: var(--accent); border: none; color: var(--bg); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; margin-left: 4px; cursor: pointer; transition: transform 0.2s; flex-shrink: 0; }
-    .send-btn:active { transform: scale(0.9); }
-    .typing-indicator { padding: 2px 16px; font-size: 13px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; height: 20px; flex-shrink: 0; }
-    .recording-indicator { text-align: center; color: var(--accent); font-size: 14px; padding: 4px; flex-shrink: 0; }
-    @media (max-width:480px) { .message { max-width: 85%; } }
+    @media (max-width: 480px) {
+      .messages-area { height: calc(100vh - 200px); height: calc(var(--vh, 1vh) * 100 - 200px); }
+      .glass { padding: 12px !important; }
+      .bottom-nav { padding: 4px 8px; }
+      .nav-item { padding: 4px 8px; font-size: 10px; }
+      .nav-icon { font-size: 22px; }
+      .avatar { width: 44px; height: 44px; font-size: 24px; }
+      .message { max-width: 85%; }
+    }
   </style>
 </head>
-<body class="theme-glass">
-<div id="root"><div class="loading">✦ Загрузка...</div></div>
-
-<div id="search-modal-overlay" class="hidden">
-  <div id="search-modal">
-    <div class="modal-header"><span>🔍 Новый чат</span><button id="close-search-modal" style="background:none;border:none;color:var(--text-primary);font-size:24px;cursor:pointer;">✕</button></div>
-    <div style="padding:8px 16px;"><input type="text" id="user-search-input" class="neon-input" placeholder="Поиск по имени..." autocomplete="off" /></div>
-    <div class="modal-body" id="search-results-container"><div class="loading">Загрузка...</div></div>
-  </div>
-</div>
+<body>
+<div id="root"><div class="loading">✨ Загрузка...</div></div>
 
 <script type="module">
+  // ========== ИМПОРТЫ ==========
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
   import { getAuth, onAuthStateChanged, signOut, RecaptchaVerifier, signInWithPhoneNumber } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-  import { initializeFirestore, enableIndexedDbPersistence, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, addDoc, query, where, orderBy, onSnapshot, serverTimestamp, increment } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+  import { initializeFirestore, enableIndexedDbPersistence, collection, doc, getDoc, getDocs, setDoc, updateDoc, addDoc, query, where, orderBy, onSnapshot, serverTimestamp, increment, arrayUnion } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
   import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
   import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
+  // ========== КОНФИГ ==========
   const firebaseConfig = {
     apiKey: "AIzaSyA9gA_Nvei89csa7_YrmbnbnxFngb0UKoM",
     authDomain: "neon-messenger-83ed4.firebaseapp.com",
@@ -122,6 +84,7 @@
     appId: "1:954172505610:web:03f56a8a5b89f2d402a9f3"
   };
 
+  // ========== ИНИЦИАЛИЗАЦИЯ ==========
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db = initializeFirestore(app, { experimentalForceLongPolling: true, useFetchStreams: false }, 'neonmess');
@@ -131,521 +94,622 @@
   try { messaging = getMessaging(app); } catch (e) { console.warn("Messaging not supported"); }
   auth.languageCode = "ru";
 
-  // ===================== DATA LAYER =====================
-  const Data = {
-    escapeHtml: (s) => String(s ?? "").replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;' }[m])),
-    async loadProfile(uid) {
-      const snap = await getDoc(doc(db, "users", uid));
-      if (!snap.exists()) return null;
-      const d = snap.data();
-      return { uid, phoneNumber: d.phone || "", displayName: d.username || "Без имени", photoURL: d.avatar || "👤", online: d.online || false, lastSeen: d.lastSeen, isPremium: d.isPremium || false };
-    },
-    async ensureProfile(user, username, avatar) {
-      const ref = doc(db, "users", user.uid);
-      const snap = await getDoc(ref);
-      const base = {
-        phone: user.phoneNumber || "",
-        username: username || snap.data()?.username || "Без имени",
-        avatar: avatar || snap.data()?.avatar || "👤",
-        online: true, lastSeen: serverTimestamp(), updatedAt: serverTimestamp(),
-        isPremium: snap.data()?.isPremium || false
-      };
-      if (!snap.exists()) await setDoc(ref, { ...base, createdAt: serverTimestamp(), fcmTokens: [] });
-      else await updateDoc(ref, base);
-      return (await getDoc(ref)).data();
-    },
-    async saveFCMToken(uid, token) { await updateDoc(doc(db, "users", uid), { fcmTokens: [token] }); },
-    // чаты
-    subscribeChats(uid, callback) {
-      const q = query(collection(db, "chats"), where("members", "array-contains", uid), orderBy("updatedAt", "desc"));
-      return onSnapshot(q, callback);
-    },
-    subscribeMessages(chatId, callback) {
-      const q = query(collection(db, "chats", chatId, "messages"), orderBy("createdAt", "asc"));
-      return onSnapshot(q, callback);
-    },
-    subscribeTyping(chatId, callback) {
-      return onSnapshot(collection(db, "chats", chatId, "typing"), callback);
-    },
-    subscribePresence(uid, callback) {
-      return onSnapshot(doc(db, "users", uid), callback);
-    },
-    subscribeWall(callback) {
-      return onSnapshot(collection(db, "wall"), callback);
-    },
-    async sendMessage(chatId, text) {
-      const ref = collection(db, "chats", chatId, "messages");
-      await addDoc(ref, { text, userId: auth.currentUser.uid, createdAt: serverTimestamp() });
-      await updateDoc(doc(db, "chats", chatId), { lastMessage: text, updatedAt: serverTimestamp() });
-    },
-    async deleteChat(chatId) { await deleteDoc(doc(db, "chats", chatId)); },
-    async createDirectChat(uid1, uid2) {
-      const chatId = [uid1, uid2].sort().join("__");
-      const ref = doc(db, "chats", chatId);
-      const existing = await getDoc(ref);
-      if (!existing.exists()) {
-        const otherProfile = await Data.loadProfile(uid2);
-        const title = otherProfile?.displayName || "Пользователь";
-        const avatar = otherProfile?.photoURL || "👤";
-        await setDoc(ref, {
-          type: "direct", members: [uid1, uid2],
-          title, avatar,
-          createdAt: serverTimestamp(), updatedAt: serverTimestamp(), lastMessage: ""
-        });
-      }
-      return chatId;
-    },
-    async publishPost(author, avatar, content) {
-      await addDoc(collection(db, "wall"), { author, avatar, content, likesCount: 0, commentsCount: 0, createdAt: serverTimestamp(), userId: auth.currentUser.uid });
-    },
-    async likePost(postId) { await updateDoc(doc(db, "wall", postId), { likesCount: increment(1) }); },
-    async addComment(postId, authorId, authorName, authorAvatar, text) {
-      await addDoc(collection(db, "wall_comments"), { postId, authorId, authorName, authorAvatar, text, replyTo: null, createdAt: serverTimestamp() });
-      await updateDoc(doc(db, "wall", postId), { commentsCount: increment(1) });
-    },
-    async loadComments(postId) {
-      const snap = await getDocs(query(collection(db, "wall_comments"), where("postId", "==", postId)));
-      return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    }
+  // ========== ГЛОБАЛЬНОЕ СОСТОЯНИЕ ==========
+  const state = {
+    user: null, profile: null, page: "chats", chats: [], wallPosts: [],
+    activeChat: null, chatUnsub: null, captcha: null, fcmToken: null,
+    globalChatsUnsub: null, wallUnsub: null, pollingInterval: null,
+    isIOS: /iPad|iPhone|iPod/.test(navigator.userAgent),
+    isAndroid: /Android/.test(navigator.userAgent),
+    // Для голосовых:
+    mediaRecorder: null,
+    audioChunks: [],
+    recordingChatId: null
   };
+  const root = document.getElementById("root");
 
-  // ===================== STATE LAYER =====================
-  class AppState {
-    constructor() {
-      this.state = {
-        user: null, profile: null, page: "chats", chats: [], wallPosts: [],
-        activeChat: null, allUsers: []
-      };
-      this.listeners = {};
-      this.globalSubs = [];   // для чатов и стены (не отключаются при переходе в чат)
-      this.localSubs = [];    // для текущего чата (typing, messages, presence)
-    }
-    get(key) { return this.state[key]; }
-    set(key, value) {
-      this.state[key] = value;
-      (this.listeners[key] || []).forEach(fn => fn(value));
-    }
-    onChange(key, fn) {
-      if (!this.listeners[key]) this.listeners[key] = [];
-      this.listeners[key].push(fn);
-      return () => { this.listeners[key] = this.listeners[key].filter(f => f !== fn); };
-    }
-    addGlobalSub(unsub) { this.globalSubs.push(unsub); }
-    addLocalSub(unsub) { this.localSubs.push(unsub); }
-    clearLocalSubs() { this.localSubs.forEach(fn => fn()); this.localSubs = []; }
-    clearAllSubs() { this.clearLocalSubs(); this.globalSubs.forEach(fn => fn()); this.globalSubs = []; }
+  // ========== УТИЛИТЫ ==========
+  const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;' }[m]));
+  const directChatId = (uid1, uid2) => [uid1, uid2].sort().join("__");
+
+  // ========== ВЫСОТА ДЛЯ iOS ==========
+  function setViewportHeight() {
+    const vh = window.innerHeight * 0.01;
+    document.documentElement.style.setProperty('--vh', `${vh}px`);
   }
-  const State = new AppState();
+  window.addEventListener('resize', setViewportHeight);
+  window.addEventListener('orientationchange', setViewportHeight);
+  setViewportHeight();
 
-  // ===================== UI LAYER =====================
-  const UI = {
-    setViewportHeight() { document.documentElement.style.setProperty('--vh', `${window.innerHeight * 0.01}px`); },
-    applyTheme(theme) {
-      document.body.className = '';
-      document.body.classList.add('theme-' + theme);
-      localStorage.setItem('neon_theme', theme);
-    },
-    initPages() {
-      document.getElementById('root').innerHTML = `
-        <div id="pages-container" style="max-width:1300px;margin:0 auto;padding:16px;padding-bottom:0;">
-          <div id="page-chats" class="page visible-page">
-            <div class="glass" style="padding:20px;margin-bottom:80px;">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;"><h2 style="font-weight:800;">Сообщения</h2><button id="newChatBtn" style="background:none;border:1px solid var(--surface-border);color:var(--text-primary);font-size:24px;border-radius:50%;width:44px;height:44px;">+</button></div>
-              <div id="chatsList"></div>
-            </div>
-          </div>
-          <div id="page-wall" class="page">
-            <div class="glass" style="padding:20px;margin-bottom:80px;">
-              <h2 style="font-weight:800;">🔗 Стена</h2>
-              <textarea id="postContent" class="neon-input" rows="2" placeholder="Что нового?"></textarea>
-              <div style="display:flex;justify-content:flex-end;margin-top:12px;"><button id="publishPostBtn" class="neon-btn">Опубликовать</button></div>
-              <div id="wallPostsContainer" style="margin-top:24px;"></div>
-            </div>
-          </div>
-          <div id="page-profile" class="page">
-            <div class="glass" style="padding:32px;text-align:center;margin-bottom:80px;"></div>
-          </div>
-        </div>
-        <div id="page-chat" class="page"></div>
-        <div class="bottom-nav">
-          <button class="nav-item active" data-page="chats"><span class="nav-icon">💬</span><span class="nav-label">Чаты</span></button>
-          <button class="nav-item" data-page="wall"><span class="nav-icon">📡</span><span class="nav-label">Стена</span></button>
-          <button class="nav-item" data-page="profile"><span class="nav-icon">👤</span><span class="nav-label">Профиль</span></button>
-        </div>`;
-      document.getElementById('newChatBtn').onclick = () => UI.openSearchModal();
-      document.getElementById('publishPostBtn').onclick = async () => {
-        const content = document.getElementById('postContent').value.trim();
-        if (content) {
-          await Data.publishPost(State.get('profile')?.displayName || "Аноним", State.get('profile')?.photoURL || "👤", content);
-          document.getElementById('postContent').value = "";
-        }
-      };
-      document.querySelectorAll('.nav-item').forEach(btn => btn.onclick = () => UI.switchPage(btn.dataset.page));
-    },
-    switchPage(page) {
-      if (page === 'chat') { /* handled by openChat */ return; }
-      // Закрываем локальные подписки (текущий чат), глобальные остаются
-      State.clearLocalSubs();
-      State.set('page', page);
-      document.querySelectorAll('.page').forEach(p => p.classList.remove('visible-page'));
-      const target = document.getElementById(`page-${page}`);
-      if (target) target.classList.add('visible-page');
-      document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
-      const activeBtn = document.querySelector(`.nav-item[data-page="${page}"]`);
-      if (activeBtn) activeBtn.classList.add('active');
+  // ========== CAPTCHA ==========
+  function resetCaptcha() {
+    try { if (state.captcha) state.captcha.clear(); } catch {}
+    state.captcha = null;
+    const c = document.getElementById("recaptcha-container");
+    if (c) c.innerHTML = "";
+  }
+  async function createCaptcha(containerId) {
+    resetCaptcha();
+    state.captcha = new RecaptchaVerifier(auth, containerId, {
+      size: "normal", callback: () => console.log("reCAPTCHA solved"), "expired-callback": () => resetCaptcha()
+    });
+    await state.captcha.render();
+    return state.captcha;
+  }
 
-      if (page === 'chats') {
-        UI.renderChatsList();
-      } else if (page === 'wall') {
-        UI.renderWall();
-      } else if (page === 'profile') {
-        UI.renderProfile();
-      }
-    },
-    startGlobalSubscriptions() {
-      // Подписка на список чатов
-      const unsubChats = Data.subscribeChats(State.get('user').uid, snap => {
-        const chats = snap.docs.map(d => {
-          const data = d.data();
-          const otherId = data.members?.find(m => m !== State.get('user').uid);
-          let title = data.title || "Чат", avatar = data.avatar || "👤";
-          if (otherId && (!title || title === "Чат")) {
-            const cached = State.get('allUsers')?.find(u => u.uid === otherId);
-            if (cached) { title = cached.username; avatar = cached.avatar; }
-          }
-          return { id: d.id, ...data, title, avatar, otherUid: otherId };
-        });
-        State.set('chats', chats);
-        UI.renderChatsList();
-      });
-      State.addGlobalSub(unsubChats);
-
-      // Подписка на стену
-      const unsubWall = Data.subscribeWall(snap => {
-        const posts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        posts.sort((a,b) => (b.createdAt?.toMillis()||0) - (a.createdAt?.toMillis()||0));
-        State.set('wallPosts', posts);
-        if (State.get('page') === 'wall') UI.renderWall();
-      });
-      State.addGlobalSub(unsubWall);
-    },
-    renderChatsList() {
-      const list = document.getElementById('chatsList');
-      if (!list) return;
-      const chats = State.get('chats');
-      if (!chats.length) { list.innerHTML = `<div class="loading">Нет чатов</div>`; return; }
-      list.innerHTML = chats.map(chat => {
-        const premiumIcon = chat.isPremium ? '<span class="premium-badge">💎</span>' : '';
-        return `<div class="chat-item" data-chat-id="${chat.id}">
-          <div class="avatar avatar-fixed">${Data.escapeHtml(chat.avatar)}${premiumIcon}</div>
-          <div style="min-width:0;flex:1;"><div style="font-weight:600;">${Data.escapeHtml(chat.title)}</div><div style="font-size:13px;color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${Data.escapeHtml(chat.lastMessage||"")}</div></div>
-        </div>`;
-      }).join('');
-      list.querySelectorAll('.chat-item').forEach(el => {
-        el.onclick = () => {
-          const chat = State.get('chats').find(c => c.id === el.dataset.chatId);
-          if (chat) UI.openChat(chat);
-        };
-      });
-    },
-    openChat(chat) {
-      // Отключаем только локальные подписки предыдущего чата
-      State.clearLocalSubs();
-      State.set('activeChat', chat);
-      const pageChat = document.getElementById('page-chat');
-      pageChat.innerHTML = `
-        <div class="chat-container">
-          <div class="chat-header">
-            <button id="backToChatsBtn" class="back-btn">‹</button>
-            <div class="avatar avatar-fixed" style="width:40px;height:40px;min-width:40px;font-size:20px;">${Data.escapeHtml(chat.avatar)}</div>
-            <div class="header-info"><div class="header-title">${Data.escapeHtml(chat.title)}</div><div id="userStatus" class="header-status"></div></div>
-            <button id="deleteChatBtn" class="delete-btn">🗑</button>
-          </div>
-          <div class="chat-messages" id="chatMessagesArea"></div>
-          <div id="typingIndicator" class="typing-indicator" style="display:none;">печатает...</div>
-          <div class="chat-input-area">
-            <button id="voiceRecordBtn" class="voice-btn">🎤</button>
-            <input type="text" id="messageInput" placeholder="Сообщение..." autocomplete="off" />
-            <button id="sendMsgBtn" class="send-btn">➤</button>
-          </div>
-          <div id="recordingIndicator" class="recording-indicator" style="display:none;">Запись...</div>
-        </div>`;
-      pageChat.classList.add('visible-page');
-      // Скрываем другие страницы, но не трогаем nav (он всё ещё виден)
-      document.querySelectorAll('.page:not(#page-chat)').forEach(p => p.classList.remove('visible-page'));
-
-      // Подписки сообщений
-      const unsubMessages = Data.subscribeMessages(chat.id, snap => {
-        const area = document.getElementById('chatMessagesArea');
-        if (!area) return;
-        const wasNearBottom = area.scrollHeight - area.scrollTop - area.clientHeight < 120;
-        snap.docChanges().forEach(change => {
-          if (change.type === 'added') {
-            const msg = change.doc.data();
-            const isOut = msg.userId === State.get('user').uid;
-            const time = msg.createdAt?.toDate ? new Date(msg.createdAt.toDate()).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"}) : "";
-            const div = document.createElement('div');
-            div.className = `message ${isOut ? "out" : "in"}`;
-            div.setAttribute('data-id', change.doc.id);
-            div.innerHTML = `<div>${Data.escapeHtml(msg.text||"")}</div><div style="font-size:10px;opacity:0.6;text-align:right;">${time} ${msg.edited?'(ред.)':''}</div>`;
-            if (isOut) {
-              const editBtn = document.createElement('button');
-              editBtn.className = 'edit-btn';
-              editBtn.innerHTML = '✎';
-              editBtn.onclick = (e) => { e.stopPropagation(); UI.editMessage(change.doc.id, msg.text || ''); };
-              div.appendChild(editBtn);
-            }
-            area.appendChild(div);
-          } else if (change.type === 'modified') {
-            const el = document.querySelector(`[data-id="${change.doc.id}"]`);
-            if (el) {
-              const msg = change.doc.data();
-              const isOut = msg.userId === State.get('user').uid;
-              const time = msg.createdAt?.toDate ? new Date(msg.createdAt.toDate()).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"}) : "";
-              el.className = `message ${isOut ? "out" : "in"}`;
-              el.innerHTML = `<div>${Data.escapeHtml(msg.text||"")}</div><div style="font-size:10px;opacity:0.6;text-align:right;">${time} ${msg.edited?'(ред.)':''}</div>`;
-              if (isOut) {
-                const editBtn = document.createElement('button');
-                editBtn.className = 'edit-btn';
-                editBtn.innerHTML = '✎';
-                editBtn.onclick = (e) => { e.stopPropagation(); UI.editMessage(change.doc.id, msg.text || ''); };
-                el.appendChild(editBtn);
-              }
-            }
-          }
-        });
-        if (wasNearBottom) area.scrollTop = area.scrollHeight;
-      });
-      State.addLocalSub(unsubMessages);
-
-      // Typing
-      const unsubTyping = Data.subscribeTyping(chat.id, snap => {
-        const now = Date.now();
-        let show = false;
-        snap.forEach(d => { if (d.id !== State.get('user').uid && d.data().timestamp && now - d.data().timestamp.toMillis() < 5000) show = true; });
-        const ind = document.getElementById('typingIndicator');
-        if (ind) ind.style.display = show ? 'flex' : 'none';
-      });
-      State.addLocalSub(unsubTyping);
-
-      // Presence
-      if (chat.otherUid) {
-        const unsubPresence = Data.subscribePresence(chat.otherUid, snap => {
-          const data = snap.data();
-          const statusDiv = document.getElementById('userStatus');
-          if (data && statusDiv) {
-            const online = data.online;
-            const lastSeen = data.lastSeen?.toMillis();
-            let text = '';
-            if (online && lastSeen && Date.now() - lastSeen < 60000) text = 'в сети';
-            else if (lastSeen) {
-              const diff = Math.floor((Date.now() - lastSeen)/1000);
-              text = diff < 60 ? 'был(а) только что' : diff < 3600 ? `был(а) ${Math.floor(diff/60)} мин назад` : `был(а) ${Math.floor(diff/3600)} ч назад`;
-            }
-            statusDiv.textContent = text;
-          }
-        });
-        State.addLocalSub(unsubPresence);
-      }
-
-      // Обработчики UI
-      document.getElementById('backToChatsBtn').onclick = () => {
-        State.clearLocalSubs();
-        document.getElementById('page-chat').classList.remove('visible-page');
-        UI.switchPage('chats');
-      };
-      document.getElementById('deleteChatBtn').onclick = async () => {
-        if (confirm('Удалить чат?')) {
-          await Data.deleteChat(chat.id);
-          State.clearLocalSubs();
-          document.getElementById('page-chat').classList.remove('visible-page');
-          UI.switchPage('chats');
-        }
-      };
-      const sendMsg = async () => {
-        const input = document.getElementById('messageInput');
-        const text = input.value.trim();
-        if (!text) return;
-        await Data.sendMessage(chat.id, text);
-        input.value = "";
-      };
-      document.getElementById('sendMsgBtn').onclick = sendMsg;
-      document.getElementById('messageInput').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); sendMsg(); } });
-      document.getElementById('messageInput').addEventListener('input', () => {
-        clearTimeout(chat._typingTimer);
-        chat._typingTimer = setTimeout(() => {
-          setDoc(doc(db, "chats", chat.id, "typing", State.get('user').uid), { timestamp: serverTimestamp() });
-        }, 300);
-      });
-    },
-    async editMessage(msgId, oldText) {
-      const newText = prompt("Редактировать:", oldText);
-      if (newText !== null && newText !== oldText) {
-        await updateDoc(doc(db, "chats", State.get('activeChat').id, "messages", msgId), { text: newText, edited: true });
-      }
-    },
-    async renderWall() {
-      const container = document.getElementById('wallPostsContainer');
-      if (!container) return;
-      // Защита от повторного рендера во время асинхронной загрузки
-      if (container.dataset.rendering === 'true') return;
-      container.dataset.rendering = 'true';
-      const posts = State.get('wallPosts');
-      if (!posts.length) {
-        container.innerHTML = `<div class="loading">Пока тихо...</div>`;
-        container.dataset.rendering = 'false';
-        return;
-      }
-      container.innerHTML = '';
-      for (const post of posts) {
-        const postDiv = document.createElement('div');
-        postDiv.className = 'wall-post';
-        const comments = await Data.loadComments(post.id);
-        postDiv.innerHTML = `
-          <div style="display:flex; gap:12px;"><div class="avatar avatar-fixed" style="width:44px;height:44px;min-width:44px;font-size:24px;">${Data.escapeHtml(post.avatar||"👤")}</div><div><strong>${Data.escapeHtml(post.author||"Аноним")}</strong></div></div>
-          <div style="white-space:pre-wrap; margin:12px 0;">${Data.escapeHtml(post.content)}</div>
-          <div style="display:flex; gap:16px;"><button class="like-btn neon-btn">❤️ ${post.likesCount||0}</button><button class="comment-toggle neon-btn">💬 ${post.commentsCount||0}</button></div>
-          <div class="comment-thread" style="display:none;">
-            ${comments.map(c => `<div class="comment-item"><strong>${Data.escapeHtml(c.authorName)}</strong>: ${Data.escapeHtml(c.text)}</div>`).join('') || 'Нет комментариев'}
-            <div style="margin-top:8px;"><input class="comment-input neon-input" placeholder="Комментарий..."><button class="add-comment-btn neon-btn">Отправить</button></div>
-          </div>`;
-        postDiv.querySelector('.like-btn').onclick = () => Data.likePost(post.id);
-        postDiv.querySelector('.comment-toggle').onclick = () => {
-          const thread = postDiv.querySelector('.comment-thread');
-          thread.style.display = thread.style.display === 'none' ? 'block' : 'none';
-        };
-        postDiv.querySelector('.add-comment-btn').onclick = () => {
-          const input = postDiv.querySelector('.comment-input');
-          const text = input.value.trim();
-          if (text) {
-            Data.addComment(post.id, State.get('user').uid, State.get('profile')?.displayName, State.get('profile')?.photoURL, text);
-            input.value = '';
-          }
-        };
-        container.appendChild(postDiv);
-      }
-      container.dataset.rendering = 'false';
-    },
-    renderProfile() {
-      const container = document.querySelector('#page-profile .glass');
-      if (!container) return;
-      const p = State.get('profile') || State.get('user') || { displayName:"", phoneNumber:"", photoURL:"👤", isPremium:false };
-      container.innerHTML = `
-        <div style="position:relative; width:100px; margin:0 auto 24px;"><div class="avatar avatar-fixed" style="width:100px;height:100px;min-width:100px;font-size:48px;">${Data.escapeHtml(p.photoURL)}</div>${p.isPremium?'<span class="premium-badge" style="top:-8px;right:-8px;font-size:28px;">💎</span>':''}</div>
-        <h3>${Data.escapeHtml(p.displayName)}</h3><p>${Data.escapeHtml(p.phoneNumber)}</p>
-        <hr style="margin:28px 0;border-color:var(--surface-border);">
-        <div style="margin-bottom:20px;"><p>Тема</p>
-          <button class="theme-btn neon-btn" data-theme="neon">NEON</button>
-          <button class="theme-btn neon-btn" data-theme="minimal">MINIMAL</button>
-          <button class="theme-btn neon-btn" data-theme="glass">GLASS</button>
-        </div>
-        ${!p.isPremium?'<button id="premiumBtn" class="neon-btn" style="width:100%;background:var(--premium);color:#000;margin-bottom:20px;">💎 PREMIUM</button>':''}
-        <button id="editProfileBtn" class="neon-btn" style="width:100%;">Изменить</button>
-        <button id="logoutBtn" style="background:none;border:1px solid var(--surface-border);color:var(--danger);margin-top:24px;width:100%;padding:10px;border-radius:60px;">Выйти</button>`;
-      container.querySelectorAll('.theme-btn').forEach(btn => btn.onclick = () => { UI.applyTheme(btn.dataset.theme); UI.renderProfile(); });
-      container.querySelector('#editProfileBtn')?.addEventListener('click', async () => {
-        const name = prompt("Имя:", p.displayName);
-        const av = prompt("Аватар:", p.photoURL);
-        if (name !== null && av !== null) {
-          await updateDoc(doc(db, "users", State.get('user').uid), { username: name, avatar: av });
-          const newProfile = { ...p, displayName: name, photoURL: av };
-          State.set('profile', newProfile);
-          State.set('user', { ...State.get('user'), displayName: name, photoURL: av });
-          UI.renderProfile();
-        }
-      });
-      if (container.querySelector('#premiumBtn')) {
-        container.querySelector('#premiumBtn').onclick = async () => {
-          await updateDoc(doc(db, "users", State.get('user').uid), { isPremium: true });
-          p.isPremium = true;
-          State.set('profile', p);
-          UI.renderProfile();
-        };
-      }
-      container.querySelector('#logoutBtn').onclick = async () => { await signOut(auth); };
-    },
-    async openSearchModal() {
-      const overlay = document.getElementById('search-modal-overlay');
-      overlay.classList.remove('hidden');
-      const users = await (async () => {
-        const snap = await getDocs(collection(db, "users"));
-        return snap.docs.map(d => ({ uid: d.id, ...d.data() })).filter(u => u.uid !== State.get('user').uid);
-      })();
-      State.set('allUsers', users);
-      UI.renderSearchResults(users);
-      document.getElementById('user-search-input').oninput = (e) => {
-        const term = e.target.value.toLowerCase();
-        const filtered = term ? users.filter(u => u.username.toLowerCase().includes(term)) : users;
-        UI.renderSearchResults(filtered);
-      };
-      document.getElementById('close-search-modal').onclick = () => overlay.classList.add('hidden');
-    },
-    renderSearchResults(users) {
-      const container = document.getElementById('search-results-container');
-      if (!users.length) { container.innerHTML = `<div style="text-align:center;padding:20px;">Никого нет</div>`; return; }
-      container.innerHTML = users.map(u => `
-        <div class="search-user-item" data-uid="${u.uid}">
-          <div class="avatar avatar-fixed" style="width:40px;height:40px;min-width:40px;font-size:22px;">${Data.escapeHtml(u.avatar)}</div>
-          <div style="flex:1;">${Data.escapeHtml(u.username)}</div>
-        </div>`).join('');
-      container.querySelectorAll('.search-user-item').forEach(el => {
-        el.onclick = async () => {
-          document.getElementById('search-modal-overlay').classList.add('hidden');
-          const otherUid = el.dataset.uid;
-          await Data.createDirectChat(State.get('user').uid, otherUid);
-          UI.switchPage('chats');
-        };
-      });
+  // ========== АУТЕНТИФИКАЦИЯ ==========
+  async function loginWithPhone(phone, containerId) {
+    const verifier = await createCaptcha(containerId);
+    const confirmation = await signInWithPhoneNumber(auth, phone, verifier);
+    const code = prompt("Введите код из SMS:");
+    if (!code) throw new Error("Код не введён");
+    const result = await confirmation.confirm(code);
+    resetCaptcha();
+    return result.user;
+  }
+  async function ensureProfile(user, username, avatar) {
+    const ref = doc(db, "users", user.uid);
+    const snap = await getDoc(ref);
+    const baseData = {
+      phone: user.phoneNumber || "",
+      username: username || snap.data()?.username || "Без имени",
+      avatar: avatar || snap.data()?.avatar || "👤",
+      updatedAt: serverTimestamp()
+    };
+    if (!snap.exists()) {
+      await setDoc(ref, { ...baseData, createdAt: serverTimestamp(), fcmTokens: [] });
+    } else {
+      await updateDoc(ref, baseData);
     }
-  };
-
-  // ===================== ЗАПУСК =====================
-  window.addEventListener('resize', UI.setViewportHeight);
-  window.addEventListener('orientationchange', UI.setViewportHeight);
-  UI.setViewportHeight();
-  UI.applyTheme(localStorage.getItem('neon_theme') || 'glass');
+    const fresh = await getDoc(ref);
+    const d = fresh.data() || {};
+    return { uid: user.uid, phoneNumber: user.phoneNumber || d.phone || "", displayName: d.username || "Без имени", photoURL: d.avatar || "👤" };
+  }
+  async function loadProfile(uid) {
+    const snap = await getDoc(doc(db, "users", uid));
+    if (!snap.exists()) return null;
+    const d = snap.data();
+    return { uid, phoneNumber: d.phone || "", displayName: d.username || "Без имени", photoURL: d.avatar || "👤" };
+  }
 
   function showLogin() {
-    State.clearAllSubs();
-    document.getElementById('root').innerHTML = `
-      <div class="glass" style="max-width:480px;margin:60px auto;padding:32px;">
-        <h2>NEON</h2>
-        <input id="phone" class="neon-input" placeholder="+7 999 123-45-67" style="margin-top:20px;">
-        <input id="name" class="neon-input" placeholder="Ваше имя" style="margin-top:12px;">
-        <input id="avatar" class="neon-input" placeholder="Аватар-эмодзи (👾)" style="margin-top:12px;">
+    root.innerHTML = `
+      <div class="glass" style="max-width:520px; margin:56px auto; padding:30px;">
+        <h2 style="color:#0ff; text-align:center;">🔮 NEON LOGIN</h2>
+        <input id="phone" class="neon-input" placeholder="Номер телефона (+79991234567)" style="margin-top:16px;">
+        <input id="name" class="neon-input" placeholder="Ваше имя" style="margin-top:10px;">
+        <input id="avatar" class="neon-input" placeholder="Аватар-эмодзи (например 👾)" style="margin-top:10px;">
         <div id="recaptcha-container"></div>
-        <button id="loginBtn" class="neon-btn" style="width:100%;margin-top:16px;">Войти</button>
+        <button id="loginBtn" class="neon-btn" style="width:100%; margin-top:10px;">Войти / Регистрация</button>
+        <div style="margin-top:12px; font-size:12px; color:#88aaff;">Для Phone Auth должен быть включён номерной вход.</div>
       </div>`;
-    document.getElementById('loginBtn').onclick = async () => {
-      const phone = document.getElementById('phone').value.trim();
-      const name = document.getElementById('name').value.trim();
-      const avatar = document.getElementById('avatar').value.trim();
-      if (!phone || !name) return alert("Введите номер и имя");
+    document.getElementById("loginBtn").onclick = async () => {
+      const btn = document.getElementById("loginBtn");
+      const phone = document.getElementById("phone").value.trim();
+      const name = document.getElementById("name").value.trim();
+      const avatar = document.getElementById("avatar").value.trim();
+      if (!phone || !name) { alert("Введите номер и имя"); return; }
+      btn.disabled = true; btn.textContent = "...";
       try {
-        const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', { size:'normal' });
-        const confirmation = await signInWithPhoneNumber(auth, phone, verifier);
-        const code = prompt("Код из SMS:");
-        if (code) await confirmation.confirm(code);
-      } catch(e) { alert("Ошибка: " + e.message); }
+        const user = await loginWithPhone(phone, "recaptcha-container");
+        const profile = await ensureProfile(user, name, avatar || "👤");
+        state.user = { uid: profile.uid, phoneNumber: profile.phoneNumber, displayName: profile.displayName, photoURL: profile.photoURL };
+        state.profile = profile;
+        renderApp();
+        if (!state.isIOS) {
+          const token = await requestNotificationPermissionAndGetToken();
+          if (token) await saveFCMTokenToFirestore(state.user.uid, token);
+        }
+      } catch (err) {
+        alert("Ошибка входа: " + (err?.message || "неизвестная ошибка"));
+        showLogin();
+      } finally {
+        const cur = document.getElementById("loginBtn");
+        if (cur) { cur.disabled = false; cur.textContent = "Войти / Регистрация"; }
+      }
     };
   }
 
-  onAuthStateChanged(auth, async (user) => {
-    if (!user) { showLogin(); return; }
-    let profile = await Data.loadProfile(user.uid);
-    if (!profile) profile = await Data.ensureProfile(user, user.displayName || "Без имени", user.photoURL || "👤");
-    State.set('user', { uid: user.uid, phoneNumber: user.phoneNumber || profile.phoneNumber, displayName: profile.displayName, photoURL: profile.photoURL, isPremium: profile.isPremium });
-    State.set('profile', profile);
-    UI.initPages();
-    UI.startGlobalSubscriptions();
-    UI.switchPage('chats');
-    // Heartbeat
-    const updateOnline = () => updateDoc(doc(db, "users", user.uid), { online: true, lastSeen: serverTimestamp() });
-    updateOnline();
-    const heartbeat = setInterval(updateOnline, 30000);
-    window.addEventListener('beforeunload', () => updateDoc(doc(db, "users", user.uid), { online: false, lastSeen: serverTimestamp() }));
-    State.addGlobalSub(() => clearInterval(heartbeat));
+  // ========== ЗАГРУЗКА ДАННЫХ ==========
+  async function loadChats() {
+    if (!state.user) return [];
+    const snap = await getDocs(query(collection(db, "chats"), where("members", "array-contains", state.user.uid)));
+    const chats = await Promise.all(snap.docs.map(async d => {
+      const data = d.data();
+      let title = data.title || "Чат", av = "👤";
+      if (data.type === "direct") {
+        const other = (data.members || []).find(m => m !== state.user.uid);
+        if (other) {
+          const p = await loadProfile(other);
+          if (p) { title = p.displayName; av = p.photoURL; }
+        }
+      }
+      return { id: d.id, ...data, title, avatar: av };
+    }));
+    chats.sort((a,b) => (b.updatedAt?.toMillis()||0) - (a.updatedAt?.toMillis()||0));
+    return chats;
+  }
+  async function loadWallPosts() {
+    const snap = await getDocs(query(collection(db, "wall"), orderBy("createdAt", "desc")));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  }
+  async function refreshChats() { state.chats = await loadChats(); renderChatsList(); }
+
+  // ========== СЛУШАТЕЛИ (real-time) ==========
+  function setupWallListener() {
+    if (!state.user || state.wallUnsub) return;
+    const q = query(collection(db, "wall"), orderBy("createdAt", "desc"));
+    state.wallUnsub = onSnapshot(q, snap => {
+      state.wallPosts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      if (state.page === 'wall') renderWallPostsList();
+    });
+  }
+  async function loadAndRenderWall() {
+    const container = document.getElementById("wallPostsContainer");
+    if (!container) return;
+    container.innerHTML = `<div class="loading">📡 Загрузка постов...</div>`;
+    state.wallPosts = await loadWallPosts();
+    renderWallPostsList();
+    setupWallListener();
+  }
+  function renderWallPostsList() {
+    const c = document.getElementById("wallPostsContainer");
+    if (!c) return;
+    if (!state.wallPosts.length) { c.innerHTML = `<div class="loading">📡 Ещё нет постов. Напиши первый!</div>`; return; }
+    c.innerHTML = state.wallPosts.map(post => {
+      const comments = post.comments || [];
+      return `
+        <div class="wall-post" data-post-id="${post.id}">
+          <div style="display:flex; gap:12px; align-items:center; margin-bottom:12px;">
+            <div class="avatar" style="width:44px; height:44px; font-size:24px;">${escapeHtml(post.avatar||"👤")}</div>
+            <strong style="color:#fff;">${escapeHtml(post.author||"Аноним")}</strong>
+          </div>
+          <div style="white-space:pre-wrap;">${escapeHtml(post.content||"")}</div>
+          <div style="display:flex; gap:16px; margin-top:12px;">
+            <button class="like-btn neon-btn" data-post-id="${post.id}" style="padding:8px 14px;">❤️ ${post.likesCount||0}</button>
+            <button class="comment-btn neon-btn" data-post-id="${post.id}" style="padding:8px 14px;">💬 ${comments.length}</button>
+          </div>
+          <div class="comments" style="margin-top:12px;">
+            ${comments.map(c => `<div style="background:rgba(0,255,255,0.1); border-radius:20px; padding:6px 12px; margin-top:6px;">💬 ${escapeHtml(c)}</div>`).join("")}
+          </div>
+        </div>`;
+    }).join("");
+    c.querySelectorAll(".like-btn").forEach(btn => {
+      btn.onclick = async () => { await updateDoc(doc(db, "wall", btn.dataset.postId), { likesCount: increment(1) }); };
+    });
+    c.querySelectorAll(".comment-btn").forEach(btn => {
+      btn.onclick = async () => {
+        const comment = prompt("Ваш комментарий:"); if (!comment?.trim()) return;
+        await updateDoc(doc(db, "wall", btn.dataset.postId), { comments: arrayUnion(comment.trim()) });
+      };
+    });
+  }
+  async function publishPost() {
+    const input = document.getElementById("postContent"); if (!input) return;
+    const content = input.value.trim(); if (!content) return;
+    await addDoc(collection(db, "wall"), {
+      author: state.profile?.displayName || state.user?.displayName || "Без имени",
+      avatar: state.profile?.photoURL || state.user?.photoURL || "👤",
+      content, likesCount: 0, comments: [], createdAt: serverTimestamp(), userId: state.user.uid
+    });
+    input.value = "";
+  }
+
+  // ========== РЕНДЕРИНГ ==========
+  function renderNav(active) {
+    return `<div class="bottom-nav">
+      <button class="nav-item ${active==='chats'?'active':''}" data-page="chats"><span class="nav-icon">💬</span><span>ЧАТЫ</span></button>
+      <button class="nav-item ${active==='wall'?'active':''}" data-page="wall"><span class="nav-icon">📡</span><span>СТЕНА</span></button>
+      <button class="nav-item ${active==='profile'?'active':''}" data-page="profile"><span class="nav-icon">👾</span><span>ПРОФИЛЬ</span></button>
+    </div>`;
+  }
+  function renderChatsList() {
+    const list = document.getElementById("chatsList"); if (!list) return;
+    if (!state.chats.length) { list.innerHTML = `<div class="loading">✨ Нет чатов. Нажмите + чтобы создать новый.</div>`; return; }
+    list.innerHTML = state.chats.map(chat => `
+      <div class="chat-item" data-chat-id="${chat.id}">
+        <div class="avatar">${escapeHtml(chat.avatar||"👤")}</div>
+        <div style="min-width:0; flex:1;">
+          <div style="font-weight:700; color:#fff;">${escapeHtml(chat.title||"Чат")}</div>
+          <div style="font-size:13px; color:#9db7d3; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(chat.lastMessage||"Нет сообщений")}</div>
+        </div>
+      </div>`).join("");
+    list.querySelectorAll(".chat-item").forEach(el => {
+      el.onclick = () => { const chat = state.chats.find(c => c.id === el.dataset.chatId); if (chat) openChat(chat); };
+    });
+  }
+  function renderChatsPage() {
+    root.innerHTML = `
+      <div style="max-width:1300px; margin:0 auto; padding:16px; padding-bottom:90px;">
+        <div id="chatsPage" class="page active-page">
+          <div class="glass" style="padding:18px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+              <h2 style="text-shadow:0 0 5px #0ff; color:#fff;">💬 NEON CHATS</h2>
+              <button id="newChatBtn" style="background:none; color:cyan; font-size:28px; border:1px solid cyan; border-radius:40px; padding:4px 16px;">+</button>
+            </div>
+            <div id="chatsList"><div class="loading">Загрузка чатов...</div></div>
+          </div>
+        </div>
+      </div>${renderNav("chats")}`;
+    document.getElementById("newChatBtn").onclick = createNewChat;
+    document.querySelectorAll(".nav-item").forEach(btn => { btn.onclick = () => switchPage(btn.dataset.page); });
+    renderChatsList();
+  }
+  function renderWallPage() {
+    root.innerHTML = `
+      <div style="max-width:1300px; margin:0 auto; padding:16px; padding-bottom:90px;">
+        <div id="wallPage" class="page active-page">
+          <div class="glass" style="padding:18px;">
+            <h2 style="text-shadow:0 0 5px #0ff; color:#fff; margin-bottom:20px;">📡 КИБЕР-СТЕНА</h2>
+            <textarea id="postContent" rows="2" placeholder="Опубликовать пост..." style="width:100%; border-radius:28px; background:#0a0f1f; border:1px solid cyan; color:cyan; padding:12px;"></textarea>
+            <div style="display:flex; justify-content:flex-end; margin-top:10px;"><button id="publishPostBtn" class="neon-btn">⚡ ЗАПУСТИТЬ</button></div>
+            <div id="wallPostsContainer" style="margin-top:18px;"><div class="loading">Загрузка постов...</div></div>
+          </div>
+        </div>
+      </div>${renderNav("wall")}`;
+    document.getElementById("publishPostBtn").onclick = publishPost;
+    document.querySelectorAll(".nav-item").forEach(btn => { btn.onclick = () => switchPage(btn.dataset.page); });
+    loadAndRenderWall();
+  }
+  function renderProfilePage() {
+    const profile = state.profile || state.user || { displayName: "Без имени", phoneNumber: "", photoURL: "👤" };
+    const notifStatus = Notification.permission;
+    root.innerHTML = `
+      <div style="max-width:1300px; margin:0 auto; padding:16px; padding-bottom:90px;">
+        <div id="profilePage" class="page active-page">
+          <div class="glass" style="padding:28px; text-align:center;">
+            <div style="width:100px; height:100px; border-radius:50%; margin:0 auto 20px; background:linear-gradient(135deg, cyan, magenta); display:flex; align-items:center; justify-content:center; font-size:48px;">${escapeHtml(profile.photoURL||"👤")}</div>
+            <h3 style="font-size:26px; color:#fff;">${escapeHtml(profile.displayName||"Без имени")}</h3>
+            <p style="color:#99f;">${escapeHtml(profile.phoneNumber||"")}</p>
+            <hr style="margin:24px 0; border-color:cyan;">
+            <div style="background: rgba(0,0,0,0.3); border-radius:20px; padding:15px; margin-bottom:15px;">
+              ${state.isIOS ? `
+                <div style="color:#ff0; font-size:14px; margin-bottom:10px;">⚠️ iOS: уведомления работают только если сайт добавлен на домашний экран (PWA).</div>
+                <p style="color:#88aaff; font-size:12px;">Нажмите «Поделиться» → «На экран Домой», затем откройте приложение с иконки.</p>
+              ` : `
+                <div style="color:${notifStatus==='granted'?'#0f0':'#ff0'}; font-size:14px; margin-bottom:10px;">${notifStatus==='granted'?'✅ Уведомления включены':'⚠️ Уведомления не настроены'}</div>
+                <button id="enableNotificationsBtn" class="neon-btn" style="width:100%;">🔔 ${notifStatus==='granted'?'ОБНОВИТЬ':'ВКЛЮЧИТЬ УВЕДОМЛЕНИЯ'}</button>
+                ${state.isAndroid ? `<p style="color:#88aaff; font-size:11px; margin-top:8px;">Если не приходят: проверьте настройки браузера и системы.</p>` : ''}
+              `}
+            </div>
+            <button id="editProfileBtn" class="neon-btn" style="margin-top:10px; width:100%;">✏️ Изменить профиль</button>
+            <button id="logoutBtn" style="background:none; border:1px solid magenta; color:magenta; margin-top:20px; width:100%; padding:10px; border-radius:40px;">ВЫЙТИ</button>
+          </div>
+        </div>
+      </div>${renderNav("profile")}`;
+
+    if (!state.isIOS) {
+      document.getElementById("enableNotificationsBtn").onclick = async () => {
+        const token = await requestNotificationPermissionAndGetToken();
+        if (token) { await saveFCMTokenToFirestore(state.user.uid, token); alert('✅ Уведомления включены!'); renderProfilePage(); }
+        else alert('❌ Не удалось включить. Проверьте разрешения браузера.');
+      };
+    }
+    document.getElementById("editProfileBtn").onclick = async () => {
+      const newName = prompt("Новое имя:", profile.displayName||"");
+      if (newName === null) return;
+      const newAvatar = prompt("Новый аватар-эмодзи:", profile.photoURL||"👤");
+      if (newAvatar === null) return;
+      await updateDoc(doc(db, "users", state.user.uid), {
+        username: newName.trim() || "Без имени",
+        avatar: newAvatar.trim() || "👤",
+        updatedAt: serverTimestamp()
+      });
+      state.profile = { ...profile, displayName: newName.trim(), photoURL: newAvatar.trim() };
+      state.user.displayName = state.profile.displayName;
+      state.user.photoURL = state.profile.photoURL;
+      renderProfilePage();
+    };
+    document.getElementById("logoutBtn").onclick = async () => {
+      await signOut(auth);
+      stopPolling();
+      state.user = null; state.profile = null; state.chats = []; state.wallPosts = [];
+      if (state.chatUnsub) state.chatUnsub();
+      if (state.globalChatsUnsub) state.globalChatsUnsub();
+      if (state.wallUnsub) state.wallUnsub();
+      showLogin();
+    };
+    document.querySelectorAll(".nav-item").forEach(btn => { btn.onclick = () => switchPage(btn.dataset.page); });
+  }
+
+  function switchPage(page) {
+    if (state.page === page) return;
+    if (state.page === 'wall' && state.wallUnsub) { state.wallUnsub(); state.wallUnsub = null; }
+    if (state.page === 'chats' && state.globalChatsUnsub) { state.globalChatsUnsub(); state.globalChatsUnsub = null; }
+    state.page = page;
+    if (page === 'chats') renderApp();
+    else if (page === 'wall') renderWallPage();
+    else if (page === 'profile') renderProfilePage();
+  }
+
+  function renderApp() {
+    if (state.page === 'wall') return renderWallPage();
+    if (state.page === 'profile') return renderProfilePage();
+    renderChatsPage();
+    refreshChats();
+    setupGlobalMessageListener();
+  }
+
+  // ========== ЧАТ (С ГОЛОСОВЫМИ) ==========
+  async function openChat(chat) {
+    if (state.chatUnsub) { state.chatUnsub(); state.chatUnsub = null; }
+    state.activeChat = chat;
+    const title = chat.type === "direct" ? chat.title : (chat.title || "Чат");
+    const av = chat.avatar || "👤";
+    root.innerHTML = `
+      <div style="max-width:1300px; margin:0 auto; padding:16px; padding-bottom:90px;">
+        <div class="glass" style="padding:12px; height:calc(100vh - 120px); height:calc(var(--vh, 1vh) * 100 - 120px); display:flex; flex-direction:column;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap:12px;">
+            <button id="backToChatsBtn" style="background:none; font-size:28px; color:cyan; border:none;">←</button>
+            <div style="display:flex; align-items:center; gap:10px; flex:1; justify-content:center;">
+              <div class="avatar" style="width:40px; height:40px; font-size:22px;">${escapeHtml(av)}</div>
+              <h3 style="color:#fff;">${escapeHtml(title)}</h3>
+            </div>
+            <div style="width:28px;"></div>
+          </div>
+          <div id="chatMessagesArea" class="messages-area" style="flex:1;"></div>
+          <div style="display:flex; gap:6px; margin-top:12px; align-items:center;">
+            <button id="voiceRecordBtn" class="voice-btn">🎤</button>
+            <input type="text" id="messageInput" class="neon-input" style="flex:1;" placeholder="Сообщение...">
+            <button id="sendMsgBtn" class="neon-btn">➤</button>
+          </div>
+          <div id="recordingIndicator" style="text-align:center; color:#f0f; margin-top:4px; display:none;">🔴 Запись...</div>
+        </div>
+      </div>`;
+    const messagesContainer = document.getElementById("chatMessagesArea");
+    const messagesRef = collection(db, "chats", chat.id, "messages");
+    const messagesQuery = query(messagesRef, orderBy("createdAt", "asc"));
+    state.chatUnsub = onSnapshot(messagesQuery, snap => {
+      messagesContainer.innerHTML = "";
+      snap.forEach(msgDoc => {
+        const msg = msgDoc.data();
+        const isOut = msg.userId === state.user.uid;
+        const time = msg.createdAt?.toDate ? new Date(msg.createdAt.toDate()).toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" }) : "";
+        const div = document.createElement("div");
+        div.className = `message ${isOut ? "out" : "in"}`;
+        if (msg.type === 'audio') {
+          div.innerHTML = `
+            <div style="display:flex; align-items:center; gap:8px;">
+              <audio controls src="${escapeHtml(msg.audioURL)}"></audio>
+              <span style="font-size:12px;">${msg.duration ? Math.round(msg.duration) + 'с' : ''}</span>
+            </div>
+            <div style="font-size:10px; opacity:0.7; margin-top:4px;">${time}</div>`;
+        } else {
+          div.innerHTML = `<div>${escapeHtml(msg.text||"")}</div><div style="font-size:10px; opacity:0.7; margin-top:4px;">${time}</div>`;
+        }
+        messagesContainer.appendChild(div);
+      });
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }, err => {
+      console.error("Chat listener error:", err);
+      setTimeout(() => { if (state.activeChat?.id === chat.id) openChat(chat); }, 1000);
+    });
+    document.getElementById("backToChatsBtn").onclick = () => {
+      if (state.chatUnsub) { state.chatUnsub(); state.chatUnsub = null; }
+      state.activeChat = null; state.page = "chats"; renderApp();
+    };
+    const sendMsg = async () => {
+      const input = document.getElementById("messageInput");
+      const text = input.value.trim(); if (!text) return;
+      await addDoc(messagesRef, { text, userId: state.user.uid, createdAt: serverTimestamp() });
+      await updateDoc(doc(db, "chats", chat.id), { lastMessage: text, lastMessageUserId: state.user.uid, updatedAt: serverTimestamp() });
+      input.value = "";
+    };
+    document.getElementById("sendMsgBtn").onclick = sendMsg;
+    document.getElementById("messageInput").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); sendMsg(); } });
+
+    // ===== ГОЛОСОВЫЕ =====
+    const voiceBtn = document.getElementById("voiceRecordBtn");
+    voiceBtn.onclick = () => toggleVoiceRecording(chat.id);
+  }
+
+  // ========== ГОЛОСОВЫЕ ФУНКЦИИ ==========
+  async function toggleVoiceRecording(chatId) {
+    if (state.mediaRecorder && state.mediaRecorder.state === 'recording') {
+      // Останавливаем запись
+      state.mediaRecorder.stop();
+      document.getElementById("voiceRecordBtn").classList.remove("recording");
+      document.getElementById("recordingIndicator").style.display = "none";
+    } else {
+      // Начинаем запись
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert("Микрофон не доступен. Используйте HTTPS и современный браузер.");
+        return;
+      }
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        state.audioChunks = [];
+        state.recordingChatId = chatId;
+        const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
+        state.mediaRecorder = recorder;
+        recorder.ondataavailable = e => {
+          if (e.data.size > 0) state.audioChunks.push(e.data);
+        };
+        recorder.onstop = async () => {
+          // Останавливаем все дорожки микрофона
+          stream.getTracks().forEach(track => track.stop());
+          if (state.audioChunks.length === 0) return;
+          const blob = new Blob(state.audioChunks, { type: 'audio/webm' });
+          state.audioChunks = [];
+          // Загружаем в Storage
+          await uploadAudioAndSendMessage(chatId, blob);
+        };
+        recorder.start();
+        document.getElementById("voiceRecordBtn").classList.add("recording");
+        document.getElementById("recordingIndicator").style.display = "block";
+      } catch (err) {
+        console.error("Ошибка доступа к микрофону:", err);
+        alert("Не удалось получить доступ к микрофону.");
+      }
+    }
+  }
+
+  async function uploadAudioAndSendMessage(chatId, blob) {
+    const btn = document.getElementById("sendMsgBtn");
+    btn.disabled = true;
+    btn.textContent = "⏳";
+    const messagesRef = collection(db, "chats", chatId, "messages");
+    // Генерируем ID сообщения заранее
+    const newMsgRef = doc(messagesRef);
+    const filePath = `chats/${chatId}/audio/${newMsgRef.id}.webm`;
+    const storageRef = ref(storage, filePath);
+    try {
+      const uploadTask = uploadBytesResumable(storageRef, blob);
+      // Ждём завершения загрузки
+      await new Promise((resolve, reject) => {
+        uploadTask.on('state_changed',
+          null,
+          (error) => reject(error),
+          () => resolve()
+        );
+      });
+      const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+      // Вычисляем длительность (приблизительно)
+      const audioEl = document.createElement('audio');
+      audioEl.src = downloadURL;
+      let duration = 0;
+      await new Promise((resolve) => {
+        audioEl.addEventListener('loadedmetadata', () => {
+          duration = audioEl.duration;
+          resolve();
+        });
+        audioEl.load();
+      });
+      // Сохраняем сообщение в Firestore
+      await setDoc(newMsgRef, {
+        type: 'audio',
+        audioURL: downloadURL,
+        duration: duration,
+        userId: state.user.uid,
+        createdAt: serverTimestamp()
+      });
+      // Обновляем lastMessage в чате
+      await updateDoc(doc(db, "chats", chatId), {
+        lastMessage: "🎤 Голосовое сообщение",
+        lastMessageUserId: state.user.uid,
+        updatedAt: serverTimestamp()
+      });
+    } catch (error) {
+      console.error("Ошибка загрузки аудио:", error);
+      alert("Не удалось отправить голосовое сообщение.");
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "➤";
+    }
+  }
+
+  // ========== ОСТАЛЬНЫЕ ФУНКЦИИ (createNewChat, setupGlobalMessageListener, уведомления и пр.) ==========
+  async function createNewChat() {
+    const usersSnap = await getDocs(collection(db, "users"));
+    const users = [];
+    usersSnap.forEach(d => { if (d.id !== state.user.uid) { const data = d.data(); users.push({ uid: d.id, username: data.username || "Пользователь", avatar: data.avatar || "👤" }); } });
+    if (!users.length) { alert("Нет других пользователей"); return; }
+    const choice = prompt("Выберите пользователя:\n" + users.map((u,i)=>`${i+1}. ${u.username} ${u.avatar}`).join("\n") + "\nВведите номер:");
+    const index = parseInt(choice,10)-1;
+    const selected = users[index]; if (!selected) return;
+    const chatId = directChatId(state.user.uid, selected.uid);
+    const chatRef = doc(db, "chats", chatId);
+    if (!(await getDoc(chatRef)).exists()) {
+      await setDoc(chatRef, { type:"direct", members:[state.user.uid, selected.uid], createdAt:serverTimestamp(), updatedAt:serverTimestamp(), lastMessage:"" });
+    }
+    state.chats = await loadChats();
+    const chat = state.chats.find(c => c.id === chatId);
+    if (chat) openChat(chat);
+  }
+
+  function setupGlobalMessageListener() {
+    if (!state.user || state.globalChatsUnsub) return;
+    const q = query(collection(db, "chats"), where("members", "array-contains", state.user.uid));
+    state.globalChatsUnsub = onSnapshot(q, async snap => {
+      snap.docChanges().forEach(async change => {
+        if (change.type === "modified") {
+          const chat = change.doc.data();
+          const chatId = change.doc.id;
+          if (chat.lastMessageUserId && chat.lastMessageUserId !== state.user.uid && state.activeChat?.id !== chatId) {
+            if (Notification.permission === 'granted') {
+              const sender = await loadProfile(chat.lastMessageUserId);
+              new Notification(`${sender?.displayName || 'NEON'} 💬`, {
+                body: chat.lastMessage, icon: '/neon/icon-192x192.png', tag: chatId
+              }).onclick = () => { window.focus(); const c = state.chats.find(x => x.id === chatId); if (c) openChat(c); };
+            }
+            refreshChats();
+          }
+        }
+      });
+    }, err => { console.error("Global listener error:", err); setTimeout(() => { if (state.user) { state.globalChatsUnsub = null; setupGlobalMessageListener(); } }, 1000); });
+  }
+
+  // ========== УВЕДОМЛЕНИЯ ==========
+  async function requestNotificationPermissionAndGetToken() {
+    if (!messaging) { alert("Ваш браузер не поддерживает уведомления"); return null; }
+    try {
+      const swPath = '/neon/firebase-messaging-sw.js';
+      const reg = await navigator.serviceWorker.register(swPath);
+      await navigator.serviceWorker.ready;
+      const permission = await Notification.requestPermission();
+      if (permission === 'granted') {
+        const token = await getToken(messaging, {
+          vapidKey: 'BDRTV4EZNNWVT9_dRipTDFG_JHwJa53Ne82UgG5g6XdgLWufZumogCNM8EQK_T-Qg9fZDeCEq7_R6DchHcfWXZQ',
+          serviceWorkerRegistration: reg
+        });
+        if (token) { state.fcmToken = token; return token; }
+      }
+    } catch (error) { console.error("Token error:", error); }
+    return null;
+  }
+  async function saveFCMTokenToFirestore(uid, token) {
+    if (!uid || !token) return;
+    await updateDoc(doc(db, "users", uid), { fcmTokens: arrayUnion(token) }).catch(()=>{});
+  }
+  if (messaging) {
+    onMessage(messaging, payload => {
+      if (payload.notification) new Notification(payload.notification.title, { body: payload.notification.body, icon: '/neon/icon-192x192.png' });
+    });
+  }
+
+  // ========== POLLING ==========
+  function startPolling() {
+    if (state.pollingInterval) clearInterval(state.pollingInterval);
+    state.pollingInterval = setInterval(async () => {
+      if (!state.user || document.visibilityState !== 'visible') return;
+      if (state.page === 'chats') await refreshChats();
+      if (state.page === 'wall') await loadAndRenderWall();
+    }, 5000);
+  }
+  function stopPolling() { if (state.pollingInterval) { clearInterval(state.pollingInterval); state.pollingInterval = null; } }
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && state.user) {
+      if (state.page === 'chats') { if (state.globalChatsUnsub) { state.globalChatsUnsub(); state.globalChatsUnsub = null; } setupGlobalMessageListener(); refreshChats(); }
+      if (state.page === 'wall') { if (state.wallUnsub) { state.wallUnsub(); state.wallUnsub = null; } setupWallListener(); loadAndRenderWall(); }
+      if (state.activeChat) { const c = state.activeChat; if (state.chatUnsub) { state.chatUnsub(); state.chatUnsub = null; } state.activeChat = null; openChat(c); }
+    }
   });
+
+  // ========== ЗАПУСК ==========
+  function boot() {
+    startPolling();
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        stopPolling();
+        state.user = null; state.profile = null; state.chats = []; state.wallPosts = [];
+        if (state.chatUnsub) state.chatUnsub();
+        if (state.globalChatsUnsub) state.globalChatsUnsub();
+        if (state.wallUnsub) state.wallUnsub();
+        showLogin();
+        return;
+      }
+      let profile = await loadProfile(user.uid);
+      if (!profile) profile = await ensureProfile(user, user.displayName || "Без имени", user.photoURL || "👤");
+      state.user = { uid: user.uid, phoneNumber: user.phoneNumber || profile.phoneNumber, displayName: profile.displayName, photoURL: profile.photoURL };
+      state.profile = profile;
+      if (state.page === 'profile') renderProfilePage(); else { state.page = 'chats'; renderApp(); }
+      if (!state.isIOS) {
+        const token = await requestNotificationPermissionAndGetToken();
+        if (token) await saveFCMTokenToFirestore(state.user.uid, token);
+      }
+    });
+  }
+  boot();
 </script>
 </body>
 </html>
