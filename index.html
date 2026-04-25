@@ -8,7 +8,7 @@
   <meta name="theme-color" content="#0a0a0a" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet" />
-  <title>NEON MESSENGER | STABLE</title>
+  <title>NEON MESSENGER | FIXED</title>
   <style>
     /* === общие стили (без изменений) === */
     :root { --bg: #0a0f1f; --surface: rgba(15, 25, 45, 0.7); --surface-border: rgba(0, 255, 255, 0.35); --text-primary: #d8f8ff; --text-secondary: #9db7d3; --accent: #0ff; --accent-glow: rgba(0, 255, 255, 0.5); --danger: #ff5580; --premium: #f5c542; --safe-bottom: env(safe-area-inset-bottom, 20px); --radius-lg: 32px; --radius-md: 24px; --radius-sm: 18px; --font: 'Montserrat', system-ui, -apple-system, sans-serif; --transition: 0.3s cubic-bezier(0.23, 1, 0.32, 1); --glass-blur: 22px; --bg-image: radial-gradient(circle at 20% 30%, #0a0f1f, #03050b); }
@@ -40,9 +40,13 @@
     .page.visible-page { display: block; animation: fadeSlide 0.3s ease; }
     @keyframes fadeSlide { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 
+    /* chat page fullscreen fix */
+    #page-chat { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 50; background: var(--bg); }
+
     .chat-item { display: flex; align-items: center; gap: 16px; padding: 14px 18px; border-radius: var(--radius-md); cursor: pointer; transition: var(--transition); background: transparent; margin-bottom: 6px; }
     .chat-item:active { background: rgba(255,255,255,0.03); transform: scale(0.98); }
-    .avatar { position: relative; width: 52px; height: 52px; min-width: 52px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), rgba(0,0,0,0.3)); background-size: 160% 160%; background-position: center; border: 1px solid var(--surface-border); display: flex; align-items: center; justify-content: center; font-size: 28px; box-shadow: 0 8px 16px rgba(0,0,0,0.4); overflow: hidden; transition: var(--transition); }
+    .avatar { position: relative; width: 52px; height: 52px; min-width: 52px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), rgba(0,0,0,0.3)); background-size: 100% 100%; background-position: center; border: 1px solid var(--surface-border); display: flex; align-items: center; justify-content: center; font-size: 28px; box-shadow: 0 8px 16px rgba(0,0,0,0.4); overflow: hidden; transition: var(--transition); }
+    .avatar-fixed { background-size: 100% 100% !important; }
     .online-dot { position: absolute; bottom: 4px; right: 4px; width: 13px; height: 13px; background: #4caf50; border-radius: 50%; border: 2px solid var(--bg); box-shadow: 0 0 8px rgba(76,175,80,0.6); animation: breathe 2s infinite; }
     @keyframes breathe { 0%,100%{ transform:scale(1); opacity:1; } 50%{ transform:scale(1.2); opacity:0.8; } }
     .premium-badge { position: absolute; top: -4px; right: -4px; font-size: 18px; filter: drop-shadow(0 0 6px var(--premium)); z-index: 2; }
@@ -61,8 +65,8 @@
     .search-user-item:hover { background: rgba(255,255,255,0.04); }
 
     /* === ЧАТ UI === */
-    .chat-container { height: 100vh; height: calc(var(--vh, 1vh) * 100); display: flex; flex-direction: column; background: var(--bg); }
-    .chat-header { display: flex; align-items: center; padding: 10px 16px; background: var(--surface); backdrop-filter: blur(var(--glass-blur)); -webkit-backdrop-filter: blur(var(--glass-blur)); border-bottom: 1px solid var(--surface-border); position: sticky; top: 0; z-index: 10; height: 64px; }
+    .chat-container { height: 100%; display: flex; flex-direction: column; }
+    .chat-header { display: flex; align-items: center; padding: 10px 16px; background: var(--surface); backdrop-filter: blur(var(--glass-blur)); -webkit-backdrop-filter: blur(var(--glass-blur)); border-bottom: 1px solid var(--surface-border); height: 64px; flex-shrink: 0; }
     .back-btn, .delete-btn { background: none; border: none; color: var(--text-primary); font-size: 24px; cursor: pointer; padding: 8px; line-height: 1; }
     .back-btn { margin-right: 8px; }
     .delete-btn { margin-left: auto; }
@@ -80,14 +84,14 @@
     .message .edit-btn { position: absolute; top: 4px; right: 8px; background: rgba(0,0,0,0.5); border: none; color: var(--accent); font-size: 13px; padding: 2px 6px; border-radius: 10px; opacity: 0; transition: opacity 0.2s; }
     .message:hover .edit-btn, .message:active .edit-btn { opacity: 1; }
 
-    .chat-input-area { display: flex; align-items: center; margin: 10px 12px; margin-bottom: calc(10px + var(--safe-bottom)); border-radius: 28px; background: rgba(255,255,255,0.06); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid var(--surface-border); padding: 6px; box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
+    .chat-input-area { display: flex; align-items: center; margin: 10px 12px; margin-bottom: calc(10px + var(--safe-bottom)); border-radius: 28px; background: rgba(255,255,255,0.06); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid var(--surface-border); padding: 6px; box-shadow: 0 4px 16px rgba(0,0,0,0.3); flex-shrink: 0; }
     .chat-input-area .voice-btn { background: none; border: none; color: var(--text-secondary); font-size: 22px; padding: 6px; margin-right: 4px; }
     .chat-input-area .voice-btn.recording { color: var(--accent); }
     #messageInput { flex: 1; background: transparent; border: none; color: var(--text-primary); font-size: 15px; outline: none; padding: 6px 8px; }
     .send-btn { background: var(--accent); border: none; color: var(--bg); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; margin-left: 4px; cursor: pointer; transition: transform 0.2s; flex-shrink: 0; }
     .send-btn:active { transform: scale(0.9); }
-    .typing-indicator { padding: 2px 16px; font-size: 13px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; height: 20px; }
-    .recording-indicator { text-align: center; color: var(--accent); font-size: 14px; padding: 4px; }
+    .typing-indicator { padding: 2px 16px; font-size: 13px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; height: 20px; flex-shrink: 0; }
+    .recording-indicator { text-align: center; color: var(--accent); font-size: 14px; padding: 4px; flex-shrink: 0; }
     @media (max-width:480px) { .message { max-width: 85%; } }
   </style>
 </head>
@@ -96,24 +100,16 @@
 
 <div id="search-modal-overlay" class="hidden">
   <div id="search-modal">
-    <div class="modal-header">
-      <span>🔍 Новый чат</span>
-      <button id="close-search-modal" style="background:none;border:none;color:var(--text-primary);font-size:24px;cursor:pointer;">✕</button>
-    </div>
-    <div style="padding:8px 16px;">
-      <input type="text" id="user-search-input" class="neon-input" placeholder="Поиск по имени..." autocomplete="off" />
-    </div>
-    <div class="modal-body" id="search-results-container">
-      <div class="loading">Загрузка...</div>
-    </div>
+    <div class="modal-header"><span>🔍 Новый чат</span><button id="close-search-modal" style="background:none;border:none;color:var(--text-primary);font-size:24px;cursor:pointer;">✕</button></div>
+    <div style="padding:8px 16px;"><input type="text" id="user-search-input" class="neon-input" placeholder="Поиск по имени..." autocomplete="off" /></div>
+    <div class="modal-body" id="search-results-container"><div class="loading">Загрузка...</div></div>
   </div>
 </div>
 
 <script type="module">
-  // ===================== 1. FIREBASE ИНИЦИАЛИЗАЦИЯ =====================
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
   import { getAuth, onAuthStateChanged, signOut, RecaptchaVerifier, signInWithPhoneNumber } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-  import { initializeFirestore, enableIndexedDbPersistence, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, addDoc, query, where, orderBy, limit, onSnapshot, serverTimestamp, increment } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+  import { initializeFirestore, enableIndexedDbPersistence, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, addDoc, query, where, orderBy, onSnapshot, serverTimestamp, increment } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
   import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
   import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
@@ -135,9 +131,9 @@
   try { messaging = getMessaging(app); } catch (e) { console.warn("Messaging not supported"); }
   auth.languageCode = "ru";
 
-  // ===================== 2. DATA LAYER (чистые запросы к Firebase) =====================
+  // ===================== DATA LAYER =====================
   const Data = {
-    // Профиль
+    escapeHtml: (s) => String(s ?? "").replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;' }[m])),
     async loadProfile(uid) {
       const snap = await getDoc(doc(db, "users", uid));
       if (!snap.exists()) return null;
@@ -151,31 +147,25 @@
         phone: user.phoneNumber || "",
         username: username || snap.data()?.username || "Без имени",
         avatar: avatar || snap.data()?.avatar || "👤",
-        online: true,
-        lastSeen: serverTimestamp(),
-        updatedAt: serverTimestamp(),
+        online: true, lastSeen: serverTimestamp(), updatedAt: serverTimestamp(),
         isPremium: snap.data()?.isPremium || false
       };
       if (!snap.exists()) await setDoc(ref, { ...base, createdAt: serverTimestamp(), fcmTokens: [] });
       else await updateDoc(ref, base);
       return (await getDoc(ref)).data();
     },
-    async saveFCMToken(uid, token) {
-      await updateDoc(doc(db, "users", uid), { fcmTokens: [token] });
-    },
-
-    // Чаты
+    async saveFCMToken(uid, token) { await updateDoc(doc(db, "users", uid), { fcmTokens: [token] }); },
+    // чаты
     subscribeChats(uid, callback) {
       const q = query(collection(db, "chats"), where("members", "array-contains", uid), orderBy("updatedAt", "desc"));
-      return onSnapshot(q, callback, error => { console.error("Chats sub error", error); callback({ docs: [] }); });
+      return onSnapshot(q, callback);
     },
     subscribeMessages(chatId, callback) {
       const q = query(collection(db, "chats", chatId, "messages"), orderBy("createdAt", "asc"));
       return onSnapshot(q, callback);
     },
     subscribeTyping(chatId, callback) {
-      const q = collection(db, "chats", chatId, "typing");
-      return onSnapshot(q, callback);
+      return onSnapshot(collection(db, "chats", chatId, "typing"), callback);
     },
     subscribePresence(uid, callback) {
       return onSnapshot(doc(db, "users", uid), callback);
@@ -184,50 +174,33 @@
       return onSnapshot(collection(db, "wall"), callback);
     },
     async sendMessage(chatId, text) {
-      await addDoc(collection(db, "chats", chatId, "messages"), {
-        text,
-        userId: auth.currentUser.uid,
-        createdAt: serverTimestamp()
-      });
-      await updateDoc(doc(db, "chats", chatId), {
-        lastMessage: text,
-        updatedAt: serverTimestamp()
-      });
+      const ref = collection(db, "chats", chatId, "messages");
+      await addDoc(ref, { text, userId: auth.currentUser.uid, createdAt: serverTimestamp() });
+      await updateDoc(doc(db, "chats", chatId), { lastMessage: text, updatedAt: serverTimestamp() });
     },
-    async deleteChat(chatId) {
-      await deleteDoc(doc(db, "chats", chatId));
-    },
+    async deleteChat(chatId) { await deleteDoc(doc(db, "chats", chatId)); },
     async createDirectChat(uid1, uid2) {
       const chatId = [uid1, uid2].sort().join("__");
       const ref = doc(db, "chats", chatId);
-      if (!(await getDoc(ref)).exists()) {
+      const existing = await getDoc(ref);
+      if (!existing.exists()) {
+        const otherProfile = await Data.loadProfile(uid2);
+        const title = otherProfile?.displayName || "Пользователь";
+        const avatar = otherProfile?.photoURL || "👤";
         await setDoc(ref, {
-          type: "direct",
-          members: [uid1, uid2],
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-          lastMessage: ""
+          type: "direct", members: [uid1, uid2],
+          title, avatar,
+          createdAt: serverTimestamp(), updatedAt: serverTimestamp(), lastMessage: ""
         });
       }
       return chatId;
     },
-    // Стена
     async publishPost(author, avatar, content) {
-      await addDoc(collection(db, "wall"), {
-        author, avatar, content,
-        likesCount: 0, commentsCount: 0,
-        createdAt: serverTimestamp(),
-        userId: auth.currentUser.uid
-      });
+      await addDoc(collection(db, "wall"), { author, avatar, content, likesCount: 0, commentsCount: 0, createdAt: serverTimestamp(), userId: auth.currentUser.uid });
     },
-    async likePost(postId) {
-      await updateDoc(doc(db, "wall", postId), { likesCount: increment(1) });
-    },
+    async likePost(postId) { await updateDoc(doc(db, "wall", postId), { likesCount: increment(1) }); },
     async addComment(postId, authorId, authorName, authorAvatar, text) {
-      await addDoc(collection(db, "wall_comments"), {
-        postId, authorId, authorName, authorAvatar, text,
-        replyTo: null, createdAt: serverTimestamp()
-      });
+      await addDoc(collection(db, "wall_comments"), { postId, authorId, authorName, authorAvatar, text, replyTo: null, createdAt: serverTimestamp() });
       await updateDoc(doc(db, "wall", postId), { commentsCount: increment(1) });
     },
     async loadComments(postId) {
@@ -236,20 +209,16 @@
     }
   };
 
-  // ===================== 3. STATE LAYER (централизованное состояние) =====================
+  // ===================== STATE LAYER =====================
   class AppState {
     constructor() {
       this.state = {
-        user: null,
-        profile: null,
-        page: "chats",
-        chats: [],
-        wallPosts: [],
-        activeChat: null,
-        allUsers: []
+        user: null, profile: null, page: "chats", chats: [], wallPosts: [],
+        activeChat: null, allUsers: []
       };
       this.listeners = {};
-      this.subscriptions = [];
+      this.globalSubs = [];   // для чатов и стены (не отключаются при переходе в чат)
+      this.localSubs = [];    // для текущего чата (typing, messages, presence)
     }
     get(key) { return this.state[key]; }
     set(key, value) {
@@ -261,43 +230,33 @@
       this.listeners[key].push(fn);
       return () => { this.listeners[key] = this.listeners[key].filter(f => f !== fn); };
     }
-    addSub(unsub) { this.subscriptions.push(unsub); }
-    clearSubs() {
-      this.subscriptions.forEach(fn => fn());
-      this.subscriptions = [];
-    }
+    addGlobalSub(unsub) { this.globalSubs.push(unsub); }
+    addLocalSub(unsub) { this.localSubs.push(unsub); }
+    clearLocalSubs() { this.localSubs.forEach(fn => fn()); this.localSubs = []; }
+    clearAllSubs() { this.clearLocalSubs(); this.globalSubs.forEach(fn => fn()); this.globalSubs = []; }
   }
   const State = new AppState();
 
-  // ===================== 4. UI LAYER (рендеринг и обработчики) =====================
+  // ===================== UI LAYER =====================
   const UI = {
-    escapeHtml: (s) => String(s ?? "").replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;' }[m])),
-    setViewportHeight() {
-      document.documentElement.style.setProperty('--vh', `${window.innerHeight * 0.01}px`);
-    },
-    // Переключение тем
+    setViewportHeight() { document.documentElement.style.setProperty('--vh', `${window.innerHeight * 0.01}px`); },
     applyTheme(theme) {
       document.body.className = '';
       document.body.classList.add('theme-' + theme);
       localStorage.setItem('neon_theme', theme);
     },
-    // Инициализация интерфейса (навигация, страницы)
     initPages() {
       document.getElementById('root').innerHTML = `
         <div id="pages-container" style="max-width:1300px;margin:0 auto;padding:16px;padding-bottom:0;">
           <div id="page-chats" class="page visible-page">
             <div class="glass" style="padding:20px;margin-bottom:80px;">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
-                <h2 style="font-weight:800;color:var(--text-primary);text-shadow:0 0 8px var(--accent-glow);">Сообщения</h2>
-                <button id="newChatBtn" style="background:none;border:1px solid var(--surface-border);color:var(--text-primary);font-size:24px;border-radius:50%;width:44px;height:44px;">+</button>
-              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;"><h2 style="font-weight:800;">Сообщения</h2><button id="newChatBtn" style="background:none;border:1px solid var(--surface-border);color:var(--text-primary);font-size:24px;border-radius:50%;width:44px;height:44px;">+</button></div>
               <div id="chatsList"></div>
-              <div id="chatsLoader" class="loading" style="display:none;">Загрузка...</div>
             </div>
           </div>
           <div id="page-wall" class="page">
             <div class="glass" style="padding:20px;margin-bottom:80px;">
-              <h2 style="font-weight:800;color:var(--text-primary);margin-bottom:20px;text-shadow:0 0 8px var(--accent-glow);">🔗 Стена</h2>
+              <h2 style="font-weight:800;">🔗 Стена</h2>
               <textarea id="postContent" class="neon-input" rows="2" placeholder="Что нового?"></textarea>
               <div style="display:flex;justify-content:flex-end;margin-top:12px;"><button id="publishPostBtn" class="neon-btn">Опубликовать</button></div>
               <div id="wallPostsContainer" style="margin-top:24px;"></div>
@@ -306,26 +265,27 @@
           <div id="page-profile" class="page">
             <div class="glass" style="padding:32px;text-align:center;margin-bottom:80px;"></div>
           </div>
-          <div id="page-chat" class="page"></div>
         </div>
+        <div id="page-chat" class="page"></div>
         <div class="bottom-nav">
           <button class="nav-item active" data-page="chats"><span class="nav-icon">💬</span><span class="nav-label">Чаты</span></button>
           <button class="nav-item" data-page="wall"><span class="nav-icon">📡</span><span class="nav-label">Стена</span></button>
           <button class="nav-item" data-page="profile"><span class="nav-icon">👤</span><span class="nav-label">Профиль</span></button>
         </div>`;
       document.getElementById('newChatBtn').onclick = () => UI.openSearchModal();
-      document.getElementById('publishPostBtn').onclick = () => {
+      document.getElementById('publishPostBtn').onclick = async () => {
         const content = document.getElementById('postContent').value.trim();
-        if (content) Data.publishPost(State.get('profile')?.displayName || "Аноним", State.get('profile')?.photoURL || "👤", content).then(() => {
+        if (content) {
+          await Data.publishPost(State.get('profile')?.displayName || "Аноним", State.get('profile')?.photoURL || "👤", content);
           document.getElementById('postContent').value = "";
-        });
+        }
       };
       document.querySelectorAll('.nav-item').forEach(btn => btn.onclick = () => UI.switchPage(btn.dataset.page));
     },
     switchPage(page) {
-      if (State.get('page') === page && page !== 'chat') return;
-      // Отписываемся от всех слушателей, кроме глобального списка чатов (если нужен)
-      State.clearSubs();
+      if (page === 'chat') { /* handled by openChat */ return; }
+      // Закрываем локальные подписки (текущий чат), глобальные остаются
+      State.clearLocalSubs();
       State.set('page', page);
       document.querySelectorAll('.page').forEach(p => p.classList.remove('visible-page'));
       const target = document.getElementById(`page-${page}`);
@@ -334,23 +294,22 @@
       const activeBtn = document.querySelector(`.nav-item[data-page="${page}"]`);
       if (activeBtn) activeBtn.classList.add('active');
 
-      // Запускаем соответствующие подписки
       if (page === 'chats') {
-        UI.startChatsSubscription();
+        UI.renderChatsList();
       } else if (page === 'wall') {
-        UI.startWallSubscription();
+        UI.renderWall();
       } else if (page === 'profile') {
         UI.renderProfile();
       }
     },
-    // Подписка на чаты (real-time)
-    startChatsSubscription() {
-      const unsub = Data.subscribeChats(State.get('user').uid, snap => {
+    startGlobalSubscriptions() {
+      // Подписка на список чатов
+      const unsubChats = Data.subscribeChats(State.get('user').uid, snap => {
         const chats = snap.docs.map(d => {
           const data = d.data();
           const otherId = data.members?.find(m => m !== State.get('user').uid);
           let title = data.title || "Чат", avatar = data.avatar || "👤";
-          if (otherId) {
+          if (otherId && (!title || title === "Чат")) {
             const cached = State.get('allUsers')?.find(u => u.uid === otherId);
             if (cached) { title = cached.username; avatar = cached.avatar; }
           }
@@ -359,9 +318,17 @@
         State.set('chats', chats);
         UI.renderChatsList();
       });
-      State.addSub(unsub);
+      State.addGlobalSub(unsubChats);
+
+      // Подписка на стену
+      const unsubWall = Data.subscribeWall(snap => {
+        const posts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        posts.sort((a,b) => (b.createdAt?.toMillis()||0) - (a.createdAt?.toMillis()||0));
+        State.set('wallPosts', posts);
+        if (State.get('page') === 'wall') UI.renderWall();
+      });
+      State.addGlobalSub(unsubWall);
     },
-    // Список чатов в DOM
     renderChatsList() {
       const list = document.getElementById('chatsList');
       if (!list) return;
@@ -370,8 +337,8 @@
       list.innerHTML = chats.map(chat => {
         const premiumIcon = chat.isPremium ? '<span class="premium-badge">💎</span>' : '';
         return `<div class="chat-item" data-chat-id="${chat.id}">
-          <div class="avatar">${UI.escapeHtml(chat.avatar)}${premiumIcon}</div>
-          <div style="min-width:0;flex:1;"><div style="font-weight:600;color:var(--text-primary);">${UI.escapeHtml(chat.title)}</div><div style="font-size:13px;color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${UI.escapeHtml(chat.lastMessage||"")}</div></div>
+          <div class="avatar avatar-fixed">${Data.escapeHtml(chat.avatar)}${premiumIcon}</div>
+          <div style="min-width:0;flex:1;"><div style="font-weight:600;">${Data.escapeHtml(chat.title)}</div><div style="font-size:13px;color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${Data.escapeHtml(chat.lastMessage||"")}</div></div>
         </div>`;
       }).join('');
       list.querySelectorAll('.chat-item').forEach(el => {
@@ -381,21 +348,21 @@
         };
       });
     },
-    // Открытие чата
-    async openChat(chat) {
-      State.clearSubs();
+    openChat(chat) {
+      // Отключаем только локальные подписки предыдущего чата
+      State.clearLocalSubs();
       State.set('activeChat', chat);
       const pageChat = document.getElementById('page-chat');
       pageChat.innerHTML = `
         <div class="chat-container">
           <div class="chat-header">
             <button id="backToChatsBtn" class="back-btn">‹</button>
-            <div class="avatar" style="width:40px;height:40px;font-size:20px;">${UI.escapeHtml(chat.avatar)}</div>
-            <div class="header-info"><div class="header-title">${UI.escapeHtml(chat.title)}</div><div id="userStatus" class="header-status"></div></div>
+            <div class="avatar avatar-fixed" style="width:40px;height:40px;min-width:40px;font-size:20px;">${Data.escapeHtml(chat.avatar)}</div>
+            <div class="header-info"><div class="header-title">${Data.escapeHtml(chat.title)}</div><div id="userStatus" class="header-status"></div></div>
             <button id="deleteChatBtn" class="delete-btn">🗑</button>
           </div>
           <div class="chat-messages" id="chatMessagesArea"></div>
-          <div id="typingIndicator" class="typing-indicator" style="display:none;"><span>печатает</span></div>
+          <div id="typingIndicator" class="typing-indicator" style="display:none;">печатает...</div>
           <div class="chat-input-area">
             <button id="voiceRecordBtn" class="voice-btn">🎤</button>
             <input type="text" id="messageInput" placeholder="Сообщение..." autocomplete="off" />
@@ -403,9 +370,11 @@
           </div>
           <div id="recordingIndicator" class="recording-indicator" style="display:none;">Запись...</div>
         </div>`;
-      UI.switchPage('chat');
+      pageChat.classList.add('visible-page');
+      // Скрываем другие страницы, но не трогаем nav (он всё ещё виден)
+      document.querySelectorAll('.page:not(#page-chat)').forEach(p => p.classList.remove('visible-page'));
 
-      // Подписка на сообщения
+      // Подписки сообщений
       const unsubMessages = Data.subscribeMessages(chat.id, snap => {
         const area = document.getElementById('chatMessagesArea');
         if (!area) return;
@@ -418,7 +387,7 @@
             const div = document.createElement('div');
             div.className = `message ${isOut ? "out" : "in"}`;
             div.setAttribute('data-id', change.doc.id);
-            div.innerHTML = `<div>${UI.escapeHtml(msg.text||"")}</div><div style="font-size:10px;opacity:0.6;text-align:right;">${time} ${msg.edited?'(ред.)':''}</div>`;
+            div.innerHTML = `<div>${Data.escapeHtml(msg.text||"")}</div><div style="font-size:10px;opacity:0.6;text-align:right;">${time} ${msg.edited?'(ред.)':''}</div>`;
             if (isOut) {
               const editBtn = document.createElement('button');
               editBtn.className = 'edit-btn';
@@ -434,7 +403,7 @@
               const isOut = msg.userId === State.get('user').uid;
               const time = msg.createdAt?.toDate ? new Date(msg.createdAt.toDate()).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"}) : "";
               el.className = `message ${isOut ? "out" : "in"}`;
-              el.innerHTML = `<div>${UI.escapeHtml(msg.text||"")}</div><div style="font-size:10px;opacity:0.6;text-align:right;">${time} ${msg.edited?'(ред.)':''}</div>`;
+              el.innerHTML = `<div>${Data.escapeHtml(msg.text||"")}</div><div style="font-size:10px;opacity:0.6;text-align:right;">${time} ${msg.edited?'(ред.)':''}</div>`;
               if (isOut) {
                 const editBtn = document.createElement('button');
                 editBtn.className = 'edit-btn';
@@ -447,18 +416,19 @@
         });
         if (wasNearBottom) area.scrollTop = area.scrollHeight;
       });
-      State.addSub(unsubMessages);
+      State.addLocalSub(unsubMessages);
 
       // Typing
       const unsubTyping = Data.subscribeTyping(chat.id, snap => {
         const now = Date.now();
         let show = false;
         snap.forEach(d => { if (d.id !== State.get('user').uid && d.data().timestamp && now - d.data().timestamp.toMillis() < 5000) show = true; });
-        document.getElementById('typingIndicator').style.display = show ? 'flex' : 'none';
+        const ind = document.getElementById('typingIndicator');
+        if (ind) ind.style.display = show ? 'flex' : 'none';
       });
-      State.addSub(unsubTyping);
+      State.addLocalSub(unsubTyping);
 
-      // Presence (если есть другой участник)
+      // Presence
       if (chat.otherUid) {
         const unsubPresence = Data.subscribePresence(chat.otherUid, snap => {
           const data = snap.data();
@@ -475,14 +445,20 @@
             statusDiv.textContent = text;
           }
         });
-        State.addSub(unsubPresence);
+        State.addLocalSub(unsubPresence);
       }
 
-      // Обработчики
-      document.getElementById('backToChatsBtn').onclick = () => UI.switchPage('chats');
+      // Обработчики UI
+      document.getElementById('backToChatsBtn').onclick = () => {
+        State.clearLocalSubs();
+        document.getElementById('page-chat').classList.remove('visible-page');
+        UI.switchPage('chats');
+      };
       document.getElementById('deleteChatBtn').onclick = async () => {
         if (confirm('Удалить чат?')) {
           await Data.deleteChat(chat.id);
+          State.clearLocalSubs();
+          document.getElementById('page-chat').classList.remove('visible-page');
           UI.switchPage('chats');
         }
       };
@@ -508,41 +484,33 @@
         await updateDoc(doc(db, "chats", State.get('activeChat').id, "messages", msgId), { text: newText, edited: true });
       }
     },
-    // Стена
-    startWallSubscription() {
-      const unsub = Data.subscribeWall(snap => {
-        const posts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        posts.sort((a,b) => (b.createdAt?.toMillis()||0) - (a.createdAt?.toMillis()||0));
-        State.set('wallPosts', posts);
-        UI.renderWall();
-      });
-      State.addSub(unsub);
-    },
     async renderWall() {
       const container = document.getElementById('wallPostsContainer');
       if (!container) return;
+      // Защита от повторного рендера во время асинхронной загрузки
+      if (container.dataset.rendering === 'true') return;
+      container.dataset.rendering = 'true';
       const posts = State.get('wallPosts');
-      if (!posts.length) { container.innerHTML = `<div class="loading">Пока тихо...</div>`; return; }
+      if (!posts.length) {
+        container.innerHTML = `<div class="loading">Пока тихо...</div>`;
+        container.dataset.rendering = 'false';
+        return;
+      }
       container.innerHTML = '';
       for (const post of posts) {
-        const comments = await Data.loadComments(post.id);
         const postDiv = document.createElement('div');
         postDiv.className = 'wall-post';
+        const comments = await Data.loadComments(post.id);
         postDiv.innerHTML = `
-          <div style="display:flex; gap:12px; align-items:center; margin-bottom:14px;"><div class="avatar" style="width:44px;height:44px;font-size:24px;">${UI.escapeHtml(post.avatar||"👤")}</div><div><strong style="color:var(--text-primary);">${UI.escapeHtml(post.author||"Аноним")}</strong></div></div>
-          <div style="white-space:pre-wrap; color:var(--text-secondary);">${UI.escapeHtml(post.content)}</div>
-          <div style="display:flex; gap:16px; margin-top:16px;">
-            <button class="like-btn neon-btn" data-post-id="${post.id}" style="padding:8px 16px;">❤️ ${post.likesCount||0}</button>
-            <button class="comment-toggle neon-btn" data-post-id="${post.id}" style="padding:8px 16px;">💬 ${post.commentsCount||0}</button>
-          </div>
+          <div style="display:flex; gap:12px;"><div class="avatar avatar-fixed" style="width:44px;height:44px;min-width:44px;font-size:24px;">${Data.escapeHtml(post.avatar||"👤")}</div><div><strong>${Data.escapeHtml(post.author||"Аноним")}</strong></div></div>
+          <div style="white-space:pre-wrap; margin:12px 0;">${Data.escapeHtml(post.content)}</div>
+          <div style="display:flex; gap:16px;"><button class="like-btn neon-btn">❤️ ${post.likesCount||0}</button><button class="comment-toggle neon-btn">💬 ${post.commentsCount||0}</button></div>
           <div class="comment-thread" style="display:none;">
-            ${comments.map(c => `<div class="comment-item"><div style="display:flex;align-items:center;gap:8px;"><div class="avatar" style="width:28px;height:28px;font-size:16px;">${UI.escapeHtml(c.authorAvatar)}</div><strong style="font-size:14px;">${UI.escapeHtml(c.authorName)}</strong></div><div style="margin-top:6px;">${UI.escapeHtml(c.text)}</div></div>`).join('')||'<div style="color:var(--text-secondary);">Нет комментариев</div>'}
-            <div style="margin-top:12px;"><input type="text" class="comment-input neon-input" placeholder="Комментарий..."><button class="add-comment-btn neon-btn">Отправить</button></div>
+            ${comments.map(c => `<div class="comment-item"><strong>${Data.escapeHtml(c.authorName)}</strong>: ${Data.escapeHtml(c.text)}</div>`).join('') || 'Нет комментариев'}
+            <div style="margin-top:8px;"><input class="comment-input neon-input" placeholder="Комментарий..."><button class="add-comment-btn neon-btn">Отправить</button></div>
           </div>`;
-        // Обработчики
         postDiv.querySelector('.like-btn').onclick = () => Data.likePost(post.id);
-        const toggleBtn = postDiv.querySelector('.comment-toggle');
-        toggleBtn.onclick = () => {
+        postDiv.querySelector('.comment-toggle').onclick = () => {
           const thread = postDiv.querySelector('.comment-thread');
           thread.style.display = thread.style.display === 'none' ? 'block' : 'none';
         };
@@ -556,27 +524,23 @@
         };
         container.appendChild(postDiv);
       }
+      container.dataset.rendering = 'false';
     },
-    // Профиль
     renderProfile() {
       const container = document.querySelector('#page-profile .glass');
       if (!container) return;
       const p = State.get('profile') || State.get('user') || { displayName:"", phoneNumber:"", photoURL:"👤", isPremium:false };
       container.innerHTML = `
-        <div style="position:relative; width:100px; margin:0 auto 24px;"><div class="avatar" style="width:100px;height:100px;font-size:48px;">${UI.escapeHtml(p.photoURL)}</div>${p.isPremium?'<span class="premium-badge" style="top:-8px;right:-8px;font-size:28px;">💎</span>':''}</div>
-        <h3 style="font-weight:800;color:var(--text-primary);text-shadow:0 0 8px var(--accent-glow);">${UI.escapeHtml(p.displayName)}</h3>
-        <p style="color:var(--text-secondary);">${UI.escapeHtml(p.phoneNumber)}</p>
+        <div style="position:relative; width:100px; margin:0 auto 24px;"><div class="avatar avatar-fixed" style="width:100px;height:100px;min-width:100px;font-size:48px;">${Data.escapeHtml(p.photoURL)}</div>${p.isPremium?'<span class="premium-badge" style="top:-8px;right:-8px;font-size:28px;">💎</span>':''}</div>
+        <h3>${Data.escapeHtml(p.displayName)}</h3><p>${Data.escapeHtml(p.phoneNumber)}</p>
         <hr style="margin:28px 0;border-color:var(--surface-border);">
-        <div style="background:var(--surface);border-radius:24px;padding:18px;margin-bottom:20px;">
-          <p style="color:var(--text-secondary);font-size:14px;margin-bottom:12px;">Тема</p>
-          <div style="display:flex;gap:8px;justify-content:center;">
-            <button class="theme-btn neon-btn" data-theme="neon">NEON</button>
-            <button class="theme-btn neon-btn" data-theme="minimal">MINIMAL</button>
-            <button class="theme-btn neon-btn" data-theme="glass">GLASS</button>
-          </div>
+        <div style="margin-bottom:20px;"><p>Тема</p>
+          <button class="theme-btn neon-btn" data-theme="neon">NEON</button>
+          <button class="theme-btn neon-btn" data-theme="minimal">MINIMAL</button>
+          <button class="theme-btn neon-btn" data-theme="glass">GLASS</button>
         </div>
-        ${!p.isPremium ? `<button id="premiumBtn" class="neon-btn" style="width:100%;background:var(--premium);color:#000;margin-bottom:20px;">💎 Оформить NEON PREMIUM</button>` : ''}
-        <button id="editProfileBtn" class="neon-btn" style="width:100%;">Изменить профиль</button>
+        ${!p.isPremium?'<button id="premiumBtn" class="neon-btn" style="width:100%;background:var(--premium);color:#000;margin-bottom:20px;">💎 PREMIUM</button>':''}
+        <button id="editProfileBtn" class="neon-btn" style="width:100%;">Изменить</button>
         <button id="logoutBtn" style="background:none;border:1px solid var(--surface-border);color:var(--danger);margin-top:24px;width:100%;padding:10px;border-radius:60px;">Выйти</button>`;
       container.querySelectorAll('.theme-btn').forEach(btn => btn.onclick = () => { UI.applyTheme(btn.dataset.theme); UI.renderProfile(); });
       container.querySelector('#editProfileBtn')?.addEventListener('click', async () => {
@@ -598,11 +562,8 @@
           UI.renderProfile();
         };
       }
-      container.querySelector('#logoutBtn').onclick = async () => {
-        await signOut(auth);
-      };
+      container.querySelector('#logoutBtn').onclick = async () => { await signOut(auth); };
     },
-    // Поиск пользователей
     async openSearchModal() {
       const overlay = document.getElementById('search-modal-overlay');
       overlay.classList.remove('hidden');
@@ -621,35 +582,39 @@
     },
     renderSearchResults(users) {
       const container = document.getElementById('search-results-container');
-      if (!users.length) { container.innerHTML = `<div style="color:var(--text-secondary);text-align:center;padding:20px;">Никого нет</div>`; return; }
-      container.innerHTML = users.map(u => `<div class="search-user-item" data-uid="${u.uid}"><div class="avatar" style="width:40px;height:40px;font-size:22px;">${UI.escapeHtml(u.avatar)}</div><div style="flex:1;">${UI.escapeHtml(u.username)}</div></div>`).join('');
+      if (!users.length) { container.innerHTML = `<div style="text-align:center;padding:20px;">Никого нет</div>`; return; }
+      container.innerHTML = users.map(u => `
+        <div class="search-user-item" data-uid="${u.uid}">
+          <div class="avatar avatar-fixed" style="width:40px;height:40px;min-width:40px;font-size:22px;">${Data.escapeHtml(u.avatar)}</div>
+          <div style="flex:1;">${Data.escapeHtml(u.username)}</div>
+        </div>`).join('');
       container.querySelectorAll('.search-user-item').forEach(el => {
         el.onclick = async () => {
           document.getElementById('search-modal-overlay').classList.add('hidden');
           const otherUid = el.dataset.uid;
-          const chatId = await Data.createDirectChat(State.get('user').uid, otherUid);
+          await Data.createDirectChat(State.get('user').uid, otherUid);
           UI.switchPage('chats');
         };
       });
     }
   };
 
-  // ===================== 5. ЗАПУСК ПРИЛОЖЕНИЯ =====================
+  // ===================== ЗАПУСК =====================
   window.addEventListener('resize', UI.setViewportHeight);
   window.addEventListener('orientationchange', UI.setViewportHeight);
   UI.setViewportHeight();
   UI.applyTheme(localStorage.getItem('neon_theme') || 'glass');
 
   function showLogin() {
-    State.clearSubs();
+    State.clearAllSubs();
     document.getElementById('root').innerHTML = `
-      <div class="glass" style="max-width:480px; margin:60px auto; padding:32px;">
-        <h2 style="text-align:center;">NEON</h2>
+      <div class="glass" style="max-width:480px;margin:60px auto;padding:32px;">
+        <h2>NEON</h2>
         <input id="phone" class="neon-input" placeholder="+7 999 123-45-67" style="margin-top:20px;">
         <input id="name" class="neon-input" placeholder="Ваше имя" style="margin-top:12px;">
         <input id="avatar" class="neon-input" placeholder="Аватар-эмодзи (👾)" style="margin-top:12px;">
         <div id="recaptcha-container"></div>
-        <button id="loginBtn" class="neon-btn" style="width:100%; margin-top:16px;">Войти</button>
+        <button id="loginBtn" class="neon-btn" style="width:100%;margin-top:16px;">Войти</button>
       </div>`;
     document.getElementById('loginBtn').onclick = async () => {
       const phone = document.getElementById('phone').value.trim();
@@ -660,41 +625,26 @@
         const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', { size:'normal' });
         const confirmation = await signInWithPhoneNumber(auth, phone, verifier);
         const code = prompt("Код из SMS:");
-        if (!code) return;
-        await confirmation.confirm(code);
-      } catch (e) { alert("Ошибка: " + e.message); }
+        if (code) await confirmation.confirm(code);
+      } catch(e) { alert("Ошибка: " + e.message); }
     };
   }
 
   onAuthStateChanged(auth, async (user) => {
-    if (!user) {
-      showLogin();
-      return;
-    }
+    if (!user) { showLogin(); return; }
     let profile = await Data.loadProfile(user.uid);
-    if (!profile) {
-      profile = await Data.ensureProfile(user, user.displayName || "Без имени", user.photoURL || "👤");
-    }
+    if (!profile) profile = await Data.ensureProfile(user, user.displayName || "Без имени", user.photoURL || "👤");
     State.set('user', { uid: user.uid, phoneNumber: user.phoneNumber || profile.phoneNumber, displayName: profile.displayName, photoURL: profile.photoURL, isPremium: profile.isPremium });
     State.set('profile', profile);
     UI.initPages();
+    UI.startGlobalSubscriptions();
     UI.switchPage('chats');
-    // Сердцебиение
-    const setOnline = () => updateDoc(doc(db, "users", user.uid), { online: true, lastSeen: serverTimestamp() });
-    setOnline();
-    const heartbeat = setInterval(setOnline, 30000);
+    // Heartbeat
+    const updateOnline = () => updateDoc(doc(db, "users", user.uid), { online: true, lastSeen: serverTimestamp() });
+    updateOnline();
+    const heartbeat = setInterval(updateOnline, 30000);
     window.addEventListener('beforeunload', () => updateDoc(doc(db, "users", user.uid), { online: false, lastSeen: serverTimestamp() }));
-    State.addSub(() => clearInterval(heartbeat));
-    // Уведомления (по желанию)
-    if (Notification.permission === 'default') {
-      try {
-        const perm = await Notification.requestPermission();
-        if (perm === 'granted' && messaging) {
-          const token = await getToken(messaging, { vapidKey: '...' }); // при необходимости добавить VAPID ключ
-          if (token) await Data.saveFCMToken(user.uid, token);
-        }
-      } catch(e) {}
-    }
+    State.addGlobalSub(() => clearInterval(heartbeat));
   });
 </script>
 </body>
