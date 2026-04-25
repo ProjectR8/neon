@@ -8,7 +8,6 @@
     <meta name="theme-color" content="#0a0f1f" />
     <title>NEON MESSENGER | чаты + стена</title>
     <style>
-        /* ========== CSS ПЕРЕМЕННЫЕ (ТЕМЫ) ========== */
         :root {
             --vh: 1vh;
             --bg-body: radial-gradient(circle at 20% 30%, #0a0f1f, #03050b);
@@ -68,11 +67,6 @@
             --scrollbar-track: transparent;
         }
 
-        /* === ТЕМЫ === */
-        [data-theme="neon-cyan"] {
-            /* значения по умолчанию (уже заданы) */;
-        }
-
         [data-theme="golden"] {
             --bg-body: radial-gradient(circle at 20% 30%, #1a1008, #0a0504);
             --glass-bg: rgba(30, 20, 12, 0.75);
@@ -130,7 +124,6 @@
             --scrollbar-thumb: #ffb828;
             --scrollbar-track: transparent;
         }
-
         [data-theme="emerald"] {
             --bg-body: radial-gradient(circle at 20% 30%, #051510, #010805);
             --glass-bg: rgba(10, 28, 22, 0.75);
@@ -188,7 +181,6 @@
             --scrollbar-thumb: #00ff82;
             --scrollbar-track: transparent;
         }
-
         [data-theme="purple"] {
             --bg-body: radial-gradient(circle at 20% 30%, #120518, #06020a);
             --glass-bg: rgba(28, 12, 40, 0.75);
@@ -246,7 +238,6 @@
             --scrollbar-thumb: #b44cff;
             --scrollbar-track: transparent;
         }
-
         [data-theme="frost"] {
             --bg-body: radial-gradient(circle at 20% 30%, #0a1018, #02060a);
             --glass-bg: rgba(18, 28, 40, 0.75);
@@ -304,7 +295,6 @@
             --scrollbar-thumb: #88ccff;
             --scrollbar-track: transparent;
         }
-
         [data-theme="inferno"] {
             --bg-body: radial-gradient(circle at 20% 30%, #180a06, #0a0302);
             --glass-bg: rgba(35, 15, 10, 0.75);
@@ -362,8 +352,6 @@
             --scrollbar-thumb: #ff5032;
             --scrollbar-track: transparent;
         }
-
-        /* НОВАЯ ТЕМА: Тёмная (Dark) */
         [data-theme="dark"] {
             --bg-body: #0a0a0c;
             --glass-bg: rgba(20, 20, 24, 0.75);
@@ -421,8 +409,6 @@
             --scrollbar-thumb: #555;
             --scrollbar-track: transparent;
         }
-
-        /* НОВАЯ ТЕМА: Серая с золотом (Subtle Gold) */
         [data-theme="subtle-gold"] {
             --bg-body: #1c1c1e;
             --glass-bg: rgba(40, 38, 35, 0.75);
@@ -481,324 +467,66 @@
             --scrollbar-track: transparent;
         }
 
-        /* ========== БАЗОВЫЕ СТИЛИ ========== */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-        }
-        body {
-            min-height: 100vh;
-            min-height: calc(var(--vh, 1vh) * 100);
-            background: var(--bg-body);
-            color: var(--text-primary);
-            -webkit-tap-highlight-color: transparent;
-            touch-action: manipulation;
-            transition: background 0.5s ease, color 0.3s ease;
-        }
-        .glass {
-            background: var(--glass-bg);
-            backdrop-filter: blur(16px) saturate(180%);
-            border-radius: 32px;
-            border: 1px solid var(--glass-border);
-            box-shadow: var(--glass-shadow);
-            transition: all 0.3s;
-        }
-        @supports not (backdrop-filter: blur(16px)) {
-            .glass {
-                background: var(--glass-bg);
-            }
-        }
-        .glass:hover {
-            border-color: var(--glass-hover-border);
-            box-shadow: var(--glass-hover-shadow);
-        }
-        .neon-input {
-            background: var(--input-bg);
-            border: 1px solid var(--input-border);
-            border-radius: 60px;
-            padding: 14px 20px;
-            color: var(--accent);
-            font-size: 16px;
-            outline: none;
-            width: 100%;
-            transition: all 0.3s;
-        }
-        .neon-input:focus {
-            box-shadow: var(--input-focus-shadow);
-        }
-        .neon-btn {
-            background: var(--btn-bg);
-            border: 1px solid var(--btn-border);
-            border-radius: 60px;
-            padding: 12px 24px;
-            font-weight: bold;
-            color: var(--btn-text);
-            cursor: pointer;
-            transition: 0.2s;
-            text-transform: uppercase;
-        }
-        .neon-btn:hover:not(:disabled) {
-            background: var(--btn-hover-bg);
-            color: var(--btn-hover-text);
-            box-shadow: var(--btn-hover-shadow);
-        }
-        .neon-btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+        body { min-height: 100vh; min-height: calc(var(--vh, 1vh) * 100); background: var(--bg-body); color: var(--text-primary); -webkit-tap-highlight-color: transparent; touch-action: manipulation; transition: background 0.5s ease, color 0.3s ease; }
+        .glass { background: var(--glass-bg); backdrop-filter: blur(16px) saturate(180%); border-radius: 32px; border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow); transition: all 0.3s; }
+        @supports not (backdrop-filter: blur(16px)) { .glass { background: var(--glass-bg); } }
+        .glass:hover { border-color: var(--glass-hover-border); box-shadow: var(--glass-hover-shadow); }
+        .neon-input { background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 60px; padding: 14px 20px; color: var(--accent); font-size: 16px; outline: none; width: 100%; transition: all 0.3s; }
+        .neon-input:focus { box-shadow: var(--input-focus-shadow); }
+        .neon-btn { background: var(--btn-bg); border: 1px solid var(--btn-border); border-radius: 60px; padding: 12px 24px; font-weight: bold; color: var(--btn-text); cursor: pointer; transition: 0.2s; text-transform: uppercase; }
+        .neon-btn:hover:not(:disabled) { background: var(--btn-hover-bg); color: var(--btn-hover-text); box-shadow: var(--btn-hover-shadow); }
+        .neon-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
-        /* НИЖНЯЯ ПАНЕЛЬ В СТИЛЕ TELEGRAM */
+        /* Нижняя панель Telegram style, приподнята на 12px */
         .bottom-nav {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            width: 100%;
-            background: var(--nav-bg);
-            backdrop-filter: blur(20px);
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            padding: 6px 0 8px;
-            border-top: 1px solid var(--nav-border);
-            box-shadow: 0 -2px 12px rgba(0,0,0,0.2);
-            z-index: 100;
-            height: 56px;
-            border-radius: 0;
+            position: fixed; bottom: 12px; left: 0; right: 0; width: 100%;
+            background: var(--nav-bg); backdrop-filter: blur(20px);
+            display: flex; justify-content: space-around; align-items: center;
+            padding: 6px 0 8px; border-top: 1px solid var(--nav-border);
+            box-shadow: 0 -2px 12px rgba(0,0,0,0.2); z-index: 100;
+            height: 56px; border-radius: 0;
         }
-        .nav-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 0px;
-            font-size: 10px;
-            color: var(--nav-text);
-            background: none;
-            border: none;
-            padding: 4px 12px;
-            border-radius: 20px;
-            cursor: pointer;
-            font-weight: 500;
-            transition: all 0.2s;
-            position: relative;
-            min-width: 60px;
-        }
-        .nav-item.active {
-            color: var(--nav-active-text);
-        }
-        .nav-item.active::before {
-            content: '';
-            position: absolute;
-            top: -4px;
-            width: 20px;
-            height: 3px;
-            background: var(--nav-active-text);
-            border-radius: 0 0 3px 3px;
-            box-shadow: 0 0 6px var(--nav-active-text);
-        }
-        .nav-icon {
-            font-size: 22px;
-            line-height: 1;
-        }
-        .nav-item span:not(.nav-icon) {
-            font-size: 10px;
-            line-height: 1;
-        }
+        .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0px; font-size: 10px; color: var(--nav-text); background: none; border: none; padding: 4px 12px; border-radius: 20px; cursor: pointer; font-weight: 500; transition: all 0.2s; position: relative; min-width: 60px; }
+        .nav-item.active { color: var(--nav-active-text); }
+        .nav-item.active::before { content: ''; position: absolute; top: -4px; width: 20px; height: 3px; background: var(--nav-active-text); border-radius: 0 0 3px 3px; box-shadow: 0 0 6px var(--nav-active-text); }
+        .nav-icon { font-size: 22px; line-height: 1; }
+        .nav-item span:not(.nav-icon) { font-size: 10px; line-height: 1; }
 
-        .page {
-            display: none;
-            animation: fade 0.3s;
-        }
-        .page.active-page {
-            display: block;
-        }
-        @keyframes fade {
-            from { opacity: 0; transform: translateY(8px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .chat-item {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            padding: 14px 16px;
-            cursor: pointer;
-            border-bottom: 1px solid var(--chat-item-border);
-            transition: 0.2s;
-            animation: fadeInUp 0.3s ease both;
-        }
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(15px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+        .page { display: none; animation: fade 0.3s; }
+        .page.active-page { display: block; }
+        @keyframes fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        .chat-item { display: flex; align-items: center; gap: 14px; padding: 14px 16px; cursor: pointer; border-bottom: 1px solid var(--chat-item-border); transition: 0.2s; animation: fadeInUp 0.3s ease both; }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
         .chat-item:nth-child(1) { animation-delay: 0.02s; }
         .chat-item:nth-child(2) { animation-delay: 0.04s; }
         .chat-item:nth-child(3) { animation-delay: 0.06s; }
         .chat-item:nth-child(4) { animation-delay: 0.08s; }
         .chat-item:nth-child(5) { animation-delay: 0.10s; }
-        .chat-item:active {
-            background: var(--chat-item-active);
-        }
-        .avatar {
-            width: 52px;
-            height: 52px;
-            border-radius: 50%;
-            background: var(--avatar-gradient);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 28px;
-            box-shadow: var(--avatar-shadow);
-            flex-shrink: 0;
-        }
-        .badge {
-            background: var(--badge-bg);
-            color: var(--badge-text);
-            border-radius: 40px;
-            padding: 2px 10px;
-            font-size: 11px;
-            margin-left: 8px;
-        }
-        .message {
-            max-width: 75%;
-            padding: 10px 18px;
-            border-radius: 24px;
-            margin-bottom: 8px;
-            word-break: break-word;
-        }
-        .message.out {
-            align-self: flex-end;
-            background: var(--msg-out-bg);
-            border: 1px solid var(--msg-out-border);
-            color: var(--msg-out-text);
-        }
-        .message.in {
-            align-self: flex-start;
-            background: var(--msg-in-bg);
-            border: 1px solid var(--msg-in-border);
-            color: var(--msg-in-text);
-        }
-        .messages-area {
-            height: calc(100vh - 170px);
-            height: calc(var(--vh, 1vh) * 100 - 170px);
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            padding: 16px;
-            -webkit-overflow-scrolling: touch;
-        }
-        .wall-post {
-            background: var(--wall-post-bg);
-            backdrop-filter: blur(12px);
-            border-radius: 28px;
-            padding: 18px;
-            margin-bottom: 18px;
-            border: 1px solid var(--wall-post-border);
-            transition: all 0.3s;
-        }
-        .loading {
-            text-align: center;
-            color: var(--loading-color);
-            padding: 20px;
-        }
-        #recaptcha-container {
-            display: block !important;
-            visibility: visible !important;
-            min-height: 78px;
-            width: 100%;
-            margin: 16px 0 0 0;
-            position: relative;
-            z-index: 10000;
-        }
-        textarea {
-            resize: vertical;
-            outline: none;
-        }
-        button {
-            outline: none;
-            touch-action: manipulation;
-        }
+        .chat-item:active { background: var(--chat-item-active); }
+        .avatar { width: 52px; height: 52px; border-radius: 50%; background: var(--avatar-gradient); display: flex; align-items: center; justify-content: center; font-size: 28px; box-shadow: var(--avatar-shadow); flex-shrink: 0; }
+        .badge { background: var(--badge-bg); color: var(--badge-text); border-radius: 40px; padding: 2px 10px; font-size: 11px; margin-left: 8px; }
+        .message { max-width: 75%; padding: 10px 18px; border-radius: 24px; margin-bottom: 8px; word-break: break-word; animation: messageIn 0.3s ease both; }
+        @keyframes messageIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .message.out { align-self: flex-end; background: var(--msg-out-bg); border: 1px solid var(--msg-out-border); color: var(--msg-out-text); }
+        .message.in { align-self: flex-start; background: var(--msg-in-bg); border: 1px solid var(--msg-in-border); color: var(--msg-in-text); }
+        .messages-area { flex: 1; overflow-y: auto; display: flex; flex-direction: column; padding: 16px; -webkit-overflow-scrolling: touch; }
+        .wall-post { background: var(--wall-post-bg); backdrop-filter: blur(12px); border-radius: 28px; padding: 18px; margin-bottom: 18px; border: 1px solid var(--wall-post-border); transition: all 0.3s; }
+        .loading { text-align: center; color: var(--loading-color); padding: 20px; }
+        #recaptcha-container { display: block !important; visibility: visible !important; min-height: 78px; width: 100%; margin: 16px 0 0 0; position: relative; z-index: 10000; }
+        textarea { resize: vertical; outline: none; }
+        button { outline: none; touch-action: manipulation; }
+        .voice-btn { background: none; border: 1px solid var(--voice-btn-border); border-radius: 50%; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--voice-btn-color); font-size: 20px; margin-right: 6px; transition: 0.2s; }
+        .voice-btn.recording { background: var(--voice-recording-bg); border-color: var(--voice-recording-border); color: white; box-shadow: var(--voice-recording-shadow); animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255,0,255,0.7); } 70% { box-shadow: 0 0 0 10px rgba(255,0,255,0); } 100% { box-shadow: 0 0 0 0 rgba(255,0,255,0); } }
+        .voice-message audio { width: 200px; max-width: 100%; height: 36px; margin-top: 4px; }
+        .voice-message .duration { font-size: 12px; opacity: 0.8; margin-left: 8px; }
 
-        /* === СТИЛИ ДЛЯ ГОЛОСОВЫХ === */
-        .voice-btn {
-            background: none;
-            border: 1px solid var(--voice-btn-border);
-            border-radius: 50%;
-            width: 44px;
-            height: 44px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            color: var(--voice-btn-color);
-            font-size: 20px;
-            margin-right: 6px;
-            transition: 0.2s;
-        }
-        .voice-btn.recording {
-            background: var(--voice-recording-bg);
-            border-color: var(--voice-recording-border);
-            color: white;
-            box-shadow: var(--voice-recording-shadow);
-            animation: pulse 1s infinite;
-        }
-        @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(255,0,255,0.7); }
-            70% { box-shadow: 0 0 0 10px rgba(255,0,255,0); }
-            100% { box-shadow: 0 0 0 0 rgba(255,0,255,0); }
-        }
-        .voice-message audio {
-            width: 200px;
-            max-width: 100%;
-            height: 36px;
-            margin-top: 4px;
-        }
-        .voice-message .duration {
-            font-size: 12px;
-            opacity: 0.8;
-            margin-left: 8px;
-        }
-
-        /* === ТЕМА-ПЕРЕКЛЮЧАТЕЛЬ === */
-        .theme-switcher {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            justify-content: center;
-            margin: 16px 0;
-        }
-        .theme-dot {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            cursor: pointer;
-            border: 2px solid transparent;
-            transition: all 0.3s;
-            position: relative;
-            box-shadow: 0 0 8px rgba(0,0,0,0.3);
-        }
-        .theme-dot:hover {
-            transform: scale(1.15);
-            border-color: #fff;
-            box-shadow: 0 0 16px currentColor;
-        }
-        .theme-dot.active-theme {
-            border-color: #fff;
-            box-shadow: 0 0 20px currentColor, 0 0 40px currentColor;
-            transform: scale(1.1);
-        }
-        .theme-dot.active-theme::after {
-            content: '✓';
-            position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            color: #fff;
-            font-weight: bold;
-            font-size: 16px;
-            text-shadow: 0 0 4px #000;
-        }
+        .theme-switcher { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 16px 0; }
+        .theme-dot { width: 40px; height: 40px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: all 0.3s; position: relative; box-shadow: 0 0 8px rgba(0,0,0,0.3); }
+        .theme-dot:hover { transform: scale(1.15); border-color: #fff; box-shadow: 0 0 16px currentColor; }
+        .theme-dot.active-theme { border-color: #fff; box-shadow: 0 0 20px currentColor, 0 0 40px currentColor; transform: scale(1.1); }
+        .theme-dot.active-theme::after { content: '✓'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #fff; font-weight: bold; font-size: 16px; text-shadow: 0 0 4px #000; }
         .theme-dot.neon-cyan { background: linear-gradient(135deg, #0ff, #f0f); color: #0ff; }
         .theme-dot.golden { background: linear-gradient(135deg, #ffb828, #8b5e00); color: #ffb828; }
         .theme-dot.emerald { background: linear-gradient(135deg, #00ff82, #005530); color: #00ff82; }
@@ -813,33 +541,13 @@
         ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 10px; }
 
         @media (max-width: 480px) {
-            .messages-area {
-                height: calc(100vh - 200px);
-                height: calc(var(--vh, 1vh) * 100 - 200px);
-            }
-            .glass {
-                padding: 12px !important;
-            }
-            .bottom-nav {
-                padding: 4px 0 6px;
-                height: 50px;
-            }
-            .nav-item {
-                padding: 2px 8px;
-                font-size: 9px;
-            }
-            .nav-icon {
-                font-size: 20px;
-            }
-            .avatar {
-                width: 44px; height: 44px; font-size: 24px;
-            }
-            .message {
-                max-width: 85%;
-            }
-            .theme-dot {
-                width: 32px; height: 32px;
-            }
+            .glass { padding: 12px !important; }
+            .bottom-nav { padding: 4px 0 6px; height: 50px; }
+            .nav-item { padding: 2px 8px; font-size: 9px; }
+            .nav-icon { font-size: 20px; }
+            .avatar { width: 44px; height: 44px; font-size: 24px; }
+            .message { max-width: 85%; }
+            .theme-dot { width: 32px; height: 32px; }
         }
     </style>
 </head>
@@ -891,11 +599,8 @@
 
     function loadTheme() {
         const saved = localStorage.getItem('neon-messenger-theme');
-        if (saved && THEMES.includes(saved)) {
-            state.currentTheme = saved;
-        } else {
-            state.currentTheme = 'neon-cyan';
-        }
+        if (saved && THEMES.includes(saved)) state.currentTheme = saved;
+        else state.currentTheme = 'neon-cyan';
         applyTheme(state.currentTheme);
     }
     function applyTheme(themeName) {
@@ -911,20 +616,14 @@
             };
             metaTheme.setAttribute('content', themeColors[themeName] || '#0a0f1f');
         }
-        document.querySelectorAll('.theme-dot').forEach(d => {
-            d.classList.toggle('active-theme', d.dataset.theme === themeName);
-        });
+        document.querySelectorAll('.theme-dot').forEach(d => d.classList.toggle('active-theme', d.dataset.theme === themeName));
     }
     function renderThemeSwitcher() {
         const current = state.currentTheme;
-        return `
-        <div style="margin-top:8px;">
+        return `<div style="margin-top:8px;">
           <p style="color:var(--text-secondary); font-size:13px; margin-bottom:10px;">🎨 Выберите тему:</p>
           <div class="theme-switcher">
-            ${THEMES.map(t => `
-              <div class="theme-dot ${t} ${t === current ? 'active-theme' : ''}"
-                   data-theme="${t}" title="${THEME_LABELS[t] || t}" style="cursor:pointer;"></div>
-            `).join('')}
+            ${THEMES.map(t => `<div class="theme-dot ${t} ${t === current ? 'active-theme' : ''}" data-theme="${t}" title="${THEME_LABELS[t] || t}" style="cursor:pointer;"></div>`).join('')}
           </div>
           <p style="color:var(--text-secondary); font-size:11px; text-align:center; margin-top:6px;">${THEME_LABELS[current] || current}</p>
         </div>`;
@@ -960,9 +659,7 @@
     }
     async function createCaptcha(containerId) {
         resetCaptcha();
-        state.captcha = new RecaptchaVerifier(auth, containerId, {
-            size: "normal", callback: () => console.log("reCAPTCHA solved"), "expired-callback": () => resetCaptcha()
-        });
+        state.captcha = new RecaptchaVerifier(auth, containerId, { size: "normal", callback: () => console.log("reCAPTCHA solved"), "expired-callback": () => resetCaptcha() });
         await state.captcha.render();
         return state.captcha;
     }
@@ -985,11 +682,8 @@
             avatar: avatar || snap.data()?.avatar || "👤",
             updatedAt: serverTimestamp()
         };
-        if (!snap.exists()) {
-            await setDoc(ref, { ...baseData, createdAt: serverTimestamp(), fcmTokens: [] });
-        } else {
-            await updateDoc(ref, baseData);
-        }
+        if (!snap.exists()) await setDoc(ref, { ...baseData, createdAt: serverTimestamp(), fcmTokens: [] });
+        else await updateDoc(ref, baseData);
         const fresh = await getDoc(ref);
         const d = fresh.data() || {};
         return { uid: user.uid, phoneNumber: user.phoneNumber || d.phone || "", displayName: d.username || "Без имени", photoURL: d.avatar || "👤" };
@@ -1103,14 +797,10 @@
               </div>
             </div>`;
         }).join("");
-        c.querySelectorAll(".like-btn").forEach(btn => {
-            btn.onclick = async () => { await updateDoc(doc(db, "wall", btn.dataset.postId), { likesCount: increment(1) }); };
-        });
-        c.querySelectorAll(".comment-btn").forEach(btn => {
-            btn.onclick = async () => {
-                const comment = prompt("Ваш комментарий:"); if (!comment?.trim()) return;
-                await updateDoc(doc(db, "wall", btn.dataset.postId), { comments: arrayUnion(comment.trim()) });
-            };
+        c.querySelectorAll(".like-btn").forEach(btn => btn.onclick = async () => { await updateDoc(doc(db, "wall", btn.dataset.postId), { likesCount: increment(1) }); });
+        c.querySelectorAll(".comment-btn").forEach(btn => btn.onclick = async () => {
+            const comment = prompt("Ваш комментарий:"); if (!comment?.trim()) return;
+            await updateDoc(doc(db, "wall", btn.dataset.postId), { comments: arrayUnion(comment.trim()) });
         });
     }
     async function publishPost() {
@@ -1142,16 +832,13 @@
               <div style="font-size:13px; color:var(--text-secondary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(chat.lastMessage||"Нет сообщений")}</div>
             </div>
           </div>`).join("");
-        list.querySelectorAll(".chat-item").forEach(el => {
-            el.onclick = () => { const chat = state.chats.find(c => c.id === el.dataset.chatId); if (chat) openChat(chat); };
-        });
+        list.querySelectorAll(".chat-item").forEach(el => el.onclick = () => { const chat = state.chats.find(c => c.id === el.dataset.chatId); if (chat) openChat(chat); });
     }
 
-    // ЧАТЫ НА ВЕСЬ ЭКРАН
     function renderChatsPage() {
         root.innerHTML = `
           <div style="display:flex; flex-direction:column; height:100vh; height:calc(var(--vh, 1vh) * 100);">
-            <div id="chatsPage" class="page active-page" style="flex:1; overflow-y:auto; padding:0 0 16px;">
+            <div id="chatsPage" class="page active-page" style="flex:1; overflow-y:auto; padding:0 0 68px;">
               <div style="padding:16px 16px 0;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
                   <h2 style="text-shadow:0 0 5px var(--accent); color:var(--text-heading);">💬 NEON CHATS</h2>
@@ -1163,14 +850,13 @@
             ${renderNav("chats")}
           </div>`;
         document.getElementById("newChatBtn").onclick = createNewChat;
-        document.querySelectorAll(".nav-item").forEach(btn => { btn.onclick = () => switchPage(btn.dataset.page); });
+        document.querySelectorAll(".nav-item").forEach(btn => btn.onclick = () => switchPage(btn.dataset.page));
         renderChatsList();
     }
-
     function renderWallPage() {
         root.innerHTML = `
           <div style="display:flex; flex-direction:column; height:100vh; height:calc(var(--vh, 1vh) * 100);">
-            <div id="wallPage" class="page active-page" style="flex:1; overflow-y:auto; padding:16px 16px 0;">
+            <div id="wallPage" class="page active-page" style="flex:1; overflow-y:auto; padding:16px 16px 68px;">
               <div class="glass" style="padding:18px;">
                 <h2 style="text-shadow:0 0 5px var(--accent); color:var(--text-heading); margin-bottom:20px;">📡 КИБЕР-СТЕНА</h2>
                 <textarea id="postContent" rows="2" placeholder="Опубликовать пост..." style="width:100%; border-radius:28px; background:var(--input-bg); border:1px solid var(--input-border); color:var(--accent); padding:12px;"></textarea>
@@ -1181,16 +867,15 @@
             ${renderNav("wall")}
           </div>`;
         document.getElementById("publishPostBtn").onclick = publishPost;
-        document.querySelectorAll(".nav-item").forEach(btn => { btn.onclick = () => switchPage(btn.dataset.page); });
+        document.querySelectorAll(".nav-item").forEach(btn => btn.onclick = () => switchPage(btn.dataset.page));
         loadAndRenderWall();
     }
-
     function renderProfilePage() {
         const profile = state.profile || state.user || { displayName: "Без имени", phoneNumber: "", photoURL: "👤" };
         const notifStatus = Notification.permission;
         root.innerHTML = `
           <div style="display:flex; flex-direction:column; height:100vh; height:calc(var(--vh, 1vh) * 100);">
-            <div id="profilePage" class="page active-page" style="flex:1; overflow-y:auto; padding:16px 16px 0;">
+            <div id="profilePage" class="page active-page" style="flex:1; overflow-y:auto; padding:16px 16px 68px;">
               <div class="glass" style="padding:28px; text-align:center;">
                 <div style="width:100px; height:100px; border-radius:50%; margin:0 auto 20px; background:var(--profile-avatar-gradient); display:flex; align-items:center; justify-content:center; font-size:48px;">${escapeHtml(profile.photoURL||"👤")}</div>
                 <h3 style="font-size:26px; color:var(--text-heading);">${escapeHtml(profile.displayName||"Без имени")}</h3>
@@ -1234,15 +919,14 @@
             renderProfilePage();
         };
         document.getElementById("logoutBtn").onclick = async () => {
-            await signOut(auth);
-            stopPolling();
+            await signOut(auth); stopPolling();
             state.user = null; state.profile = null; state.chats = []; state.wallPosts = [];
             if (state.chatUnsub) state.chatUnsub();
             if (state.globalChatsUnsub) state.globalChatsUnsub();
             if (state.wallUnsub) state.wallUnsub();
             showLogin();
         };
-        document.querySelectorAll(".nav-item").forEach(btn => { btn.onclick = () => switchPage(btn.dataset.page); });
+        document.querySelectorAll(".nav-item").forEach(btn => btn.onclick = () => switchPage(btn.dataset.page));
     }
 
     function switchPage(page) {
@@ -1269,7 +953,7 @@
         const av = chat.avatar || "👤";
         root.innerHTML = `
           <div style="display:flex; flex-direction:column; height:100vh; height:calc(var(--vh, 1vh) * 100);">
-            <div class="glass" style="margin:0; border-radius:0; flex:1; display:flex; flex-direction:column;">
+            <div class="glass" style="margin:0; border-radius:0; flex:1; display:flex; flex-direction:column; border:none; box-shadow:none;">
               <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px; border-bottom:1px solid var(--chat-item-border);">
                 <button id="backToChatsBtn" style="background:none; font-size:28px; color:var(--accent); border:none;">←</button>
                 <div style="display:flex; align-items:center; gap:10px; flex:1; justify-content:center;">
@@ -1282,7 +966,7 @@
               <div style="display:flex; gap:6px; padding:12px; align-items:center; border-top:1px solid var(--chat-item-border);">
                 <button id="voiceRecordBtn" class="voice-btn">🎤</button>
                 <input type="text" id="messageInput" class="neon-input" style="flex:1;" placeholder="Сообщение...">
-                <button id="sendMsgBtn" class="neon-btn">➤</button>
+                <button id="sendMsgBtn" class="voice-btn" style="font-size:18px;">➤</button>
               </div>
               <div id="recordingIndicator" style="text-align:center; color:var(--voice-recording-bg); margin-top:4px; display:none;">🔴 Запись...</div>
             </div>
