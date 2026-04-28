@@ -7,6 +7,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="theme-color" content="#0a0f1f" />
     <title>NEON MESSENGER | чаты + стена</title>
+    <!-- Стили без изменений -->
     <style>
         :root {
             --vh: 1vh;
@@ -539,7 +540,6 @@
         .chat-fullscreen .glass { height: 100%; display: flex; flex-direction: column; border-radius: 0; border: none; box-shadow: none; }
         .chat-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--chat-item-border); }
 
-        /* Splash screen */
         .splash-screen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: var(--bg-body); z-index: 9999;
@@ -585,7 +585,6 @@
     </style>
 </head>
 <body>
-<!-- splash screen -->
 <div id="splash" class="splash-screen">
     <div class="neon-logo">NEON</div>
     <div class="subtitle">MESSENGER</div>
@@ -600,7 +599,7 @@
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getAuth, onAuthStateChanged, signOut, RecaptchaVerifier, signInWithPhoneNumber } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-    import { initializeFirestore, enableIndexedDbPersistence, collection, doc, getDoc, getDocs, setDoc, updateDoc, addDoc, query, where, orderBy, onSnapshot, serverTimestamp, increment, arrayUnion } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { initializeFirestore, enableIndexedDbPersistence, collection, doc, getDoc, getDocs, setDoc, updateDoc, addDoc, query, where, orderBy, onSnapshot, serverTimestamp, increment, arrayUnion, writeBatch } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
     import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
     import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
@@ -622,18 +621,61 @@
     try { messaging = getMessaging(app); } catch (e) { console.warn("Messaging not supported"); }
     auth.languageCode = "ru";
 
-    const state = {
-    user: null, profile: null, page: "chats", chats: [], wallPosts: [],
-    activeChat: null, chatUnsub: null, captcha: null, fcmToken: null,
-    globalChatsUnsub: null, wallUnsub: null, pollingInterval: null,
-    isIOS: /iPad|iPhone|iPod/.test(navigator.userAgent),
-    isAndroid: /Android/.test(navigator.userAgent),
-    mediaRecorder: null, audioChunks: [], recordingChatId: null,
-    currentTheme: 'neon-cyan', chatsAnimated: false,
-    allUsers: null,          // массив для поиска (все, кроме текущего)
-    usersCache: new Map(),   // кеш uid -> { username, avatar, phone }
-    splashHidden: false
+    // ---------- Разделение состояния ----------
+    const authState = {
+        user: null,
+        profile: null,
+        fcmToken: null,
+        captcha: null,
     };
+
+    const chatState = {
+        chats: [],
+        activeChat: null,
+        chatUnsub: null,
+        globalChatsUnsub: null,
+        wallPosts: [],
+        wallUnsub: null,
+        // больше не храним голосовые переменные
+    };
+
+    // Голосовой рекордер теперь отдельно
+    const voiceState = {
+        mediaRecorder: null,
+        mediaStream: null,
+        audioChunks: [],
+        recordingChatId: null,
+        cleanup() {
+            if (this.mediaStream) {
+                this.mediaStream.getTracks().forEach(t => t.stop());
+                this.mediaStream = null;
+            }
+            if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+                this.mediaRecorder.stop();
+                this.mediaRecorder = null;
+            }
+            this.audioChunks = [];
+            this.recordingChatId = null;
+        }
+    };
+
+    const uiState = {
+        page: "chats",
+        currentTheme: 'neon-cyan',
+        chatsAnimated: false,
+        splashHidden: false,
+        isIOS: /iPad|iPhone|iPod/.test(navigator.userAgent),
+        isAndroid: /Android/.test(navigator.userAgent),
+    };
+
+    const cacheState = {
+        usersCache: new Map(),
+        allUsers: null,
+    };
+
+    const likingPosts = new Set();
+    let postingInProgress = false;
+
     const root = document.getElementById("root");
     const splash = document.getElementById("splash");
 
@@ -644,14 +686,26 @@
         'dark': '🌑 Тёмная', 'subtle-gold': '🏅 Серая с золотом'
     };
 
+    const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;' }[m]));
+    const directChatId = (uid1, uid2) => [uid1, uid2].sort().join("__");
+
+    function setViewportHeight() {
+        const vh = window.innerHeight * 0.01;
+        document.documentElement.style.setProperty('--vh', `${vh}px`);
+    }
+    window.addEventListener('resize', setViewportHeight);
+    window.addEventListener('orientationchange', setViewportHeight);
+    setViewportHeight();
+
+    // ---------- Темы ----------
     function loadTheme() {
         const saved = localStorage.getItem('neon-messenger-theme');
-        if (saved && THEMES.includes(saved)) state.currentTheme = saved;
-        else state.currentTheme = 'neon-cyan';
-        applyTheme(state.currentTheme);
+        if (saved && THEMES.includes(saved)) uiState.currentTheme = saved;
+        else uiState.currentTheme = 'neon-cyan';
+        applyTheme(uiState.currentTheme);
     }
     function applyTheme(themeName) {
-        state.currentTheme = themeName;
+        uiState.currentTheme = themeName;
         document.documentElement.setAttribute('data-theme', themeName);
         localStorage.setItem('neon-messenger-theme', themeName);
         const metaTheme = document.querySelector('meta[name="theme-color"]');
@@ -666,7 +720,7 @@
         document.querySelectorAll('.theme-dot').forEach(d => d.classList.toggle('active-theme', d.dataset.theme === themeName));
     }
     function renderThemeSwitcher() {
-        const current = state.currentTheme;
+        const current = uiState.currentTheme;
         return `<div style="margin-top:8px;">
           <p style="color:var(--text-secondary); font-size:13px; margin-bottom:10px;">🎨 Выберите тему:</p>
           <div class="theme-switcher">
@@ -681,45 +735,45 @@
                 const theme = dot.dataset.theme;
                 if (theme && THEMES.includes(theme)) {
                     applyTheme(theme);
-                    if (state.page === 'profile') renderProfilePage();
+                    if (uiState.page === 'profile') renderProfilePage();
                 }
             };
         });
     }
 
-    const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;' }[m]));
-    const directChatId = (uid1, uid2) => [uid1, uid2].sort().join("__");
-
-    function setViewportHeight() {
-        const vh = window.innerHeight * 0.01;
-        document.documentElement.style.setProperty('--vh', `${vh}px`);
-    }
-    window.addEventListener('resize', setViewportHeight);
-    window.addEventListener('orientationchange', setViewportHeight);
-    setViewportHeight();
-
-    function resetCaptcha() {
-        try { if (state.captcha) state.captcha.clear(); } catch {}
-        state.captcha = null;
-        const c = document.getElementById("recaptcha-container");
-        if (c) c.innerHTML = "";
-    }
-    async function createCaptcha(containerId) {
-        resetCaptcha();
-        state.captcha = new RecaptchaVerifier(auth, containerId, { size: "normal", callback: () => console.log("reCAPTCHA solved"), "expired-callback": () => resetCaptcha() });
-        await state.captcha.render();
-        return state.captcha;
+    // ---------- Кеш пользователей ----------
+    async function getUserData(uid) {
+        if (cacheState.usersCache.has(uid)) return cacheState.usersCache.get(uid);
+        const snap = await getDoc(doc(db, "users", uid));
+        if (!snap.exists()) return null;
+        const d = snap.data();
+        const user = {
+            uid,
+            username: d.username || "Без имени",
+            avatar: d.avatar || "👤",
+            phone: d.phone || ""
+        };
+        cacheState.usersCache.set(uid, user);
+        return user;
     }
 
-    async function loginWithPhone(phone, containerId) {
-        const verifier = await createCaptcha(containerId);
-        const confirmation = await signInWithPhoneNumber(auth, phone, verifier);
-        const code = prompt("Введите код из SMS:");
-        if (!code) throw new Error("Код не введён");
-        const result = await confirmation.confirm(code);
-        resetCaptcha();
-        return result.user;
+    async function preloadAllUsers() {
+        const snap = await getDocs(collection(db, "users"));
+        cacheState.allUsers = [];
+        snap.forEach(docSnap => {
+            const d = docSnap.data();
+            const user = {
+                uid: docSnap.id,
+                username: d.username || "Пользователь",
+                avatar: d.avatar || "👤",
+                phone: d.phone || ""
+            };
+            cacheState.usersCache.set(user.uid, user);
+            if (user.uid !== authState.user?.uid) cacheState.allUsers.push(user);
+        });
     }
+
+    // ---------- Профиль ----------
     async function ensureProfile(user, username, avatar) {
         const ref = doc(db, "users", user.uid);
         const snap = await getDoc(ref);
@@ -733,21 +787,69 @@
         else await updateDoc(ref, baseData);
         const fresh = await getDoc(ref);
         const d = fresh.data() || {};
-        return { uid: user.uid, phoneNumber: user.phoneNumber || d.phone || "", displayName: d.username || "Без имени", photoURL: d.avatar || "👤" };
-    }
-    async function loadProfile(uid) {
-        const snap = await getDoc(doc(db, "users", uid));
-        if (!snap.exists()) return null;
-        const d = snap.data();
-        return { uid, phoneNumber: d.phone || "", displayName: d.username || "Без имени", photoURL: d.avatar || "👤" };
+        const profile = { uid: user.uid, phoneNumber: user.phoneNumber || d.phone || "", displayName: d.username || "Без имени", photoURL: d.avatar || "👤" };
+        cacheState.usersCache.set(user.uid, {
+            uid: user.uid,
+            username: profile.displayName,
+            avatar: profile.photoURL,
+            phone: profile.phoneNumber
+        });
+        await updateProfileInChats(user.uid, profile.displayName, profile.photoURL);
+        return profile;
     }
 
+    async function updateProfileInChats(uid, username, avatar) {
+        try {
+            const chatsSnap = await getDocs(query(collection(db, "chats"), where("members", "array-contains", uid)));
+            if (chatsSnap.empty) return;
+            const batch = writeBatch(db);
+            chatsSnap.forEach(docSnap => {
+                batch.update(docSnap.ref, {
+                    [`memberUsernames.${uid}`]: username,
+                    [`memberAvatars.${uid}`]: avatar
+                });
+            });
+            await batch.commit();
+        } catch (e) {
+            console.warn("updateProfileInChats error", e);
+        }
+    }
+
+    async function loadProfile(uid) {
+        return getUserData(uid);
+    }
+
+    // ---------- Авторизация и Splash ----------
     function hideSplash() {
-        if (!state.splashHidden && splash) {
-            state.splashHidden = true;
+        if (!uiState.splashHidden && splash) {
+            uiState.splashHidden = true;
             splash.classList.add('hidden');
             setTimeout(() => splash.remove(), 500);
         }
+    }
+
+    function resetCaptcha() {
+        try { if (authState.captcha) authState.captcha.clear(); } catch {}
+        authState.captcha = null;
+        const c = document.getElementById("recaptcha-container");
+        if (c) c.innerHTML = "";
+    }
+
+    async function createCaptcha(containerId) {
+        resetCaptcha();
+        authState.captcha = new RecaptchaVerifier(auth, containerId, { size: "normal", callback: () => console.log("reCAPTCHA solved"), "expired-callback": () => resetCaptcha() });
+        await authState.captcha.render();
+        return authState.captcha;
+    }
+
+    async function loginWithPhone(phone, containerId) {
+        const verifier = await createCaptcha(containerId);
+        const confirmation = await signInWithPhoneNumber(auth, phone, verifier);
+        const code = prompt("Введите код из SMS:");
+        if (!code) throw new Error("Код не введён");
+        const result = await confirmation.confirm(code);
+        resetCaptcha();
+        return result.user;
     }
 
     function showLogin() {
@@ -774,12 +876,12 @@
             try {
                 const user = await loginWithPhone(phone, "recaptcha-container");
                 const profile = await ensureProfile(user, name, avatar || "👤");
-                state.user = { uid: profile.uid, phoneNumber: profile.phoneNumber, displayName: profile.displayName, photoURL: profile.photoURL };
-                state.profile = profile;
-                renderApp();
-                if (!state.isIOS) {
+                authState.user = { uid: profile.uid, phoneNumber: profile.phoneNumber, displayName: profile.displayName, photoURL: profile.photoURL };
+                authState.profile = profile;
+                switchToChatsPage();
+                if (!uiState.isIOS) {
                     const token = await requestNotificationPermissionAndGetToken();
-                    if (token) await saveFCMTokenToFirestore(state.user.uid, token);
+                    if (token) await saveFCMTokenToFirestore(authState.user.uid, token);
                 }
             } catch (err) {
                 alert("Ошибка входа: " + (err?.message || "неизвестная ошибка"));
@@ -791,163 +893,227 @@
         };
     }
 
-    async function loadAllUsers() {
-        const usersSnap = await getDocs(collection(db, "users"));
-        state.allUsers = [];
-        usersSnap.forEach(d => { if (d.id !== state.user.uid) { const data = d.data(); state.allUsers.push({ uid: d.id, username: data.username || "Пользователь", avatar: data.avatar || "👤", phone: data.phone || "" }); } });
+    // ---------- Поиск и создание чатов ----------
+    let searchTimeout;
+    function openUserSearch() {
+        if (!cacheState.allUsers) {
+            preloadAllUsers().then(renderSearchModal);
+        } else {
+            renderSearchModal();
+        }
     }
 
-    function openUserSearch() {
-        loadAllUsers().then(() => {
-            const overlay = document.createElement('div');
-            overlay.className = 'modal-overlay';
-            overlay.id = 'userSearchOverlay';
-            overlay.innerHTML = `
-              <div class="modal-content" style="max-width:420px; width:100%;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-                  <h3 style="color:var(--text-heading);">🔍 Поиск пользователя</h3>
-                  <button id="closeSearchBtn" style="background:none; border:none; font-size:24px; color:var(--accent); cursor:pointer;">✕</button>
-                </div>
-                <input id="searchInput" class="neon-input" placeholder="Имя или номер..." style="margin-bottom:16px;" autofocus>
-                <div id="searchResults" style="max-height:50vh; overflow-y:auto;"></div>
-              </div>
-            `;
-            document.body.appendChild(overlay);
-            document.body.classList.add('no-scroll');
+    function renderSearchModal() {
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        overlay.id = 'userSearchOverlay';
+        overlay.innerHTML = `
+          <div class="modal-content" style="max-width:420px; width:100%;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+              <h3 style="color:var(--text-heading);">🔍 Поиск пользователя</h3>
+              <button id="closeSearchBtn" style="background:none; border:none; font-size:24px; color:var(--accent); cursor:pointer;">✕</button>
+            </div>
+            <input id="searchInput" class="neon-input" placeholder="Имя или номер..." style="margin-bottom:16px;" autofocus>
+            <div id="searchResults" style="max-height:50vh; overflow-y:auto;"></div>
+          </div>
+        `;
+        document.body.appendChild(overlay);
+        document.body.classList.add('no-scroll');
 
-            const closeBtn = document.getElementById('closeSearchBtn');
-            const searchInput = document.getElementById('searchInput');
-            const resultsDiv = document.getElementById('searchResults');
+        const closeBtn = document.getElementById('closeSearchBtn');
+        const searchInput = document.getElementById('searchInput');
+        const resultsDiv = document.getElementById('searchResults');
 
-            const filterAndRender = () => {
-                const query = searchInput.value.trim().toLowerCase();
-                const filtered = state.allUsers.filter(u =>
-                    u.username.toLowerCase().includes(query) || u.phone.includes(query)
-                );
-                if (filtered.length === 0) {
-                    resultsDiv.innerHTML = '<div style="color:var(--text-secondary); text-align:center;">Никого не найдено</div>';
-                    return;
-                }
-                resultsDiv.innerHTML = filtered.map(u => `
-                  <div class="chat-item" data-uid="${u.uid}" style="display:flex; align-items:center; gap:12px; padding:12px; border-bottom:1px solid var(--chat-item-border); cursor:pointer;">
-                    <div class="avatar" style="width:44px; height:44px; font-size:24px;">${escapeHtml(u.avatar)}</div>
-                    <div style="flex:1; min-width:0;">
-                      <div style="font-weight:700; color:var(--text-heading);">${escapeHtml(u.username)}</div>
-                      <div style="font-size:13px; color:var(--text-secondary);">${escapeHtml(u.phone || '')}</div>
-                    </div>
-                    <button class="neon-btn" style="padding:8px 16px;">Написать</button>
-                  </div>
-                `).join('');
-                resultsDiv.querySelectorAll('.chat-item').forEach(el => {
-                    el.addEventListener('click', async () => {
-                        const uid = el.dataset.uid;
-                        await startDirectChat(uid);
-                        closeModal();
-                    });
-                });
-            };
-
-            searchInput.addEventListener('input', filterAndRender);
-            filterAndRender();
-
-            function closeModal() {
-                document.body.removeChild(overlay);
-                document.body.classList.remove('no-scroll');
+        const filterAndRender = () => {
+            const q = searchInput.value.trim().toLowerCase();
+            const filtered = cacheState.allUsers.filter(u =>
+                u.username.toLowerCase().includes(q) || u.phone.includes(q)
+            );
+            if (filtered.length === 0) {
+                resultsDiv.innerHTML = '<div style="color:var(--text-secondary); text-align:center;">Никого не найдено</div>';
+                return;
             }
-            closeBtn.addEventListener('click', closeModal);
-            overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
+            resultsDiv.innerHTML = filtered.map(u => `
+              <div class="chat-item" data-uid="${u.uid}" style="display:flex; align-items:center; gap:12px; padding:12px; border-bottom:1px solid var(--chat-item-border); cursor:pointer;">
+                <div class="avatar" style="width:44px; height:44px; font-size:24px;">${escapeHtml(u.avatar)}</div>
+                <div style="flex:1; min-width:0;">
+                  <div style="font-weight:700; color:var(--text-heading);">${escapeHtml(u.username)}</div>
+                  <div style="font-size:13px; color:var(--text-secondary);">${escapeHtml(u.phone || '')}</div>
+                </div>
+                <button class="neon-btn" style="padding:8px 16px;">Написать</button>
+              </div>
+            `).join('');
+            resultsDiv.querySelectorAll('.chat-item').forEach(el => {
+                el.addEventListener('click', async () => {
+                    const uid = el.dataset.uid;
+                    await startDirectChat(uid);
+                    closeModal();
+                });
+            });
+        };
+
+        searchInput.addEventListener('input', () => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(filterAndRender, 300);
         });
+        filterAndRender();
+
+        function closeModal() {
+            document.body.removeChild(overlay);
+            document.body.classList.remove('no-scroll');
+        }
+        closeBtn.addEventListener('click', closeModal);
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
     }
 
     async function startDirectChat(otherUid) {
-        const chatId = directChatId(state.user.uid, otherUid);
+        const chatId = directChatId(authState.user.uid, otherUid);
         const chatRef = doc(db, "chats", chatId);
         const chatSnap = await getDoc(chatRef);
+        let chatData;
         if (!chatSnap.exists()) {
-            await setDoc(chatRef, { type:"direct", members:[state.user.uid, otherUid], createdAt:serverTimestamp(), updatedAt:serverTimestamp(), lastMessage:"" });
+            const me = cacheState.usersCache.get(authState.user.uid) || {
+                username: authState.profile?.displayName || "Без имени",
+                avatar: authState.profile?.photoURL || "👤"
+            };
+            const other = cacheState.usersCache.get(otherUid) || await getUserData(otherUid);
+            const newChat = {
+                type: "direct",
+                members: [authState.user.uid, otherUid],
+                memberUsernames: {
+                    [authState.user.uid]: me.username,
+                    [otherUid]: other.username
+                },
+                memberAvatars: {
+                    [authState.user.uid]: me.avatar,
+                    [otherUid]: other.avatar
+                },
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+                lastMessage: ""
+            };
+            await setDoc(chatRef, newChat);
+            chatData = { id: chatId, ...newChat, title: other.username, avatar: other.avatar };
+        } else {
+            const data = chatSnap.data();
+            const otherUidFromData = (data.members || []).find(m => m !== authState.user.uid);
+            let title = data.title || "Чат";
+            let avatar = "👤";
+            if (data.type === "direct" && otherUidFromData) {
+                if (data.memberUsernames && data.memberAvatars) {
+                    title = data.memberUsernames[otherUidFromData] || "Пользователь";
+                    avatar = data.memberAvatars[otherUidFromData] || "👤";
+                } else {
+                    const cachedUser = cacheState.usersCache.get(otherUidFromData);
+                    if (cachedUser) {
+                        title = cachedUser.username;
+                        avatar = cachedUser.avatar;
+                    }
+                }
+            }
+            chatData = { id: chatId, ...data, title, avatar };
         }
-        state.chats = await loadChats();
-        const chat = state.chats.find(c => c.id === chatId);
-        if (chat) openChat(chat);
+
+        openChat(chatData);
+        refreshChats();
     }
 
+    // ---------- Загрузка данных ----------
     async function loadChats() {
-  if (!state.user) return [];
-
-  // Запрос всех чатов, где участвует текущий пользователь
-  const q = query(collection(db, "chats"), where("members", "array-contains", state.user.uid));
-  const snap = await getDocs(q);
-
-  const chats = [];
-  snap.forEach(docSnap => {
-    const data = docSnap.data();
-    let title = data.title || "Чат";
-    let avatar = "👤";
-
-    if (data.type === "direct") {
-      // Находим собеседника
-      const otherUid = (data.members || []).find(m => m !== state.user.uid);
-      if (otherUid) {
-        // 1. Пытаемся взять из денормализованных полей (если они есть)
-        if (data.memberUsernames && data.memberAvatars) {
-          title = data.memberUsernames[otherUid] || "Пользователь";
-          avatar = data.memberAvatars[otherUid] || "👤";
-        }
-        // 2. fallback: используем кеш в памяти
-        else {
-          const cachedUser = state.usersCache.get(otherUid);
-          if (cachedUser) {
-            title = cachedUser.username;
-            avatar = cachedUser.avatar;
-          }
-          // Если даже в кеше нет – оставляем заглушку, можно потом догрузить
-          else {
-            title = "Пользователь";
-            avatar = "👤";
-          }
-        }
-      }
+        if (!authState.user) return [];
+        const q = query(collection(db, "chats"), where("members", "array-contains", authState.user.uid));
+        const snap = await getDocs(q);
+        const chats = [];
+        snap.forEach(docSnap => {
+            const data = docSnap.data();
+            let title = data.title || "Чат";
+            let avatar = "👤";
+            if (data.type === "direct") {
+                const otherUid = (data.members || []).find(m => m !== authState.user.uid);
+                if (otherUid) {
+                    if (data.memberUsernames && data.memberAvatars) {
+                        title = data.memberUsernames[otherUid] || "Пользователь";
+                        avatar = data.memberAvatars[otherUid] || "👤";
+                    } else {
+                        const cachedUser = cacheState.usersCache.get(otherUid);
+                        if (cachedUser) {
+                            title = cachedUser.username;
+                            avatar = cachedUser.avatar;
+                        }
+                    }
+                }
+            }
+            chats.push({ id: docSnap.id, ...data, title, avatar });
+        });
+        chats.sort((a, b) => (b.updatedAt?.toMillis() || 0) - (a.updatedAt?.toMillis() || 0));
+        return chats;
     }
 
-    chats.push({
-      id: docSnap.id,
-      ...data,
-      title,
-      avatar
-    });
-  });
+    async function refreshChats() {
+        chatState.chats = await loadChats();
+        renderChatsList(chatState.chats, uiState.chatsAnimated ? false : true);
+        if (!uiState.chatsAnimated) uiState.chatsAnimated = true;
+    }
 
-  // Сортировка по убыванию времени обновления
-  chats.sort((a, b) => (b.updatedAt?.toMillis() || 0) - (a.updatedAt?.toMillis() || 0));
-  return chats;
-}
     async function loadWallPosts() {
         const snap = await getDocs(query(collection(db, "wall"), orderBy("createdAt", "desc")));
         return snap.docs.map(d => ({ id: d.id, ...d.data() }));
     }
-    async function refreshChats() { state.chats = await loadChats(); renderChatsList(); }
 
     function setupWallListener() {
-        if (!state.user || state.wallUnsub) return;
+        if (!authState.user || chatState.wallUnsub) return;
         const q = query(collection(db, "wall"), orderBy("createdAt", "desc"));
-        state.wallUnsub = onSnapshot(q, snap => {
-            state.wallPosts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-            if (state.page === 'wall') renderWallPostsList();
+        chatState.wallUnsub = onSnapshot(q, snap => {
+            chatState.wallPosts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            if (uiState.page === 'wall') renderWallPostsList(chatState.wallPosts);
         });
     }
-    async function loadAndRenderWall() {
-        const container = document.getElementById("wallPostsContainer");
-        if (!container) return;
-        container.innerHTML = `<div class="loading">📡 Загрузка постов...</div>`;
-        state.wallPosts = await loadWallPosts();
-        renderWallPostsList();
-        setupWallListener();
+
+    // ---------- Рендеринг UI ----------
+    function renderNav(active) {
+        return `<div class="bottom-nav">
+          <button class="nav-item ${active==='chats'?'active':''}" data-page="chats"><span class="nav-icon">💬</span><span>Чаты</span></button>
+          <button class="nav-item ${active==='wall'?'active':''}" data-page="wall"><span class="nav-icon">📡</span><span>Стена</span></button>
+          <button class="nav-item ${active==='profile'?'active':''}" data-page="profile"><span class="nav-icon">👾</span><span>Профиль</span></button>
+        </div>`;
     }
-    function renderWallPostsList() {
+
+    function renderChatsList(chats, animate = false) {
+        const list = document.getElementById("chatsList");
+        if (!list) return;
+        if (!chats.length) {
+            list.innerHTML = `<div class="loading">✨ Нет чатов. Нажмите + чтобы создать новый.</div>`;
+            return;
+        }
+        list.innerHTML = chats.map((chat, index) => {
+            const delay = (index < 5) ? (0.02 + index * 0.02) : 0;
+            const animClass = animate ? 'animate-in' : '';
+            const animStyle = animate ? `animation-delay: ${delay}s;` : '';
+            return `
+          <div class="chat-item ${animClass}" data-chat-id="${chat.id}" style="${animStyle}">
+            <div class="avatar">${escapeHtml(chat.avatar||"👤")}</div>
+            <div style="min-width:0; flex:1;">
+              <div style="font-weight:700; color:var(--text-heading);">${escapeHtml(chat.title||"Чат")}</div>
+              <div style="font-size:13px; color:var(--text-secondary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(chat.lastMessage||"Нет сообщений")}</div>
+            </div>
+          </div>`;
+        }).join("");
+        list.querySelectorAll(".chat-item").forEach(el => {
+            el.onclick = () => {
+                const chat = chats.find(c => c.id === el.dataset.chatId);
+                if (chat) openChat(chat);
+            };
+        });
+    }
+
+    function renderWallPostsList(posts) {
         const c = document.getElementById("wallPostsContainer");
         if (!c) return;
-        if (!state.wallPosts.length) { c.innerHTML = `<div class="loading">📡 Ещё нет постов. Напиши первый!</div>`; return; }
-        c.innerHTML = state.wallPosts.map(post => {
+        if (!posts.length) {
+            c.innerHTML = `<div class="loading">📡 Ещё нет постов. Напиши первый!</div>`;
+            return;
+        }
+        c.innerHTML = posts.map(post => {
             const comments = post.comments || [];
             return `
             <div class="wall-post" data-post-id="${post.id}">
@@ -965,47 +1131,26 @@
               </div>
             </div>`;
         }).join("");
-        c.querySelectorAll(".like-btn").forEach(btn => btn.onclick = async () => { await updateDoc(doc(db, "wall", btn.dataset.postId), { likesCount: increment(1) }); });
+        c.querySelectorAll(".like-btn").forEach(btn => {
+            btn.onclick = async () => {
+                const postId = btn.dataset.postId;
+                if (likingPosts.has(postId)) return;
+                likingPosts.add(postId);
+                btn.disabled = true;
+                try {
+                    await updateDoc(doc(db, "wall", postId), { likesCount: increment(1) });
+                } catch (e) { console.warn(e); }
+                finally {
+                    likingPosts.delete(postId);
+                    btn.disabled = false;
+                }
+            };
+        });
         c.querySelectorAll(".comment-btn").forEach(btn => btn.onclick = async () => {
-            const comment = prompt("Ваш комментарий:"); if (!comment?.trim()) return;
+            const comment = prompt("Ваш комментарий:");
+            if (!comment?.trim()) return;
             await updateDoc(doc(db, "wall", btn.dataset.postId), { comments: arrayUnion(comment.trim()) });
         });
-    }
-    async function publishPost() {
-        const input = document.getElementById("postContent"); if (!input) return;
-        const content = input.value.trim(); if (!content) return;
-        await addDoc(collection(db, "wall"), {
-            author: state.profile?.displayName || state.user?.displayName || "Без имени",
-            avatar: state.profile?.photoURL || state.user?.photoURL || "👤",
-            content, likesCount: 0, comments: [], createdAt: serverTimestamp(), userId: state.user.uid
-        });
-        input.value = "";
-    }
-
-    function renderNav(active) {
-        return `<div class="bottom-nav">
-          <button class="nav-item ${active==='chats'?'active':''}" data-page="chats"><span class="nav-icon">💬</span><span>Чаты</span></button>
-          <button class="nav-item ${active==='wall'?'active':''}" data-page="wall"><span class="nav-icon">📡</span><span>Стена</span></button>
-          <button class="nav-item ${active==='profile'?'active':''}" data-page="profile"><span class="nav-icon">👾</span><span>Профиль</span></button>
-        </div>`;
-    }
-    function renderChatsList(animate = false) {
-        const list = document.getElementById("chatsList"); if (!list) return;
-        if (!state.chats.length) { list.innerHTML = `<div class="loading">✨ Нет чатов. Нажмите + чтобы создать новый.</div>`; return; }
-        list.innerHTML = state.chats.map((chat, index) => {
-            const delay = (index < 5) ? (0.02 + index * 0.02) : 0;
-            const animClass = animate ? 'animate-in' : '';
-            const animStyle = animate ? `animation-delay: ${delay}s;` : '';
-            return `
-          <div class="chat-item ${animClass}" data-chat-id="${chat.id}" style="${animStyle}">
-            <div class="avatar">${escapeHtml(chat.avatar||"👤")}</div>
-            <div style="min-width:0; flex:1;">
-              <div style="font-weight:700; color:var(--text-heading);">${escapeHtml(chat.title||"Чат")}</div>
-              <div style="font-size:13px; color:var(--text-secondary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(chat.lastMessage||"Нет сообщений")}</div>
-            </div>
-          </div>`;
-        }).join("");
-        list.querySelectorAll(".chat-item").forEach(el => el.onclick = () => { const chat = state.chats.find(c => c.id === el.dataset.chatId); if (chat) openChat(chat); });
     }
 
     function renderChatsPage() {
@@ -1025,10 +1170,8 @@
           </div>`;
         document.getElementById("openSearchBtn").onclick = openUserSearch;
         document.querySelectorAll(".nav-item").forEach(btn => btn.onclick = () => switchPage(btn.dataset.page));
-        const shouldAnimate = !state.chatsAnimated;
-        renderChatsList(shouldAnimate);
-        if (shouldAnimate) state.chatsAnimated = true;
     }
+
     function renderWallPage() {
         hideSplash();
         root.innerHTML = `
@@ -1045,11 +1188,11 @@
           </div>`;
         document.getElementById("publishPostBtn").onclick = publishPost;
         document.querySelectorAll(".nav-item").forEach(btn => btn.onclick = () => switchPage(btn.dataset.page));
-        loadAndRenderWall();
     }
+
     function renderProfilePage() {
         hideSplash();
-        const profile = state.profile || state.user || { displayName: "Без имени", phoneNumber: "", photoURL: "👤" };
+        const profile = authState.profile || authState.user || { displayName: "Без имени", phoneNumber: "", photoURL: "👤" };
         const notifStatus = Notification.permission;
         root.innerHTML = `
           <div style="display:flex; flex-direction:column; height: calc(var(--vh, 1vh) * 100);">
@@ -1062,13 +1205,13 @@
                 ${renderThemeSwitcher()}
                 <hr style="margin:24px 0; border-color:var(--divider-color);">
                 <div style="background: rgba(0,0,0,0.3); border-radius:20px; padding:15px; margin-bottom:15px;">
-                  ${state.isIOS ? `
+                  ${uiState.isIOS ? `
                     <div style="color:#ff0; font-size:14px; margin-bottom:10px;">⚠️ iOS: уведомления работают только если сайт добавлен на домашний экран (PWA).</div>
                     <p style="color:var(--text-secondary); font-size:12px;">Нажмите «Поделиться» → «На экран Домой», затем откройте приложение с иконки.</p>
                   ` : `
                     <div style="color:${notifStatus==='granted'?'#0f0':'#ff0'}; font-size:14px; margin-bottom:10px;">${notifStatus==='granted'?'✅ Уведомления включены':'⚠️ Уведомления не настроены'}</div>
                     <button id="enableNotificationsBtn" class="neon-btn" style="width:100%;">🔔 ${notifStatus==='granted'?'ОБНОВИТЬ':'ВКЛЮЧИТЬ УВЕДОМЛЕНИЯ'}</button>
-                    ${state.isAndroid ? `<p style="color:var(--text-secondary); font-size:11px; margin-top:8px;">Если не приходят: проверьте настройки браузера и системы.</p>` : ''}
+                    ${uiState.isAndroid ? `<p style="color:var(--text-secondary); font-size:11px; margin-top:8px;">Если не приходят: проверьте настройки браузера и системы.</p>` : ''}
                   `}
                 </div>
                 <button id="editProfileBtn" class="neon-btn" style="margin-top:10px; width:100%;">✏️ Изменить профиль</button>
@@ -1078,10 +1221,10 @@
             ${renderNav("profile")}
           </div>`;
         bindThemeSwitcherEvents();
-        if (!state.isIOS) {
+        if (!uiState.isIOS) {
             document.getElementById("enableNotificationsBtn").onclick = async () => {
                 const token = await requestNotificationPermissionAndGetToken();
-                if (token) { await saveFCMTokenToFirestore(state.user.uid, token); alert('✅ Уведомления включены!'); renderProfilePage(); }
+                if (token) { await saveFCMTokenToFirestore(authState.user.uid, token); alert('✅ Уведомления включены!'); renderProfilePage(); }
                 else alert('❌ Не удалось включить. Проверьте разрешения браузера.');
             };
         }
@@ -1090,45 +1233,105 @@
             if (newName === null) return;
             const newAvatar = prompt("Новый аватар-эмодзи:", profile.photoURL||"👤");
             if (newAvatar === null) return;
-            await updateDoc(doc(db, "users", state.user.uid), { username: newName.trim() || "Без имени", avatar: newAvatar.trim() || "👤", updatedAt: serverTimestamp() });
-            state.profile = { ...profile, displayName: newName.trim(), photoURL: newAvatar.trim() };
-            state.user.displayName = state.profile.displayName;
-            state.user.photoURL = state.profile.photoURL;
+            await updateDoc(doc(db, "users", authState.user.uid), { username: newName.trim() || "Без имени", avatar: newAvatar.trim() || "👤", updatedAt: serverTimestamp() });
+            authState.profile = { ...profile, displayName: newName.trim(), photoURL: newAvatar.trim() };
+            authState.user.displayName = authState.profile.displayName;
+            authState.user.photoURL = authState.profile.photoURL;
+            cacheState.usersCache.set(authState.user.uid, {
+                uid: authState.user.uid,
+                username: newName.trim(),
+                avatar: newAvatar.trim(),
+                phone: authState.profile.phoneNumber
+            });
+            await updateProfileInChats(authState.user.uid, newName.trim(), newAvatar.trim());
             renderProfilePage();
         };
         document.getElementById("logoutBtn").onclick = async () => {
-            await signOut(auth); stopPolling();
-            state.user = null; state.profile = null; state.chats = []; state.wallPosts = [];
-            state.chatsAnimated = false;
-            if (state.chatUnsub) state.chatUnsub();
-            if (state.globalChatsUnsub) state.globalChatsUnsub();
-            if (state.wallUnsub) state.wallUnsub();
+            await signOut(auth);
+            voiceState.cleanup(); // очищаем микрофон при выходе
+            // старый stopPolling убран
+            authState.user = null; authState.profile = null;
+            chatState.chats = []; chatState.wallPosts = [];
+            uiState.chatsAnimated = false;
+            cacheState.usersCache.clear();
+            cacheState.allUsers = null;
+            if (chatState.chatUnsub) chatState.chatUnsub();
+            if (chatState.globalChatsUnsub) chatState.globalChatsUnsub();
+            if (chatState.wallUnsub) chatState.wallUnsub();
             showLogin();
         };
         document.querySelectorAll(".nav-item").forEach(btn => btn.onclick = () => switchPage(btn.dataset.page));
     }
 
+    // ---------- Действия над страницами ----------
     function switchPage(page) {
-        if (state.page === page) return;
-        if (state.page === 'wall' && state.wallUnsub) { state.wallUnsub(); state.wallUnsub = null; }
-        if (state.page === 'chats' && state.globalChatsUnsub) { state.globalChatsUnsub(); state.globalChatsUnsub = null; }
-        state.page = page;
-        if (page === 'chats') renderApp();
-        else if (page === 'wall') renderWallPage();
+        if (uiState.page === page) return;
+        if (uiState.page === 'wall' && chatState.wallUnsub) { chatState.wallUnsub(); chatState.wallUnsub = null; }
+        if (uiState.page === 'chats' && chatState.globalChatsUnsub) { chatState.globalChatsUnsub(); chatState.globalChatsUnsub = null; }
+        uiState.page = page;
+        if (page === 'chats') switchToChatsPage();
+        else if (page === 'wall') switchToWallPage();
         else if (page === 'profile') renderProfilePage();
     }
-    function renderApp() {
-        if (state.page === 'wall') return renderWallPage();
-        if (state.page === 'profile') return renderProfilePage();
+
+    function switchToChatsPage() {
         renderChatsPage();
         refreshChats();
         setupGlobalMessageListener();
     }
 
+    function switchToWallPage() {
+        renderWallPage();
+        loadAndRenderWall();
+    }
+
+    async function loadAndRenderWall() {
+        const container = document.getElementById("wallPostsContainer");
+        if (!container) return;
+        container.innerHTML = `<div class="loading">📡 Загрузка постов...</div>`;
+        chatState.wallPosts = await loadWallPosts();
+        renderWallPostsList(chatState.wallPosts);
+        setupWallListener();
+    }
+
+    async function publishPost() {
+        if (postingInProgress) return;
+        const input = document.getElementById("postContent"); if (!input) return;
+        const content = input.value.trim(); if (!content) return;
+        postingInProgress = true;
+        const btn = document.getElementById("publishPostBtn");
+        if (btn) btn.disabled = true;
+        try {
+            await addDoc(collection(db, "wall"), {
+                author: authState.profile?.displayName || "Без имени",
+                avatar: authState.profile?.photoURL || "👤",
+                content, likesCount: 0, comments: [], createdAt: serverTimestamp(), userId: authState.user.uid
+            });
+            input.value = "";
+        } catch (e) { console.warn(e); }
+        finally {
+            postingInProgress = false;
+            if (btn) btn.disabled = false;
+        }
+    }
+
+    // ---------- Чат (с оптимизированным рендерингом) ----------
+    function createMessageElement(msg, isOut) {
+        const time = msg.createdAt?.toDate ? new Date(msg.createdAt.toDate()).toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" }) : "";
+        const div = document.createElement("div");
+        div.className = `message ${isOut ? "out" : "in"}`;
+        if (msg.type === 'audio') {
+            div.innerHTML = `<div style="display:flex;align-items:center;gap:8px;"><audio controls src="${escapeHtml(msg.audioURL)}"></audio><span style="font-size:12px;">${msg.duration ? Math.round(msg.duration) + 'с' : ''}</span></div><div style="font-size:10px;opacity:0.7;margin-top:4px;">${time}</div>`;
+        } else {
+            div.innerHTML = `<div>${escapeHtml(msg.text||"")}</div><div style="font-size:10px;opacity:0.7;margin-top:4px;">${time}</div>`;
+        }
+        return div;
+    }
+
     async function openChat(chat) {
-        if (state.chatUnsub) { state.chatUnsub(); state.chatUnsub = null; }
-        state.activeChat = chat;
-        const title = chat.type === "direct" ? chat.title : (chat.title || "Чат");
+        if (chatState.chatUnsub) { chatState.chatUnsub(); chatState.chatUnsub = null; }
+        chatState.activeChat = chat;
+        const title = chat.title || "Чат";
         const av = chat.avatar || "👤";
 
         const existing = document.getElementById('chatFullscreen');
@@ -1168,38 +1371,78 @@
         const messagesRef = collection(db, "chats", chat.id, "messages");
         const messagesQuery = query(messagesRef, orderBy("createdAt", "asc"));
 
-        state.chatUnsub = onSnapshot(messagesQuery, snap => {
+        // Состояние для инкрементального рендера
+        let renderedIds = [];
+
+        const renderAllMessages = (docs) => {
             messagesContainer.innerHTML = "";
-            snap.forEach(msgDoc => {
-                const msg = msgDoc.data();
-                const isOut = msg.userId === state.user.uid;
-                const time = msg.createdAt?.toDate ? new Date(msg.createdAt.toDate()).toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" }) : "";
-                const div = document.createElement("div");
-                div.className = `message ${isOut ? "out" : "in"}`;
-                if (msg.type === 'audio') {
-                    div.innerHTML = `<div style="display:flex;align-items:center;gap:8px;"><audio controls src="${escapeHtml(msg.audioURL)}"></audio><span style="font-size:12px;">${msg.duration ? Math.round(msg.duration) + 'с' : ''}</span></div><div style="font-size:10px;opacity:0.7;margin-top:4px;">${time}</div>`;
-                } else {
-                    div.innerHTML = `<div>${escapeHtml(msg.text||"")}</div><div style="font-size:10px;opacity:0.7;margin-top:4px;">${time}</div>`;
-                }
-                messagesContainer.appendChild(div);
+            const frag = document.createDocumentFragment();
+            docs.forEach(doc => {
+                const msg = doc.data();
+                frag.appendChild(createMessageElement(msg, msg.userId === authState.user.uid));
             });
+            messagesContainer.appendChild(frag);
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        };
+
+        chatState.chatUnsub = onSnapshot(messagesQuery, snap => {
+            const docs = snap.docs;
+            if (docs.length === 0) {
+                messagesContainer.innerHTML = "";
+                renderedIds = [];
+                return;
+            }
+            const newIds = docs.map(d => d.id);
+
+            // Первая загрузка или удаление сообщений -> полный рендер
+            if (renderedIds.length === 0 || docs.length < renderedIds.length) {
+                renderAllMessages(docs);
+                renderedIds = newIds;
+                return;
+            }
+
+            // Проверяем, что начало совпадает с уже отрендеренными id
+            let mismatch = false;
+            for (let i = 0; i < renderedIds.length; i++) {
+                if (i >= docs.length || docs[i].id !== renderedIds[i]) {
+                    mismatch = true;
+                    break;
+                }
+            }
+            if (mismatch) {
+                renderAllMessages(docs);
+                renderedIds = newIds;
+                return;
+            }
+
+            // Есть новые сообщения в конце
+            if (docs.length > renderedIds.length) {
+                const frag = document.createDocumentFragment();
+                for (let i = renderedIds.length; i < docs.length; i++) {
+                    const msg = docs[i].data();
+                    frag.appendChild(createMessageElement(msg, msg.userId === authState.user.uid));
+                }
+                messagesContainer.appendChild(frag);
+                renderedIds = newIds;
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
         });
 
         backBtn.onclick = () => {
-            if (state.chatUnsub) { state.chatUnsub(); state.chatUnsub = null; }
-            state.activeChat = null;
+            if (chatState.chatUnsub) { chatState.chatUnsub(); chatState.chatUnsub = null; }
+            chatState.activeChat = null;
+            voiceState.cleanup(); // гарантированно останавливаем микрофон при закрытии чата
             fullscreen.remove();
             document.body.classList.remove('no-scroll');
-            state.page = "chats";
-            renderApp();
+            uiState.page = "chats";
+            switchToChatsPage();
         };
 
         const sendMessage = async () => {
             const text = messageInput.value.trim();
             if (!text) return;
-            await addDoc(messagesRef, { text, userId: state.user.uid, createdAt: serverTimestamp() });
-            await updateDoc(doc(db, "chats", chat.id), { lastMessage: text, lastMessageUserId: state.user.uid, updatedAt: serverTimestamp() });
+            await addDoc(messagesRef, { text, userId: authState.user.uid, createdAt: serverTimestamp() });
+            await updateDoc(doc(db, "chats", chat.id), { lastMessage: text, lastMessageUserId: authState.user.uid, updatedAt: serverTimestamp() });
             messageInput.value = "";
         };
 
@@ -1207,8 +1450,8 @@
         messageInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); sendMessage(); } });
 
         voiceBtn.onclick = () => {
-            if (state.mediaRecorder && state.mediaRecorder.state === 'recording') {
-                state.mediaRecorder.stop();
+            if (voiceState.mediaRecorder && voiceState.mediaRecorder.state === 'recording') {
+                voiceState.mediaRecorder.stop();
                 voiceBtn.classList.remove('recording');
                 recordingIndicator.style.display = 'none';
             } else {
@@ -1217,30 +1460,51 @@
         };
     }
 
+    // ---------- Голосовые сообщения (используем voiceState) ----------
     async function startVoiceRecording(chatId, voiceBtn, indicator) {
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { alert("Микрофон не доступен"); return; }
+        if (!navigator.mediaDevices?.getUserMedia) { alert("Микрофон не доступен"); return; }
+        voiceState.cleanup(); // очищаем предыдущий стрим
+
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            state.audioChunks = [];
-            state.recordingChatId = chatId;
+            voiceState.mediaStream = stream;
+            voiceState.audioChunks = [];
+            voiceState.recordingChatId = chatId;
             const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
-            state.mediaRecorder = recorder;
-            recorder.ondataavailable = e => { if (e.data.size > 0) state.audioChunks.push(e.data); };
+            voiceState.mediaRecorder = recorder;
+
+            recorder.ondataavailable = e => { if (e.data.size > 0) voiceState.audioChunks.push(e.data); };
+
             recorder.onstop = async () => {
-                stream.getTracks().forEach(t => t.stop());
-                if (state.audioChunks.length === 0) return;
-                const blob = new Blob(state.audioChunks, { type: 'audio/webm' });
-                state.audioChunks = [];
-                await uploadAudioAndSendMessage(chatId, blob);
+                voiceState.cleanup(); // стрим больше не нужен
+                voiceBtn.classList.remove('recording');
+                indicator.style.display = 'none';
+                if (voiceState.audioChunks.length === 0) return;
+                const blob = new Blob(voiceState.audioChunks, { type: 'audio/webm' });
+                voiceState.audioChunks = [];
+                try {
+                    await uploadAudioAndSendMessage(chatId, blob);
+                } catch (e) {
+                    console.error("uploadAudio failed:", e);
+                }
             };
+
             recorder.start();
             voiceBtn.classList.add('recording');
             indicator.style.display = 'block';
-        } catch (err) { console.error("mic error", err); alert("Ошибка микрофона"); }
+        } catch (err) {
+            console.error("mic error", err);
+            voiceState.cleanup();
+            voiceBtn.classList.remove('recording');
+            indicator.style.display = 'none';
+            alert("Ошибка микрофона");
+        }
     }
 
+    window.addEventListener('beforeunload', () => voiceState.cleanup());
+
     async function uploadAudioAndSendMessage(chatId, blob) {
-        const sendBtn = document.getElementById("sendMsgBtn") || document.querySelector('#chatFullscreen #sendMsgBtn');
+        const sendBtn = document.querySelector('#chatFullscreen #sendMsgBtn');
         if (sendBtn) { sendBtn.disabled = true; sendBtn.textContent = "⏳"; }
         const messagesRef = collection(db, "chats", chatId, "messages");
         const newMsgRef = doc(messagesRef);
@@ -1253,24 +1517,32 @@
             const audioEl = document.createElement('audio'); audioEl.src = downloadURL;
             let duration = 0;
             await new Promise((resolve) => { audioEl.addEventListener('loadedmetadata', () => { duration = audioEl.duration; resolve(); }); audioEl.load(); });
-            await setDoc(newMsgRef, { type: 'audio', audioURL: downloadURL, duration, userId: state.user.uid, createdAt: serverTimestamp() });
-            await updateDoc(doc(db, "chats", chatId), { lastMessage: "🎤 Голосовое сообщение", lastMessageUserId: state.user.uid, updatedAt: serverTimestamp() });
-        } catch (error) { console.error("audio upload error", error); alert("Не удалось отправить голосовое."); }
+            await setDoc(newMsgRef, { type: 'audio', audioURL: downloadURL, duration, userId: authState.user.uid, createdAt: serverTimestamp() });
+            await updateDoc(doc(db, "chats", chatId), { lastMessage: "🎤 Голосовое сообщение", lastMessageUserId: authState.user.uid, updatedAt: serverTimestamp() });
+        } catch (error) {
+            console.error("audio upload error", error);
+            alert("Не удалось отправить голосовое.");
+        }
         finally { if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = "➤"; } }
     }
 
+    // ---------- Уведомления и слушатели ----------
     function setupGlobalMessageListener() {
-        if (!state.user || state.globalChatsUnsub) return;
-        const q = query(collection(db, "chats"), where("members", "array-contains", state.user.uid));
-        state.globalChatsUnsub = onSnapshot(q, async snap => {
+        if (!authState.user || chatState.globalChatsUnsub) return;
+        const q = query(collection(db, "chats"), where("members", "array-contains", authState.user.uid));
+        chatState.globalChatsUnsub = onSnapshot(q, async snap => {
             snap.docChanges().forEach(async change => {
                 if (change.type === "modified") {
                     const chat = change.doc.data();
                     const chatId = change.doc.id;
-                    if (chat.lastMessageUserId && chat.lastMessageUserId !== state.user.uid && state.activeChat?.id !== chatId) {
+                    if (chat.lastMessageUserId && chat.lastMessageUserId !== authState.user.uid && chatState.activeChat?.id !== chatId) {
                         if (Notification.permission === 'granted') {
-                            const sender = await loadProfile(chat.lastMessageUserId);
-                            new Notification(`${sender?.displayName || 'NEON'} 💬`, { body: chat.lastMessage, icon: '/neon/icon-192x192.png', tag: chatId }).onclick = () => { window.focus(); const c = state.chats.find(x => x.id === chatId); if (c) openChat(c); };
+                            const sender = cacheState.usersCache.get(chat.lastMessageUserId) || await getUserData(chat.lastMessageUserId);
+                            new Notification(`${sender?.username || 'NEON'} 💬`, { body: chat.lastMessage, icon: '/neon/icon-192x192.png', tag: chatId }).onclick = () => {
+                                window.focus();
+                                const c = chatState.chats.find(x => x.id === chatId);
+                                if (c) openChat(c);
+                            };
                         }
                         refreshChats();
                     }
@@ -1288,65 +1560,64 @@
             const permission = await Notification.requestPermission();
             if (permission === 'granted') {
                 const token = await getToken(messaging, { vapidKey: 'BDRTV4EZNNWVT9_dRipTDFG_JHwJa53Ne82UgG5g6XdgLWufZumogCNM8EQK_T-Qg9fZDeCEq7_R6DchHcfWXZQ', serviceWorkerRegistration: reg });
-                if (token) { state.fcmToken = token; return token; }
+                if (token) { authState.fcmToken = token; return token; }
             }
         } catch (error) { console.error("Token error:", error); }
         return null;
     }
+
     async function saveFCMTokenToFirestore(uid, token) {
         if (!uid || !token) return;
         await updateDoc(doc(db, "users", uid), { fcmTokens: arrayUnion(token) }).catch(()=>{});
     }
+
     if (messaging) {
         onMessage(messaging, payload => {
             if (payload.notification) new Notification(payload.notification.title, { body: payload.notification.body, icon: '/neon/icon-192x192.png' });
         });
     }
 
-    function startPolling() {
-        if (state.pollingInterval) clearInterval(state.pollingInterval);
-        state.pollingInterval = setInterval(async () => {
-            if (!state.user || document.visibilityState !== 'visible') return;
-            if (state.page === 'chats') await refreshChats();
-            if (state.page === 'wall') await loadAndRenderWall();
-        }, 5000);
-    }
-    function stopPolling() { if (state.pollingInterval) { clearInterval(state.pollingInterval); state.pollingInterval = null; } }
+    // polling полностью удалён
+
     document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible' && state.user) {
-            if (state.page === 'chats') { if (state.globalChatsUnsub) { state.globalChatsUnsub(); state.globalChatsUnsub = null; } setupGlobalMessageListener(); refreshChats(); }
-            if (state.page === 'wall') { if (state.wallUnsub) { state.wallUnsub(); state.wallUnsub = null; } setupWallListener(); loadAndRenderWall(); }
-            if (state.activeChat) { const c = state.activeChat; if (state.chatUnsub) { state.chatUnsub(); state.chatUnsub = null; } openChat(c); }
+        if (document.visibilityState === 'visible' && authState.user) {
+            if (uiState.page === 'chats') { if (chatState.globalChatsUnsub) { chatState.globalChatsUnsub(); chatState.globalChatsUnsub = null; } setupGlobalMessageListener(); refreshChats(); }
+            if (uiState.page === 'wall') { if (chatState.wallUnsub) { chatState.wallUnsub(); chatState.wallUnsub = null; } setupWallListener(); loadAndRenderWall(); }
+            if (chatState.activeChat) { const c = chatState.activeChat; if (chatState.chatUnsub) { chatState.chatUnsub(); chatState.chatUnsub = null; } openChat(c); }
         }
     });
 
+    // ---------- Старт ----------
     function boot() {
-        // Применяем тему сразу, чтобы splash был в нужных цветах
         loadTheme();
-        startPolling();
+        // polling не запускается
         onAuthStateChanged(auth, async (user) => {
-            // Небольшая задержка, чтобы анимация splash была заметна
-            if (!state.splashHidden) {
+            if (!uiState.splashHidden) {
                 setTimeout(hideSplash, 1500);
             }
             if (!user) {
-                stopPolling();
-                state.user = null; state.profile = null; state.chats = []; state.wallPosts = [];
-                state.chatsAnimated = false;
-                if (state.chatUnsub) state.chatUnsub();
-                if (state.globalChatsUnsub) state.globalChatsUnsub();
-                if (state.wallUnsub) state.wallUnsub();
+                // stopPolling удалён
+                authState.user = null; authState.profile = null;
+                chatState.chats = []; chatState.wallPosts = [];
+                uiState.chatsAnimated = false;
+                cacheState.usersCache.clear();
+                cacheState.allUsers = null;
+                if (chatState.chatUnsub) chatState.chatUnsub();
+                if (chatState.globalChatsUnsub) chatState.globalChatsUnsub();
+                if (chatState.wallUnsub) chatState.wallUnsub();
                 showLogin();
                 return;
             }
-            let profile = await loadProfile(user.uid);
+            let profile = await getUserData(user.uid);
             if (!profile) profile = await ensureProfile(user, user.displayName || "Без имени", user.photoURL || "👤");
-            state.user = { uid: user.uid, phoneNumber: user.phoneNumber || profile.phoneNumber, displayName: profile.displayName, photoURL: profile.photoURL };
-            state.profile = profile;
-            if (state.page === 'profile') renderProfilePage(); else { state.page = 'chats'; renderApp(); }
-            if (!state.isIOS) {
+            authState.user = { uid: user.uid, phoneNumber: user.phoneNumber || profile.phoneNumber, displayName: profile.displayName, photoURL: profile.photoURL };
+            authState.profile = profile;
+            await preloadAllUsers();
+            if (uiState.page === 'profile') renderProfilePage();
+            else switchToChatsPage();
+            if (!uiState.isIOS) {
                 const token = await requestNotificationPermissionAndGetToken();
-                if (token) await saveFCMTokenToFirestore(state.user.uid, token);
+                if (token) await saveFCMTokenToFirestore(authState.user.uid, token);
             }
         });
     }
