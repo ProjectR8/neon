@@ -623,13 +623,16 @@
     auth.languageCode = "ru";
 
     const state = {
-        user: null, profile: null, page: "chats", chats: [], wallPosts: [],
-        activeChat: null, chatUnsub: null, captcha: null, fcmToken: null,
-        globalChatsUnsub: null, wallUnsub: null, pollingInterval: null,
-        isIOS: /iPad|iPhone|iPod/.test(navigator.userAgent),
-        isAndroid: /Android/.test(navigator.userAgent),
-        mediaRecorder: null, audioChunks: [], recordingChatId: null,
-        currentTheme: 'neon-cyan', chatsAnimated: false, allUsers: null, splashHidden: false
+    user: null, profile: null, page: "chats", chats: [], wallPosts: [],
+    activeChat: null, chatUnsub: null, captcha: null, fcmToken: null,
+    globalChatsUnsub: null, wallUnsub: null, pollingInterval: null,
+    isIOS: /iPad|iPhone|iPod/.test(navigator.userAgent),
+    isAndroid: /Android/.test(navigator.userAgent),
+    mediaRecorder: null, audioChunks: [], recordingChatId: null,
+    currentTheme: 'neon-cyan', chatsAnimated: false,
+    allUsers: null,          // массив для поиска (все, кроме текущего)
+    usersCache: new Map(),   // кеш uid -> { username, avatar, phone }
+    splashHidden: false
     };
     const root = document.getElementById("root");
     const splash = document.getElementById("splash");
