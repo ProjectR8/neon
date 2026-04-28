@@ -872,23 +872,55 @@
     }
 
     async function loadChats() {
-        if (!state.user) return [];
-        const snap = await getDocs(query(collection(db, "chats"), where("members", "array-contains", state.user.uid)));
-        const chats = await Promise.all(snap.docs.map(async d => {
-            const data = d.data();
-            let title = data.title || "Чат", av = "👤";
-            if (data.type === "direct") {
-                const other = (data.members || []).find(m => m !== state.user.uid);
-                if (other) {
-                    const p = await loadProfile(other);
-                    if (p) { title = p.displayName; av = p.photoURL; }
-                }
-            }
-            return { id: d.id, ...data, title, avatar: av };
-        }));
-        chats.sort((a,b) => (b.updatedAt?.toMillis()||0) - (a.updatedAt?.toMillis()||0));
-        return chats;
+  if (!state.user) return [];
+
+  // Запрос всех чатов, где участвует текущий пользователь
+  const q = query(collection(db, "chats"), where("members", "array-contains", state.user.uid));
+  const snap = await getDocs(q);
+
+  const chats = [];
+  snap.forEach(docSnap => {
+    const data = docSnap.data();
+    let title = data.title || "Чат";
+    let avatar = "👤";
+
+    if (data.type === "direct") {
+      // Находим собеседника
+      const otherUid = (data.members || []).find(m => m !== state.user.uid);
+      if (otherUid) {
+        // 1. Пытаемся взять из денормализованных полей (если они есть)
+        if (data.memberUsernames && data.memberAvatars) {
+          title = data.memberUsernames[otherUid] || "Пользователь";
+          avatar = data.memberAvatars[otherUid] || "👤";
+        }
+        // 2. fallback: используем кеш в памяти
+        else {
+          const cachedUser = state.usersCache.get(otherUid);
+          if (cachedUser) {
+            title = cachedUser.username;
+            avatar = cachedUser.avatar;
+          }
+          // Если даже в кеше нет – оставляем заглушку, можно потом догрузить
+          else {
+            title = "Пользователь";
+            avatar = "👤";
+          }
+        }
+      }
     }
+
+    chats.push({
+      id: docSnap.id,
+      ...data,
+      title,
+      avatar
+    });
+  });
+
+  // Сортировка по убыванию времени обновления
+  chats.sort((a, b) => (b.updatedAt?.toMillis() || 0) - (a.updatedAt?.toMillis() || 0));
+  return chats;
+}
     async function loadWallPosts() {
         const snap = await getDocs(query(collection(db, "wall"), orderBy("createdAt", "desc")));
         return snap.docs.map(d => ({ id: d.id, ...d.data() }));
