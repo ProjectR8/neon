@@ -613,6 +613,29 @@
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
       z-index: 2;
+      border-radius: 16px 16px 0 0;
+    }
+
+    .chat-header-tap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+      cursor: pointer;
+      min-width: 0;
+      padding: 4px 8px;
+      border-radius: var(--radius-md);
+      transition: var(--transition-smooth);
+    }
+
+    .chat-header-tap .avatar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #chatMenuBtn {
+      font-size: 24px;
     }
 
     .last-seen-small {
@@ -751,6 +774,67 @@
     ::-webkit-scrollbar { width: 4px; }
     ::-webkit-scrollbar-track { background: transparent; border-radius: 10px; }
     ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.08); border-radius: 10px; }
+
+    .profile-action-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--gold-border-strong);
+      border-radius: var(--radius-lg);
+      padding: 14px 16px;
+      cursor: pointer;
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 500;
+      transition: var(--transition-smooth);
+      min-width: 64px;
+      background: var(--bg-card);
+    }
+    .profile-action-btn:active {
+      background: rgba(201, 168, 108, 0.1);
+      border-color: var(--gold);
+      color: var(--gold-light);
+    }
+    .profile-action-btn svg {
+      stroke: var(--text-secondary);
+    }
+    .profile-action-btn:active svg {
+      stroke: var(--gold-light);
+    }
+
+    .theme-dot.lavender { background: linear-gradient(135deg, #b8a0d8, #5a4a7a); color: #b8a0d8; }
+    .theme-dot.coffee   { background: linear-gradient(135deg, #c8a080, #6a4a2a); color: #c8a080; }
+    .theme-dot.midnight { background: linear-gradient(135deg, #7090b0, #2a3a50); color: #7090b0; }
+    .theme-dot.arctic   { background: linear-gradient(135deg, #80c8e0, #2a5a6a); color: #80c8e0; }
+
+    .search-fullscreen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: var(--bg-deep);
+      z-index: 400;
+      display: flex;
+      flex-direction: column;
+      animation: fadeIn 0.25s ease;
+      padding: 16px;
+    }
+    .search-input-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .search-back-btn {
+      background: none;
+      border: none;
+      font-size: 28px;
+      color: var(--text-secondary);
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -843,11 +927,11 @@
     if (diffMin < 1) return 'только что';
     if (diffMin < 60) return `был(а) ${diffMin} мин назад`;
     const diffH = Math.floor(diffMin / 60);
-    if (diffH < 24) return `был(а) ${diffH} ч назад`;
-    const diffD = Math.floor(diffH / 24);
-    if (diffD === 1) return 'вчера';
-    if (diffD < 7) return `${diffD} дн назад`;
-    return d.toLocaleDateString('ru', { day:'numeric', month:'short' });
+    if (diffH < 24) return `сегодня в ${d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    if (d.toDateString() === yesterday.toDateString()) return `вчера в ${d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
+    return d.toLocaleDateString('ru', { day:'numeric', month:'short' }) + ' в ' + d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
   };
 
   function setViewportHeight() {
@@ -1024,48 +1108,62 @@
 
   let searchTimeout;
   function openUserSearch() {
-    if (!cacheState.allUsers) { preloadAllUsers().then(renderSearchModal); } else { renderSearchModal(); }
+    if (!cacheState.allUsers) { preloadAllUsers().then(renderFullSearch); } else { renderFullSearch(); }
   }
 
-  function renderSearchModal() {
-    const overlay = document.createElement('div');
-    overlay.className = 'modal-overlay';
-    overlay.innerHTML = `
-      <div class="modal-content" style="max-width:400px; width:100%;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-          <h3 style="color:var(--text-heading); font-weight:600; font-size:17px;">🔍 Поиск</h3>
-          <button id="closeSearchBtn" style="background:none; border:none; font-size:22px; color:var(--text-secondary); cursor:pointer;">✕</button>
-        </div>
-        <input id="searchInput" class="input-premium" placeholder="Имя или номер..." style="margin-bottom:14px;" autofocus>
-        <div id="searchResults" style="max-height:50vh; overflow-y:auto;"></div>
-      </div>`;
-    document.body.appendChild(overlay);
+  function renderFullSearch() {
+    const existing = document.querySelector('.search-fullscreen');
+    if (existing) existing.remove();
+    const container = document.createElement('div');
+    container.className = 'search-fullscreen';
+    container.innerHTML = `
+      <div class="search-input-wrap">
+        <button class="search-back-btn" id="searchCloseBtn">←</button>
+        <input id="searchInput" class="input-premium" style="flex:1;" placeholder="Поиск..." autofocus>
+      </div>
+      <div id="searchResults" style="flex:1; overflow-y:auto;"></div>
+    `;
+    document.body.appendChild(container);
     document.body.classList.add('no-scroll');
-    const closeBtn = document.getElementById('closeSearchBtn');
-    const searchInput = document.getElementById('searchInput');
-    const resultsDiv = document.getElementById('searchResults');
+    const searchInput = container.querySelector('#searchInput');
+    const resultsDiv = container.querySelector('#searchResults');
+    const closeBtn = container.querySelector('#searchCloseBtn');
+
     const filterAndRender = () => {
       const q = searchInput.value.trim().toLowerCase();
       const filtered = cacheState.allUsers.filter(u => u.username.toLowerCase().includes(q) || u.phone.includes(q));
-      if (filtered.length === 0) { resultsDiv.innerHTML = '<div style="color:var(--text-tertiary); text-align:center; padding:20px;">Никого не найдено</div>'; return; }
+      if (filtered.length === 0) {
+        resultsDiv.innerHTML = '<div style="color:var(--text-tertiary); text-align:center; padding:40px;">Никого не найдено</div>';
+        return;
+      }
       resultsDiv.innerHTML = filtered.map(u => {
         const online = isOnline(u.lastSeen);
-        return `<div class="chat-item" data-uid="${u.uid}" style="display:flex; align-items:center; gap:12px; padding:12px; cursor:pointer; margin:2px 0;">
-          <div class="avatar" style="width:42px; height:42px; font-size:20px; position:relative;">${escapeHtml(u.avatar)}${online?'<span class="online-dot small"></span>':''}</div>
+        return `<div class="chat-item" data-uid="${u.uid}" style="display:flex; align-items:center; gap:12px; padding:14px; cursor:pointer; margin:2px 0;">
+          <div class="avatar" style="width:44px; height:44px; font-size:20px; position:relative;">${escapeHtml(u.avatar)}${online?'<span class="online-dot small"></span>':''}</div>
           <div style="flex:1; min-width:0;">
-            <div style="font-weight:600; color:var(--text-heading); font-size:14px;">${escapeHtml(u.username)}</div>
+            <div style="font-weight:600; color:var(--text-heading); font-size:15px;">${escapeHtml(u.username)}</div>
             <div class="last-seen-small ${online?'online-text':''}">${online?'в сети':formatLastSeen(u.lastSeen)}</div>
           </div>
           <button class="btn-ghost" style="padding:8px 14px; font-size:12px;">Написать</button>
         </div>`;
       }).join('');
-      resultsDiv.querySelectorAll('.chat-item').forEach(el => { el.addEventListener('click', async () => { const uid = el.dataset.uid; await startDirectChat(uid); closeModal(); }); });
+      resultsDiv.querySelectorAll('.chat-item').forEach(el => {
+        el.addEventListener('click', async () => {
+          const uid = el.dataset.uid;
+          await startDirectChat(uid);
+          closeSearch();
+        });
+      });
     };
     searchInput.addEventListener('input', () => { clearTimeout(searchTimeout); searchTimeout = setTimeout(filterAndRender, 300); });
     filterAndRender();
-    function closeModal() { document.body.removeChild(overlay); document.body.classList.remove('no-scroll'); }
-    closeBtn.addEventListener('click', closeModal);
-    overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
+
+    function closeSearch() {
+      document.body.removeChild(container);
+      document.body.classList.remove('no-scroll');
+    }
+    closeBtn.addEventListener('click', closeSearch);
+    container.addEventListener('click', (e) => { if (e.target === container) closeSearch(); });
   }
 
   async function startDirectChat(otherUid) {
@@ -1421,7 +1519,7 @@
               <div class="last-seen-small">${statusHtml}</div>
             </div>
           </div>
-          <button id="chatMenuBtn" style="background:none;font-size:20px;color:var(--text-secondary);border:none;cursor:pointer;padding:4px 8px;">☰</button>
+          <button id="chatMenuBtn" style="background:none;border:none;cursor:pointer;padding:4px 8px;"><span style="color:var(--text-secondary); font-size:24px;">☰</span></button>
         </div>
         <div class="messages-area" id="chatMessagesArea"></div>
         <div class="chat-input-container">
@@ -1483,7 +1581,7 @@
       if (e.changedTouches[0].clientX - touchStartX > 80) { fullscreen.querySelector('#backToChatsBtn').click(); }
     });
 
-    setImmediate(() => updateLastSeen());
+    setTimeout(() => updateLastSeen(), 0);
   }
 
   async function startVoiceRecording(chatId, voiceBtn, indicator) {
