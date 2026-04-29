@@ -1476,19 +1476,19 @@
             recorder.ondataavailable = e => { if (e.data.size > 0) voiceState.audioChunks.push(e.data); };
 
             recorder.onstop = async () => {
-                voiceState.cleanup(); // стрим больше не нужен
-                voiceBtn.classList.remove('recording');
-                indicator.style.display = 'none';
-                if (voiceState.audioChunks.length === 0) return;
-                const blob = new Blob(voiceState.audioChunks, { type: 'audio/webm' });
-                voiceState.audioChunks = [];
-                try {
-                    await uploadAudioAndSendMessage(chatId, blob);
-                } catch (e) {
-                    console.error("uploadAudio failed:", e);
-                }
-            };
-
+    // 1. Забираем накопленные чанки, потом уже чистим
+    const chunks = [...voiceState.audioChunks]; // копия, чтобы cleanup не стёр
+    voiceState.cleanup(); // стрим и рекордер остановлены, audioChunks очищены
+    voiceBtn.classList.remove('recording');
+    indicator.style.display = 'none';
+    if (chunks.length === 0) return;
+    const blob = new Blob(chunks, { type: 'audio/webm' });
+    try {
+        await uploadAudioAndSendMessage(chatId, blob);
+    } catch (e) {
+        console.error("uploadAudio failed:", e);
+    }
+};
             recorder.start();
             voiceBtn.classList.add('recording');
             indicator.style.display = 'block';
