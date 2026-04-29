@@ -8,7 +8,7 @@
     <meta name="theme-color" content="#0e1117" />
     <title>NEON MESSENGER | чаты + стена</title>
     <style>
-        /* ======== LUXURY DARK UI – все темы сохранены ======== */
+        /* ======== ВСЕ CSS-ПЕРЕМЕННЫЕ И ТЕМЫ ======== */
         :root {
             --vh: 1vh;
             --bg-body: #0e1117;
@@ -76,7 +76,64 @@
             --card-radius: 20px;
         }
 
-        /* Остальные темы оставлены без изменений */
+        [data-theme="neon-cyan"] {
+            --bg-body: radial-gradient(circle at 20% 30%, #0a0f1f, #03050b);
+            --glass-bg: rgba(15, 25, 45, 0.7);
+            --glass-border: rgba(0, 255, 255, 0.35);
+            --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 0 18px rgba(0, 255, 255, 0.2);
+            --glass-hover-border: #0ff;
+            --glass-hover-shadow: 0 0 28px rgba(0, 255, 255, 0.5);
+            --accent: #0ff;
+            --accent2: #f0f;
+            --accent-glow: rgba(0, 255, 255, 0.5);
+            --text-primary: #d8f8ff;
+            --text-secondary: #88aaff;
+            --text-heading: #fff;
+            --input-bg: rgba(10, 20, 40, 0.7);
+            --input-border: #0ff;
+            --input-focus-shadow: 0 0 14px #0ff;
+            --btn-bg: linear-gradient(135deg, rgba(0, 255, 255, 0.08), rgba(255, 0, 255, 0.08));
+            --btn-border: #0ff;
+            --btn-text: #0ff;
+            --btn-hover-bg: #0ff;
+            --btn-hover-text: #000;
+            --btn-hover-shadow: 0 0 20px #0ff;
+            --nav-bg: rgba(5, 10, 25, 0.85);
+            --nav-border: #0ff;
+            --nav-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+            --nav-active-bg: rgba(0, 255, 255, 0.2);
+            --nav-active-text: #0ff;
+            --nav-active-shadow: 0 0 8px #0ff;
+            --nav-text: #88aaff;
+            --avatar-gradient: linear-gradient(135deg, #0ff, #f0f);
+            --avatar-shadow: 0 0 8px cyan;
+            --badge-bg: #f0f;
+            --badge-text: #000;
+            --msg-out-bg: #0a2a3a;
+            --msg-out-border: #0ff;
+            --msg-out-text: #0ff;
+            --msg-in-bg: #1a1a2e;
+            --msg-in-border: #88f;
+            --msg-in-text: #ccd;
+            --wall-post-bg: rgba(10, 15, 30, 0.6);
+            --wall-post-border: #0ff;
+            --comment-bg: rgba(0, 255, 255, 0.1);
+            --loading-color: #0ff;
+            --divider-color: cyan;
+            --voice-btn-border: #0ff;
+            --voice-btn-color: #0ff;
+            --voice-recording-bg: #f0f;
+            --voice-recording-border: #f0f;
+            --voice-recording-shadow: 0 0 12px #f0f;
+            --profile-avatar-gradient: linear-gradient(135deg, cyan, magenta);
+            --logout-border: magenta;
+            --logout-text: magenta;
+            --chat-item-active: rgba(0, 255, 255, 0.2);
+            --chat-item-border: rgba(0, 255, 255, 0.2);
+            --scrollbar-thumb: #0ff;
+            --scrollbar-track: transparent;
+        }
+
         [data-theme="golden"] {
             --bg-body: radial-gradient(circle at 20% 30%, #1a1008, #0a0504);
             --glass-bg: rgba(30, 20, 12, 0.75);
@@ -134,6 +191,7 @@
             --scrollbar-thumb: #ffb828;
             --scrollbar-track: transparent;
         }
+
         [data-theme="emerald"] {
             --bg-body: radial-gradient(circle at 20% 30%, #051510, #010805);
             --glass-bg: rgba(10, 28, 22, 0.75);
@@ -191,6 +249,7 @@
             --scrollbar-thumb: #00ff82;
             --scrollbar-track: transparent;
         }
+
         [data-theme="purple"] {
             --bg-body: radial-gradient(circle at 20% 30%, #120518, #06020a);
             --glass-bg: rgba(28, 12, 40, 0.75);
@@ -248,6 +307,7 @@
             --scrollbar-thumb: #b44cff;
             --scrollbar-track: transparent;
         }
+
         [data-theme="frost"] {
             --bg-body: radial-gradient(circle at 20% 30%, #0a1018, #02060a);
             --glass-bg: rgba(18, 28, 40, 0.75);
@@ -305,6 +365,7 @@
             --scrollbar-thumb: #88ccff;
             --scrollbar-track: transparent;
         }
+
         [data-theme="inferno"] {
             --bg-body: radial-gradient(circle at 20% 30%, #180a06, #0a0302);
             --glass-bg: rgba(35, 15, 10, 0.75);
@@ -362,6 +423,7 @@
             --scrollbar-thumb: #ff5032;
             --scrollbar-track: transparent;
         }
+
         [data-theme="dark"] {
             --bg-body: #0a0a0c;
             --glass-bg: rgba(20, 20, 24, 0.75);
@@ -419,6 +481,7 @@
             --scrollbar-thumb: #555;
             --scrollbar-track: transparent;
         }
+
         [data-theme="subtle-gold"] {
             --bg-body: #1c1c1e;
             --glass-bg: rgba(40, 38, 35, 0.75);
@@ -480,17 +543,14 @@
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
         body { min-height: 100vh; min-height: calc(var(--vh, 1vh) * 100); background: var(--bg-body); color: var(--text-primary); -webkit-tap-highlight-color: transparent; touch-action: manipulation; transition: background 0.5s ease, color 0.3s ease; }
         body.no-scroll { overflow: hidden; }
-
-        .glass { background: var(--glass-bg); backdrop-filter: blur(20px) saturate(180%); border-radius: var(--glass-radius); border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow); transition: all 0.3s; }
-        @supports not (backdrop-filter: blur(20px)) { .glass { background: var(--glass-bg); } }
+        .glass { background: var(--glass-bg); backdrop-filter: blur(16px) saturate(180%); border-radius: var(--glass-radius); border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow); transition: all 0.3s; }
+        @supports not (backdrop-filter: blur(16px)) { .glass { background: var(--glass-bg); } }
         .glass:hover { border-color: var(--glass-hover-border); box-shadow: var(--glass-hover-shadow); }
-
-        .neon-input { background: var(--input-bg); border: 1px solid var(--input-border); border-radius: var(--input-radius); padding: 14px 18px; color: var(--text-primary); font-size: 16px; outline: none; width: 100%; transition: all 0.3s; }
-        .neon-input:focus { box-shadow: var(--input-focus-shadow); border-color: var(--accent); }
-
-        .neon-btn { background: var(--btn-bg); border: 1px solid var(--btn-border); border-radius: var(--btn-radius); padding: 12px 24px; font-weight: 600; color: var(--btn-text); cursor: pointer; transition: 0.2s; text-transform: none; letter-spacing: 0.3px; }
+        .neon-input { background: var(--input-bg); border: 1px solid var(--input-border); border-radius: var(--input-radius); padding: 14px 20px; color: var(--accent); font-size: 16px; outline: none; width: 100%; transition: all 0.3s; }
+        .neon-input:focus { box-shadow: var(--input-focus-shadow); }
+        .neon-btn { background: var(--btn-bg); border: 1px solid var(--btn-border); border-radius: var(--btn-radius); padding: 12px 24px; font-weight: bold; color: var(--btn-text); cursor: pointer; transition: 0.2s; text-transform: uppercase; }
         .neon-btn:hover:not(:disabled) { background: var(--btn-hover-bg); color: var(--btn-hover-text); box-shadow: var(--btn-hover-shadow); }
-        .neon-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .neon-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
         .bottom-nav {
             position: fixed; bottom: 0; left: 0; right: 0; width: 100%;
@@ -543,15 +603,14 @@
             color: var(--msg-in-text);
         }
         @keyframes messageIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
         .messages-area { flex: 1; overflow-y: auto; display: flex; flex-direction: column; padding: 16px; -webkit-overflow-scrolling: touch; min-height: 0; }
-
         .wall-post { background: var(--wall-post-bg); backdrop-filter: blur(12px); border-radius: 28px; padding: 18px; margin-bottom: 18px; border: 1px solid var(--wall-post-border); transition: all 0.3s; }
         .loading { text-align: center; color: var(--loading-color); padding: 20px; }
         #recaptcha-container { display: block !important; visibility: visible !important; min-height: 78px; width: 100%; margin: 16px 0 0 0; position: relative; z-index: 10000; }
         textarea { resize: vertical; outline: none; }
         button { outline: none; touch-action: manipulation; }
 
+        /* Голосовые, темы, модалки и т.д. */
         .voice-btn, .send-btn {
             background: none;
             border: 1px solid var(--voice-btn-border);
@@ -575,9 +634,6 @@
             animation: pulse 1s infinite;
         }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(212,175,55,0.7); } 70% { box-shadow: 0 0 0 10px rgba(212,175,55,0); } 100% { box-shadow: 0 0 0 0 rgba(212,175,55,0); } }
-
-        .voice-message audio { width: 200px; max-width: 100%; height: 36px; margin-top: 4px; }
-        .voice-message .duration { font-size: 12px; opacity: 0.8; margin-left: 8px; }
 
         .theme-switcher { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 16px 0; }
         .theme-dot { width: 40px; height: 40px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: all 0.3s; position: relative; box-shadow: 0 0 8px rgba(0,0,0,0.3); }
@@ -648,7 +704,7 @@
         ::-webkit-scrollbar-track { background: var(--scrollbar-track); border-radius: 10px; }
         ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 10px; }
 
-        /* Новые стили для профиля и аудиоплеера */
+        /* Новые стили профиля и аудиоплеера */
         .profile-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.7); z-index: 300;
@@ -763,7 +819,7 @@
     try { messaging = getMessaging(app); } catch (e) { console.warn("Messaging not supported"); }
     auth.languageCode = "ru";
 
-    // ========== Состояние (неизменно) ==========
+    // ========== Состояние ==========
     const authState = {
         user: null,
         profile: null,
@@ -1157,7 +1213,7 @@
         refreshChats();
     }
 
-    // ========== Загрузка чатов ==========
+    // ========== Загрузка данных ==========
     async function loadChats() {
         if (!authState.user) return [];
         const q = query(collection(db, "chats"), where("members", "array-contains", authState.user.uid));
@@ -1194,7 +1250,11 @@
         if (!uiState.chatsAnimated) uiState.chatsAnimated = true;
     }
 
-    // ========== Подписки на обновления ==========
+    async function loadWallPosts() {
+        const snap = await getDocs(query(collection(db, "wall"), orderBy("createdAt", "desc")));
+        return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    }
+
     function setupWallListener() {
         if (!authState.user) return;
         if (chatState.wallUnsub) {
@@ -1236,7 +1296,7 @@
         });
     }
 
-    // ========== Рендеринг (списки и стена) ==========
+    // ========== Рендеринг UI ==========
     function renderNav(active) {
         return `<div class="bottom-nav">
           <button class="nav-item ${active==='chats'?'active':''}" data-page="chats"><span class="nav-icon">💬</span><span>Чаты</span></button>
@@ -1479,7 +1539,7 @@
         }
     }
 
-    // ========== Чат – с улучшенным UI ==========
+    // ========== Чат (с улучшенным UI) ==========
     function setupAudioPlayer(audioId) {
         const audio = document.getElementById(audioId);
         const playBtn = document.getElementById(audioId + '_play');
@@ -1553,6 +1613,7 @@
     function openChatProfile(chat, otherUid) {
         if (!otherUid) return;
         getUserData(otherUid).then(user => {
+            if (!user) return;
             const overlay = document.createElement('div');
             overlay.className = 'profile-overlay';
             overlay.id = 'profileOverlay';
@@ -1588,7 +1649,7 @@
             };
             overlay.addEventListener('click', (e) => { if (e.target === overlay) { overlay.remove(); document.body.classList.remove('no-scroll'); } });
             overlay.querySelectorAll('.action-btn').forEach(btn => btn.onclick = () => alert('Функция в разработке'));
-        });
+        }).catch(err => console.warn('Ошибка загрузки профиля:', err));
     }
 
     async function openChat(chat) {
