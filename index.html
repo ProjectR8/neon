@@ -209,6 +209,10 @@
       box-shadow: 0 0 6px var(--gold-glow);
     }
 
+    .nav-item:active {
+      transform: scale(0.92);
+    }
+
     .nav-icon {
       font-size: 24px;
       line-height: 1;
@@ -283,6 +287,7 @@
       flex-shrink: 0;
       position: relative;
       box-shadow: 0 0 0 1px var(--gold-border);
+      overflow: hidden;
     }
 
     .avatar.large {
@@ -290,6 +295,13 @@
       height: 90px;
       font-size: 44px;
       box-shadow: var(--avatar-glow), 0 0 0 2px var(--gold-border-strong);
+    }
+
+    .avatar-img {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
     }
 
     .online-dot {
@@ -422,26 +434,24 @@
       margin-right: 4px;
       transition: var(--transition-smooth);
       flex-shrink: 0;
+      position: relative;
     }
 
-    .voice-btn.recording {
-      background: #e05555;
-      border-color: #e05555;
-      color: #fff;
-      box-shadow: 0 0 16px rgba(224, 85, 85, 0.5);
-      animation: pulse-rec 1.1s infinite;
+    .voice-recording-waves {
+      position: absolute;
+      border-radius: 50%;
+      border: 2px solid var(--gold-light);
+      opacity: 0;
+      transition: all 0.2s ease;
+      pointer-events: none;
+      width: 44px;
+      height: 44px;
+      top: -2px;
+      left: -2px;
     }
 
-    @keyframes pulse-rec {
-      0% {
-        box-shadow: 0 0 0 0 rgba(224, 85, 85, 0.7);
-      }
-      70% {
-        box-shadow: 0 0 0 14px rgba(224, 85, 85, 0);
-      }
-      100% {
-        box-shadow: 0 0 0 0 rgba(224, 85, 85, 0);
-      }
+    .voice-btn.recording .voice-recording-waves {
+      opacity: 0.6;
     }
 
     .send-btn {
@@ -560,24 +570,24 @@
       -webkit-backdrop-filter: blur(20px);
       display: flex;
       flex-direction: column;
-      animation: slideUp 0.35s cubic-bezier(0.22, 0.61, 0.36, 1);
+      animation: slideInRight 0.35s cubic-bezier(0.22, 0.61, 0.36, 1);
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
       padding-bottom: env(safe-area-inset-bottom);
     }
 
-    @keyframes slideUp {
-      from { transform: translateY(100%); }
-      to { transform: translateY(0); }
+    @keyframes slideInRight {
+      from { transform: translateX(100%); }
+      to { transform: translateX(0); }
     }
 
     .profile-fullscreen.closing {
-      animation: slideDown 0.28s cubic-bezier(0.55, 0, 1, 0.45) forwards;
+      animation: slideOutRight 0.28s cubic-bezier(0.55, 0, 1, 0.45) forwards;
     }
 
-    @keyframes slideDown {
-      from { transform: translateY(0); }
-      to { transform: translateY(100%); }
+    @keyframes slideOutRight {
+      from { transform: translateX(0); }
+      to { transform: translateX(100%); }
     }
 
     .chat-fullscreen {
@@ -780,7 +790,7 @@
       flex-direction: column;
       align-items: center;
       gap: 6px;
-      background: rgba(255, 255, 255, 0.03);
+      background: var(--bg-card);
       border: 1px solid var(--gold-border-strong);
       border-radius: var(--radius-lg);
       padding: 14px 16px;
@@ -790,7 +800,6 @@
       font-weight: 500;
       transition: var(--transition-smooth);
       min-width: 64px;
-      background: var(--bg-card);
     }
     .profile-action-btn:active {
       background: rgba(201, 168, 108, 0.1);
@@ -804,10 +813,18 @@
       stroke: var(--gold-light);
     }
 
+    .theme-dot.premium-gold { background: linear-gradient(135deg, #c9a86c, #7a5e3a); color: #c9a86c; }
+    .theme-dot.deep-noir { background: linear-gradient(135deg, #333, #0a0a0a); color: #888; }
+    .theme-dot.forest { background: linear-gradient(135deg, #5a9e7c, #1a3a2a); color: #5a9e7c; }
+    .theme-dot.plum { background: linear-gradient(135deg, #9b6db5, #3a1a4a); color: #9b6db5; }
+    .theme-dot.ocean { background: linear-gradient(135deg, #6ba4c9, #1a3a5c); color: #6ba4c9; }
+    .theme-dot.terracotta { background: linear-gradient(135deg, #d4856b, #5a2a1a); color: #d4856b; }
+    .theme-dot.slate { background: linear-gradient(135deg, #6b7d8a, #1a2228); color: #8a9ba8; }
+    .theme-dot.rose-gold { background: linear-gradient(135deg, #d4a0a0, #6b3a3a); color: #d4a0a0; }
     .theme-dot.lavender { background: linear-gradient(135deg, #b8a0d8, #5a4a7a); color: #b8a0d8; }
-    .theme-dot.coffee   { background: linear-gradient(135deg, #c8a080, #6a4a2a); color: #c8a080; }
+    .theme-dot.coffee { background: linear-gradient(135deg, #c8a080, #6a4a2a); color: #c8a080; }
     .theme-dot.midnight { background: linear-gradient(135deg, #7090b0, #2a3a50); color: #7090b0; }
-    .theme-dot.arctic   { background: linear-gradient(135deg, #80c8e0, #2a5a6a); color: #80c8e0; }
+    .theme-dot.arctic { background: linear-gradient(135deg, #80c8e0, #2a5a6a); color: #80c8e0; }
 
     .search-fullscreen {
       position: fixed;
@@ -834,6 +851,42 @@
       font-size: 28px;
       color: var(--text-secondary);
       cursor: pointer;
+    }
+
+    .settings-icon {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 6px;
+    }
+    .settings-icon svg {
+      stroke: var(--text-secondary);
+      width: 22px;
+      height: 22px;
+    }
+    .settings-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .settings-content {
+      background: var(--bg-card-solid);
+      border-radius: var(--radius-xl);
+      padding: 24px;
+      width: 90%;
+      max-width: 400px;
+      max-height: 80vh;
+      overflow-y: auto;
     }
   </style>
 </head>
@@ -876,9 +929,11 @@
   const chatState = { chats: [], activeChat: null, chatUnsub: null, globalChatsUnsub: null, wallPosts: [], wallUnsub: null };
   const voiceState = {
     mediaRecorder: null, mediaStream: null, audioChunks: [], recordingChatId: null,
+    audioCtx: null, analyser: null,
     cleanup() {
       if (this.mediaStream) { this.mediaStream.getTracks().forEach(t => t.stop()); this.mediaStream = null; }
       if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') { this.mediaRecorder.stop(); this.mediaRecorder = null; }
+      if (this.audioCtx) { this.audioCtx.close(); this.audioCtx = null; }
       this.audioChunks = []; this.recordingChatId = null;
     }
   };
@@ -997,7 +1052,7 @@
     const snap = await getDoc(doc(db, "users", uid));
     if (!snap.exists()) return null;
     const d = snap.data();
-    const user = { uid, username: d.username || "Без имени", avatar: d.avatar || "👤", phone: d.phone || "", lastSeen: d.lastSeen || null };
+    const user = { uid, username: d.username || "Без имени", avatar: d.avatar || "", phone: d.phone || "", lastSeen: d.lastSeen || null };
     cacheState.usersCache.set(uid, user);
     if (d.lastSeen) cacheState.lastSeenCache.set(uid, d.lastSeen);
     return user;
@@ -1008,7 +1063,7 @@
     cacheState.allUsers = [];
     snap.forEach(docSnap => {
       const d = docSnap.data();
-      const user = { uid: docSnap.id, username: d.username || "Пользователь", avatar: d.avatar || "👤", phone: d.phone || "", lastSeen: d.lastSeen || null };
+      const user = { uid: docSnap.id, username: d.username || "Пользователь", avatar: d.avatar || "", phone: d.phone || "", lastSeen: d.lastSeen || null };
       cacheState.usersCache.set(user.uid, user);
       if (d.lastSeen) cacheState.lastSeenCache.set(user.uid, d.lastSeen);
       if (user.uid !== authState.user?.uid) cacheState.allUsers.push(user);
@@ -1021,7 +1076,7 @@
     const baseData = {
       phone: user.phoneNumber || "",
       username: username || snap.data()?.username || "Без имени",
-      avatar: avatar || snap.data()?.avatar || "👤",
+      avatar: avatar || snap.data()?.avatar || "",
       updatedAt: serverTimestamp(),
       lastSeen: serverTimestamp()
     };
@@ -1029,7 +1084,7 @@
     else await updateDoc(ref, baseData);
     const fresh = await getDoc(ref);
     const d = fresh.data() || {};
-    const profile = { uid: user.uid, phoneNumber: user.phoneNumber || d.phone || "", displayName: d.username || "Без имени", photoURL: d.avatar || "👤" };
+    const profile = { uid: user.uid, phoneNumber: user.phoneNumber || d.phone || "", displayName: d.username || "Без имени", photoURL: d.avatar || "" };
     cacheState.usersCache.set(user.uid, { uid: user.uid, username: profile.displayName, avatar: profile.photoURL, phone: profile.phoneNumber, lastSeen: d.lastSeen || null });
     await updateProfileInChats(user.uid, profile.displayName, profile.photoURL);
     return profile;
@@ -1096,7 +1151,7 @@
       btn.disabled = true; btn.textContent = "Загрузка...";
       try {
         const user = await loginWithPhone(phone, "recaptcha-container");
-        const profile = await ensureProfile(user, name, avatar || "👤");
+        const profile = await ensureProfile(user, name, avatar || "");
         authState.user = { uid: profile.uid, phoneNumber: profile.phoneNumber, displayName: profile.displayName, photoURL: profile.photoURL };
         authState.profile = profile;
         await updateLastSeen();
@@ -1138,8 +1193,9 @@
       }
       resultsDiv.innerHTML = filtered.map(u => {
         const online = isOnline(u.lastSeen);
+        const avatarContent = u.avatar && u.avatar.startsWith('http') ? `<img src="${u.avatar}" class="avatar-img" onerror="this.style.display='none'">` : (u.avatar ? `<span>${escapeHtml(u.avatar)}</span>` : '');
         return `<div class="chat-item" data-uid="${u.uid}" style="display:flex; align-items:center; gap:12px; padding:14px; cursor:pointer; margin:2px 0;">
-          <div class="avatar" style="width:44px; height:44px; font-size:20px; position:relative;">${escapeHtml(u.avatar)}${online?'<span class="online-dot small"></span>':''}</div>
+          <div class="avatar" style="width:44px; height:44px; font-size:20px; position:relative;">${avatarContent}${online?'<span class="online-dot small"></span>':''}</div>
           <div style="flex:1; min-width:0;">
             <div style="font-weight:600; color:var(--text-heading); font-size:15px;">${escapeHtml(u.username)}</div>
             <div class="last-seen-small ${online?'online-text':''}">${online?'в сети':formatLastSeen(u.lastSeen)}</div>
@@ -1171,7 +1227,7 @@
     const chatRef = doc(db, "chats", chatId);
     const chatSnap = await getDoc(chatRef);
     let chatData;
-    const me = cacheState.usersCache.get(authState.user.uid) || { username: authState.profile?.displayName || "Без имени", avatar: authState.profile?.photoURL || "👤" };
+    const me = cacheState.usersCache.get(authState.user.uid) || { username: authState.profile?.displayName || "Без имени", avatar: authState.profile?.photoURL || "" };
     const other = cacheState.usersCache.get(otherUid) || await getUserData(otherUid);
     if (!chatSnap.exists()) {
       const newChat = {
@@ -1198,7 +1254,7 @@
     for (const docSnap of snap.docs) {
       const data = docSnap.data();
       let title = data.title || "Чат";
-      let avatar = "👤";
+      let avatar = "";
       let lastSeen = null;
       if (data.type === "direct") {
         const otherUid = (data.members || []).find(m => m !== authState.user.uid);
@@ -1208,7 +1264,7 @@
             title = cached.username; avatar = cached.avatar; lastSeen = cached.lastSeen;
           } else if (data.memberUsernames && data.memberAvatars) {
             title = data.memberUsernames[otherUid] || "Пользователь";
-            avatar = data.memberAvatars[otherUid] || "👤";
+            avatar = data.memberAvatars[otherUid] || "";
           } else {
             const user = await getUserData(otherUid);
             if (user) { title = user.username; avatar = user.avatar; lastSeen = user.lastSeen; }
@@ -1245,13 +1301,16 @@
     if (!chats.length) { list.innerHTML = `<div class="loading">✨ Нет чатов. Нажмите + чтобы начать.</div>`; return; }
     list.innerHTML = chats.map((chat, index) => {
       const online = isOnline(chat.lastSeen);
-      const otherUid = chat.type === 'direct' ? (chat.members || []).find(m => m !== authState.user?.uid) : null;
-      const statusText = online ? '<span class="online-text">в сети</span>' : formatLastSeen(chat.lastSeen);
+      const lastMsg = chat.lastMessage || 'Нет сообщений';
+      const avatarContent = chat.avatar && chat.avatar.startsWith('http') ? `<img src="${chat.avatar}" class="avatar-img" onerror="this.style.display='none'">` : (chat.avatar ? `<span>${escapeHtml(chat.avatar)}</span>` : '');
       return `<div class="chat-item ${animate?'animate-in':''}" data-chat-id="${chat.id}" style="${animate?`animation-delay:${0.02+index*0.025}s`:''}">
-        <div class="avatar" style="position:relative;">${escapeHtml(chat.avatar||"👤")}${online?'<span class="online-dot small"></span>':''}</div>
+        <div class="avatar" style="position:relative;">
+          ${avatarContent}
+          ${online?'<span class="online-dot small"></span>':''}
+        </div>
         <div style="min-width:0; flex:1;">
           <div style="font-weight:600; color:var(--text-heading); font-size:14px;">${escapeHtml(chat.title||"Чат")}${chat.pinned?' 📌':''}</div>
-          <div class="last-seen-small">${statusText}</div>
+          <div style="font-size:12px; color:var(--text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${lastMsg}</div>
         </div>
         ${chat.muted?'<span style="color:var(--text-tertiary); font-size:14px;">🔇</span>':''}
       </div>`;
@@ -1267,7 +1326,7 @@
       const comments = post.comments || [];
       return `<div class="wall-post" data-post-id="${post.id}">
         <div style="display:flex; gap:10px; align-items:center; margin-bottom:10px;">
-          <div class="avatar" style="width:38px; height:38px; font-size:18px;">${escapeHtml(post.avatar||"👤")}</div>
+          <div class="avatar" style="width:38px; height:38px; font-size:18px;">${post.avatar && post.avatar.startsWith('http') ? `<img src="${post.avatar}" class="avatar-img">` : escapeHtml(post.avatar||"")}</div>
           <strong style="color:var(--text-heading); font-size:14px;">${escapeHtml(post.author||"Аноним")}</strong>
         </div>
         <div style="white-space:pre-wrap; font-size:14px; line-height:1.5;">${escapeHtml(post.content||"")}</div>
@@ -1321,47 +1380,83 @@
     setupSwipeNavigation();
   }
 
+  async function uploadAvatar(file) {
+    if (!authState.user) return;
+    const storageRef = ref(storage, `avatars/${authState.user.uid}/${Date.now()}_${file.name}`);
+    await uploadBytesResumable(storageRef, file);
+    const url = await getDownloadURL(storageRef);
+    await updateDoc(doc(db, "users", authState.user.uid), { avatar: url, updatedAt: serverTimestamp() });
+    authState.profile.photoURL = url;
+    authState.user.photoURL = url;
+    cacheState.usersCache.set(authState.user.uid, { ...cacheState.usersCache.get(authState.user.uid), avatar: url });
+    await updateProfileInChats(authState.user.uid, authState.profile.displayName, url);
+    renderProfilePage();
+  }
+
   function renderProfilePage() {
     hideSplash();
-    const profile = authState.profile || authState.user || { displayName: "Без имени", phoneNumber: "", photoURL: "👤" };
+    const profile = authState.profile || authState.user || { displayName: "Без имени", phoneNumber: "", photoURL: "" };
     const notifStatus = Notification.permission;
     root.innerHTML = `
       <div style="display:flex; flex-direction:column; height: calc(var(--vh, 1vh) * 100);">
         <div id="profilePage" class="page active-page" style="flex:1; overflow-y:auto; padding:14px 14px 90px;">
-          <div class="glass-card" style="padding:24px; text-align:center;">
-            <div class="avatar large" style="margin:0 auto 16px;">${escapeHtml(profile.photoURL||"👤")}</div>
+          <div class="glass-card" style="padding:24px; text-align:center; position:relative;">
+            <button class="settings-icon" id="openSettingsBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            </button>
+            <div class="avatar large" style="margin:0 auto 16px; position:relative; cursor:pointer;" id="avatarUploadTrigger">
+              ${profile.photoURL && profile.photoURL.startsWith('http') ? `<img src="${profile.photoURL}" class="avatar-img">` : (profile.photoURL ? `<span>${escapeHtml(profile.photoURL)}</span>` : '')}
+            </div>
+            <input type="file" id="avatarFileInput" style="display:none" accept="image/*">
             <h3 style="font-size:22px; color:var(--text-heading); font-weight:600;">${escapeHtml(profile.displayName||"Без имени")}</h3>
             <p style="color:var(--text-secondary); font-size:13px;">${escapeHtml(profile.phoneNumber||"")}</p>
-            <div class="divider-thin" style="margin:16px 0;"></div>
-            ${renderThemeSwitcher()}
-            <div class="divider-thin" style="margin:16px 0;"></div>
-            <div style="background:rgba(0,0,0,0.2); border-radius:18px; padding:14px; margin-bottom:12px;">
-              ${uiState.isIOS?`<div style="color:#f0c040; font-size:12px; margin-bottom:8px;">⚠️ iOS: добавьте сайт на домашний экран для уведомлений.</div>`:`
-                <div style="color:${notifStatus==='granted'?'var(--online)':'#f0c040'}; font-size:12px; margin-bottom:8px;">${notifStatus==='granted'?'✅ Уведомления включены':'⚠️ Уведомления не настроены'}</div>
-                <button id="enableNotificationsBtn" class="btn-ghost" style="width:100%;">🔔 ${notifStatus==='granted'?'Обновить':'Включить уведомления'}</button>
-              `}
-            </div>
-            <button id="editProfileBtn" class="btn-ghost" style="margin-top:8px; width:100%;">✏️ Изменить профиль</button>
-            <button id="logoutBtn" style="background:var(--danger-bg); border:1px solid var(--danger); color:var(--danger); margin-top:14px; width:100%; padding:11px; border-radius:40px; cursor:pointer; font-weight:500;">Выйти</button>
+            <button id="editNameBtn" class="btn-ghost" style="margin-top:12px; width:100%;">✏️ Изменить имя</button>
+            <button id="logoutBtn" style="background:var(--danger-bg); border:1px solid var(--danger); color:var(--danger); margin-top:14px; width:100%; padding:11px; border-radius:40px; cursor:pointer;">Выйти</button>
           </div>
         </div>
         ${renderNav("profile")}
       </div>`;
-    bindThemeSwitcherEvents();
-    if (!uiState.isIOS) { document.getElementById("enableNotificationsBtn").onclick = async () => { const token = await requestNotificationPermissionAndGetToken(); if (token) { await saveFCMTokenToFirestore(authState.user.uid, token); alert('✅ Уведомления включены!'); renderProfilePage(); } else alert('❌ Не удалось. Проверьте разрешения браузера.'); }; }
-    document.getElementById("editProfileBtn").onclick = async () => {
+    document.getElementById('avatarFileInput').addEventListener('change', (e) => {
+      if (e.target.files[0]) uploadAvatar(e.target.files[0]);
+    });
+    document.getElementById('avatarUploadTrigger').addEventListener('click', ()=>{
+      document.getElementById('avatarFileInput').click();
+    });
+    document.getElementById('editNameBtn').onclick = async ()=>{
       const newName = prompt("Новое имя:", profile.displayName || "");
       if (newName === null) return;
-      const newAvatar = prompt("Новый аватар-эмодзи:", profile.photoURL || "👤");
-      if (newAvatar === null) return;
-      await updateDoc(doc(db, "users", authState.user.uid), { username: newName.trim() || "Без имени", avatar: newAvatar.trim() || "👤", updatedAt: serverTimestamp() });
-      authState.profile = { ...profile, displayName: newName.trim(), photoURL: newAvatar.trim() };
-      authState.user.displayName = authState.profile.displayName;
-      authState.user.photoURL = authState.profile.photoURL;
-      cacheState.usersCache.set(authState.user.uid, { uid: authState.user.uid, username: newName.trim(), avatar: newAvatar.trim(), phone: authState.profile.phoneNumber, lastSeen: Timestamp.now() });
-      await updateProfileInChats(authState.user.uid, newName.trim(), newAvatar.trim());
+      await updateDoc(doc(db, "users", authState.user.uid), { username: newName.trim() || "Без имени", updatedAt: serverTimestamp() });
+      authState.profile.displayName = newName.trim();
+      authState.user.displayName = newName.trim();
+      await updateProfileInChats(authState.user.uid, newName.trim(), authState.profile.photoURL);
       renderProfilePage();
     };
+    document.getElementById('openSettingsBtn').onclick = () => {
+      const modal = document.createElement('div');
+      modal.className = 'settings-modal';
+      modal.innerHTML = `
+        <div class="settings-content">
+          <h3 style="color:var(--text-heading); margin-bottom:16px;">⚙️ Настройки</h3>
+          ${renderThemeSwitcher()}
+          <div class="divider-thin" style="margin:16px 0;"></div>
+          <div style="margin-top:10px;">
+            ${!uiState.isIOS?`<button id="notifSettingsBtn" class="btn-ghost" style="width:100%;">🔔 ${Notification.permission==='granted'?'Обновить':'Включить'} уведомления</button>`:'<div style="color:#f0c040;">Уведомления на iOS недоступны</div>'}
+          </div>
+          <button id="closeSettingsBtn" class="btn-primary" style="width:100%; margin-top:16px;">Закрыть</button>
+        </div>`;
+      document.body.appendChild(modal);
+      bindThemeSwitcherEvents();
+      modal.querySelector('#closeSettingsBtn').onclick = ()=>{ modal.remove(); };
+      if (!uiState.isIOS) {
+        modal.querySelector('#notifSettingsBtn').onclick = async () => {
+          const token = await requestNotificationPermissionAndGetToken();
+          if (token) { await saveFCMTokenToFirestore(authState.user.uid, token); alert('✅ Уведомления включены!'); modal.remove(); renderProfilePage(); }
+          else alert('Не удалось');
+        };
+      }
+      modal.addEventListener('click', (e)=>{ if (e.target === modal) modal.remove(); });
+    };
+    bindThemeSwitcherEvents();
     document.getElementById("logoutBtn").onclick = async () => { await signOut(auth); voiceState.cleanup(); authState.user = null; authState.profile = null; chatState.chats = []; chatState.wallPosts = []; uiState.chatsAnimated = false; cacheState.usersCache.clear(); cacheState.allUsers = null; cacheState.lastSeenCache.clear(); if (chatState.chatUnsub) chatState.chatUnsub(); if (chatState.globalChatsUnsub) chatState.globalChatsUnsub(); if (chatState.wallUnsub) chatState.wallUnsub(); showLogin(); };
     document.querySelectorAll(".nav-item").forEach(btn => btn.onclick = () => switchPage(btn.dataset.page));
     setupSwipeNavigation();
@@ -1382,7 +1477,7 @@
 
   async function loadAndRenderWall() { const container = document.getElementById("wallPostsContainer"); if (!container) return; container.innerHTML = `<div class="loading">📡 Загрузка...</div>`; chatState.wallPosts = await loadWallPosts(); renderWallPostsList(chatState.wallPosts); setupWallListener(); }
 
-  async function publishPost() { if (postingInProgress) return; const input = document.getElementById("postContent"); if (!input) return; const content = input.value.trim(); if (!content) return; postingInProgress = true; const btn = document.getElementById("publishPostBtn"); if (btn) btn.disabled = true; try { await addDoc(collection(db, "wall"), { author: authState.profile?.displayName || "Без имени", avatar: authState.profile?.photoURL || "👤", content, likesCount: 0, comments: [], createdAt: serverTimestamp(), userId: authState.user.uid }); input.value = ""; } catch (e) { console.warn(e); } finally { postingInProgress = false; if (btn) btn.disabled = false; } }
+  async function publishPost() { if (postingInProgress) return; const input = document.getElementById("postContent"); if (!input) return; const content = input.value.trim(); if (!content) return; postingInProgress = true; const btn = document.getElementById("publishPostBtn"); if (btn) btn.disabled = true; try { await addDoc(collection(db, "wall"), { author: authState.profile?.displayName || "Без имени", avatar: authState.profile?.photoURL || "", content, likesCount: 0, comments: [], createdAt: serverTimestamp(), userId: authState.user.uid }); input.value = ""; } catch (e) { console.warn(e); } finally { postingInProgress = false; if (btn) btn.disabled = false; } }
 
   function createMessageElement(msg, isOut) {
     const time = msg.createdAt?.toDate ? new Date(msg.createdAt.toDate()).toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" }) : "";
@@ -1398,6 +1493,7 @@
     const otherUid = chat.type === 'direct' ? (chat.members || []).find(m => m !== authState.user?.uid) : null;
     const otherUser = otherUid ? cacheState.usersCache.get(otherUid) : null;
     const online = isOnline(otherUser?.lastSeen || chat.lastSeen);
+    const avatarContent = chat.avatar && chat.avatar.startsWith('http') ? `<img src="${chat.avatar}" class="avatar-img">` : (chat.avatar ? `<span>${escapeHtml(chat.avatar)}</span>` : '');
 
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
@@ -1409,7 +1505,7 @@
           <div style="width:24px;"></div>
         </div>
         <div style="text-align:center; padding:20px 0;">
-          <div class="avatar large" style="margin:0 auto; position:relative;">${escapeHtml(chat.avatar||"👤")}${online?'<span class="online-dot" style="bottom:4px;right:4px;width:16px;height:16px;border-width:3px;"></span>':''}</div>
+          <div class="avatar large" style="margin:0 auto; position:relative;">${avatarContent}${online?'<span class="online-dot" style="bottom:4px;right:4px;width:16px;height:16px;border-width:3px;"></span>':''}</div>
           <h3 style="color:var(--text-heading); font-weight:600; font-size:22px; margin-top:14px;">${escapeHtml(chat.title||"Чат")}</h3>
           <div class="last-seen-small ${online?'online-text':''}" style="margin-top:6px;">${online?'в сети':(otherUser?.lastSeen?formatLastSeen(otherUser.lastSeen):'')}</div>
         </div>
@@ -1433,9 +1529,9 @@
         </div>
         <div class="divider-thin"></div>
         <div style="padding:10px 16px;">
-          <div class="profile-row" onclick="alert('📸 Медиа — демо-раздел')"><span class="profile-row-icon">📸</span><div class="profile-row-text"><span class="profile-row-label">Медиа</span></div><span class="badge-count">—</span><span class="profile-row-arrow">›</span></div>
-          <div class="profile-row" onclick="alert('📁 Файлы — демо-раздел')"><span class="profile-row-icon">📁</span><div class="profile-row-text"><span class="profile-row-label">Файлы</span></div><span class="badge-count">—</span><span class="profile-row-arrow">›</span></div>
-          <div class="profile-row" onclick="alert('🔗 Ссылки — демо-раздел')"><span class="profile-row-icon">🔗</span><div class="profile-row-text"><span class="profile-row-label">Ссылки</span></div><span class="badge-count">—</span><span class="profile-row-arrow">›</span></div>
+          <div class="profile-row" onclick="alert('📸 Медиа — демо-раздел')"><span class="profile-row-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></span><div class="profile-row-text"><span class="profile-row-label">Медиа</span></div><span class="badge-count">—</span><span class="profile-row-arrow">›</span></div>
+          <div class="profile-row" onclick="alert('📁 Файлы — демо-раздел')"><span class="profile-row-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg></span><div class="profile-row-text"><span class="profile-row-label">Файлы</span></div><span class="badge-count">—</span><span class="profile-row-arrow">›</span></div>
+          <div class="profile-row" onclick="alert('🔗 Ссылки — демо-раздел')"><span class="profile-row-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span><div class="profile-row-text"><span class="profile-row-label">Ссылки</span></div><span class="badge-count">—</span><span class="profile-row-arrow">›</span></div>
         </div>
         <div class="divider-thin"></div>
         <div style="padding:10px 16px;">
@@ -1508,12 +1604,13 @@
     fullscreen.id = 'chatFullscreen';
     const online = isOnline(chat.lastSeen);
     const statusHtml = online ? '<span class="online-text">в сети</span>' : formatLastSeen(chat.lastSeen);
+    const avatarContent = chat.avatar && chat.avatar.startsWith('http') ? `<img src="${chat.avatar}" class="avatar-img">` : (chat.avatar ? `<span>${escapeHtml(chat.avatar)}</span>` : '');
     fullscreen.innerHTML = `
       <div class="glass-card">
         <div class="chat-header">
           <button id="backToChatsBtn" style="background:none;font-size:22px;color:var(--text-secondary);border:none;cursor:pointer;padding:4px 8px;">←</button>
           <div class="chat-header-tap" id="chatHeaderTap">
-            <div class="avatar" style="width:38px;height:38px;font-size:18px;position:relative;">${escapeHtml(chat.avatar||"👤")}${online?'<span class="online-dot small"></span>':''}</div>
+            <div class="avatar" style="width:38px;height:38px;font-size:18px;position:relative;">${avatarContent}${online?'<span class="online-dot small"></span>':''}</div>
             <div style="min-width:0;">
               <div style="font-weight:600;color:var(--text-heading);font-size:14px;">${escapeHtml(chat.title||"Чат")}</div>
               <div class="last-seen-small">${statusHtml}</div>
@@ -1523,7 +1620,10 @@
         </div>
         <div class="messages-area" id="chatMessagesArea"></div>
         <div class="chat-input-container">
-          <button id="voiceRecordBtn" class="voice-btn">🎤</button>
+          <button id="voiceRecordBtn" class="voice-btn" style="position:relative;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+            <div class="voice-recording-waves"></div>
+          </button>
           <input type="text" id="messageInput" class="input-premium" style="flex:1; margin:0;" placeholder="Сообщение...">
           <button id="sendMsgBtn" class="send-btn">↑</button>
         </div>
@@ -1571,9 +1671,30 @@
     };
     sendBtn.onclick = sendMessage;
     messageInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); sendMessage(); } });
-    voiceBtn.onclick = () => {
-      if (voiceState.mediaRecorder && voiceState.mediaRecorder.state === 'recording') { voiceState.mediaRecorder.stop(); voiceBtn.classList.remove('recording'); recordingIndicator.style.display = 'none'; } else { startVoiceRecording(chat.id, voiceBtn, recordingIndicator); }
-    };
+
+    let touchStartY = 0; let isLocked = false;
+    voiceBtn.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      touchStartY = e.clientY;
+      isLocked = false;
+      startVoiceRecording(chat.id, voiceBtn, recordingIndicator);
+    });
+    voiceBtn.addEventListener('pointermove', (e) => {
+      if (voiceState.mediaRecorder?.state === 'recording') {
+        if (e.clientY < touchStartY - 50) {
+          isLocked = true;
+          voiceBtn.classList.add('locked');
+        } else {
+          isLocked = false;
+          voiceBtn.classList.remove('locked');
+        }
+      }
+    });
+    voiceBtn.addEventListener('pointerup', (e) => {
+      if (voiceState.mediaRecorder?.state === 'recording') {
+        if (!isLocked) voiceState.mediaRecorder.stop();
+      }
+    });
 
     let touchStartX = 0;
     fullscreen.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; });
@@ -1589,17 +1710,49 @@
     voiceState.cleanup();
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      voiceState.mediaStream = stream; voiceState.audioChunks = []; voiceState.recordingChatId = chatId;
+      voiceState.mediaStream = stream;
+      voiceState.audioChunks = [];
+      voiceState.recordingChatId = chatId;
+
+      const audioCtx = new AudioContext();
+      const analyser = audioCtx.createAnalyser();
+      const source = audioCtx.createMediaStreamSource(stream);
+      source.connect(analyser);
+      analyser.fftSize = 64;
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      voiceState.audioCtx = audioCtx;
+      voiceState.analyser = analyser;
+
+      const waves = voiceBtn.querySelector('.voice-recording-waves');
+      const draw = () => {
+        if (!voiceState.mediaRecorder || voiceState.mediaRecorder.state !== 'recording') return;
+        requestAnimationFrame(draw);
+        analyser.getByteFrequencyData(dataArray);
+        const avg = dataArray.reduce((a,b)=>a+b,0)/dataArray.length;
+        const scale = Math.min(1 + avg/128, 1.4);
+        waves.style.transform = `scale(${scale})`;
+        waves.style.opacity = 0.3 + avg/256;
+      };
+      draw();
+
       const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
       voiceState.mediaRecorder = recorder;
       recorder.ondataavailable = e => { if (e.data.size > 0) voiceState.audioChunks.push(e.data); };
       recorder.onstop = async () => {
-        const chunks = [...voiceState.audioChunks]; voiceState.cleanup(); voiceBtn.classList.remove('recording'); indicator.style.display = 'none';
+        waves.style.transform = 'scale(1)';
+        waves.style.opacity = '0';
+        if (voiceState.audioCtx) { voiceState.audioCtx.close(); voiceState.audioCtx = null; }
+        const chunks = [...voiceState.audioChunks];
+        voiceState.cleanup();
+        voiceBtn.classList.remove('recording');
+        indicator.style.display = 'none';
         if (chunks.length === 0) return;
         const blob = new Blob(chunks, { type: 'audio/webm' });
         try { await uploadAudioAndSendMessage(chatId, blob); } catch (e) { console.error(e); }
       };
-      recorder.start(); voiceBtn.classList.add('recording'); indicator.style.display = 'block';
+      recorder.start();
+      voiceBtn.classList.add('recording');
+      indicator.style.display = 'block';
     } catch (err) { voiceState.cleanup(); voiceBtn.classList.remove('recording'); indicator.style.display = 'none'; alert("Ошибка микрофона"); }
   }
   window.addEventListener('beforeunload', () => voiceState.cleanup());
@@ -1688,7 +1841,7 @@
       if (!uiState.splashHidden) { setTimeout(hideSplash, 1500); }
       if (!user) { authState.user = null; authState.profile = null; chatState.chats = []; chatState.wallPosts = []; uiState.chatsAnimated = false; cacheState.usersCache.clear(); cacheState.allUsers = null; cacheState.lastSeenCache.clear(); if (chatState.chatUnsub) chatState.chatUnsub(); if (chatState.globalChatsUnsub) chatState.globalChatsUnsub(); if (chatState.wallUnsub) chatState.wallUnsub(); showLogin(); return; }
       let profile = await getUserData(user.uid);
-      if (!profile) profile = await ensureProfile(user, user.displayName || "Без имени", user.photoURL || "👤");
+      if (!profile) profile = await ensureProfile(user, user.displayName || "Без имени", user.photoURL || "");
       authState.user = { uid: user.uid, phoneNumber: user.phoneNumber || profile.phoneNumber, displayName: profile.displayName, photoURL: profile.photoURL };
       authState.profile = profile;
       await updateLastSeen();
