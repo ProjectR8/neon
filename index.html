@@ -172,7 +172,6 @@
       border-top: 1px solid var(--nav-border);
       z-index: 100;
       height: 82px;
-      border-radius: 0;
     }
 
     .nav-item {
@@ -463,8 +462,9 @@
       gap: 8px;
       background: rgba(255,255,255,0.05);
       border-radius: 20px;
-      padding: 8px 14px;
+      padding: 6px 12px;
       margin: 4px 0;
+      max-width: 240px;
     }
     .voice-message .voice-play-btn {
       background: none;
@@ -472,8 +472,8 @@
       color: var(--gold-light);
       font-size: 18px;
       cursor: pointer;
-      width: 30px;
-      height: 30px;
+      width: 28px;
+      height: 28px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -482,7 +482,7 @@
       display: flex;
       align-items: flex-end;
       gap: 2px;
-      height: 30px;
+      height: 24px;
     }
     .voice-message .waveform-bars .bar {
       width: 3px;
@@ -508,6 +508,37 @@
       color: var(--text-secondary);
       gap: 10px;
       font-size: 14px;
+      position: relative;
+    }
+
+    .spinner {
+      width: 24px;
+      height: 24px;
+      border: 3px solid rgba(201, 168, 108, 0.2);
+      border-top-color: var(--gold);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .cancel-upload-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 28px;
+      height: 28px;
+      background: rgba(0,0,0,0.6);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      cursor: pointer;
+      font-size: 16px;
+      border: none;
     }
 
     .date-separator {
@@ -572,7 +603,6 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 0;
       animation: fadeIn 0.25s ease;
     }
 
@@ -663,7 +693,7 @@
       justify-content: center;
     }
 
-    #chatMenuBtn, #chatCallBtn { font-size: 24px; background: none; border: none; cursor: pointer; padding: 4px 6px; }
+    #chatMenuBtn, #chatCallBtn { font-size: 24px; background: none; border: none; cursor: pointer; padding: 4px 6px; color: var(--gold-light); }
 
     .last-seen-small {
       font-size: 11px;
@@ -833,11 +863,11 @@
       font-size: 12px;
       font-weight: 500;
       transition: var(--transition-smooth);
-      min-width: 64px;
+      flex: 1;
+      justify-content: center;
     }
     .profile-action-btn:active { background: rgba(201,168,108,0.1); border-color: var(--gold); color: var(--gold-light); }
-    .profile-action-btn svg { stroke: var(--text-secondary); }
-    .profile-action-btn:active svg { stroke: var(--gold-light); }
+    .profile-action-btn svg { stroke: currentColor; }
 
     .theme-dot.premium-gold { background: radial-gradient(circle at 30% 30%, #c9a86c, #7a5e3a); color: #c9a86c; }
     .theme-dot.deep-noir { background: radial-gradient(circle at 30% 30%, #aaa, #333); color: #888; }
@@ -865,22 +895,6 @@
       position: absolute; top: 14px; left: 14px;
       background: none; border: none; cursor: pointer; padding: 6px;
     }
-    .settings-icon svg { stroke: var(--text-secondary); width: 22px; height: 22px; }
-    .settings-fullscreen {
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: var(--bg-deep); z-index: 400;
-      display: flex; flex-direction: column;
-      animation: fadeIn 0.2s ease; padding: 16px;
-    }
-    .settings-header { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
-
-    #openSearchBtn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 24px;
-      line-height: 1;
-    }
 
     .profile-name {
       font-size: 20px;
@@ -905,33 +919,43 @@
       padding: 14px 18px;
       margin: 8px 0;
       box-shadow: 0 2px 12px rgba(0,0,0,0.2);
-      transition: var(--transition-smooth);
       display: flex;
       align-items: center;
       gap: 12px;
     }
-    .profile-info-card .info-icon {
-      font-size: 20px;
-      color: var(--gold-light);
-      min-width: 28px;
-      text-align: center;
+    .profile-info-card .info-icon { font-size: 20px; color: var(--gold-light); min-width: 28px; text-align: center; }
+    .profile-info-card .info-content { flex: 1; min-width: 0; }
+    .profile-info-card .info-label { font-size: 12px; color: var(--text-tertiary); letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 2px; }
+    .profile-info-card .info-value { font-size: 15px; color: var(--text-heading); font-weight: 500; word-break: break-word; }
+
+    /* Анимация переключения микрофон/отправить */
+    .send-icon-wrapper {
+      position: relative;
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
-    .profile-info-card .info-content {
-      flex: 1;
-      min-width: 0;
+    .send-icon-wrapper svg {
+      position: absolute;
+      transition: opacity 0.2s, transform 0.2s;
     }
-    .profile-info-card .info-label {
-      font-size: 12px;
-      color: var(--text-tertiary);
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-      margin-bottom: 2px;
+    .send-icon-mic {
+      opacity: 1;
+      transform: scale(1);
     }
-    .profile-info-card .info-value {
-      font-size: 15px;
-      color: var(--text-heading);
-      font-weight: 500;
-      word-break: break-word;
+    .send-icon-arrow {
+      opacity: 0;
+      transform: scale(0.5);
+    }
+    .send-btn.has-text .send-icon-mic {
+      opacity: 0;
+      transform: scale(0.5);
+    }
+    .send-btn.has-text .send-icon-arrow {
+      opacity: 1;
+      transform: scale(1);
     }
   </style>
 </head>
@@ -984,6 +1008,7 @@
   const cacheState = { usersCache: new Map(), allUsers: null, lastSeenCache: new Map() };
   const likingPosts = new Set();
   let postingInProgress = false;
+  let currentUploadTask = null;
 
   const root = document.getElementById("root");
   const splash = document.getElementById("splash");
@@ -1302,31 +1327,31 @@
     overlay.className = 'modal-overlay';
     overlay.innerHTML = `
       <div class="profile-fullscreen" id="userProfileFullscreen">
-        <div style="display:flex; justify-content:space-between; alignItems:center; padding:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:16px;">
           <button id="closeUserProfileBtn" style="background:none; border:none; font-size:24px; color:var(--text-secondary); cursor:pointer;">✕</button>
           <span style="font-weight:600; color:var(--text-heading); font-size:16px;">Профиль</span>
           <div style="width:24px;"></div>
         </div>
-        <div style="text-align:center; padding:20px 0;">
+        <div style="text-align:center; padding:20px 16px;">
           <div class="avatar large" style="margin:0 auto; position:relative;">${avatarContent}${online?'<span class="online-dot" style="bottom:4px;right:4px;width:16px;height:16px;border-width:3px;"></span>':''}</div>
           <h3 style="color:var(--text-heading); font-weight:600; font-size:22px; margin-top:14px;">${escapeHtml(user.username)}</h3>
           ${user.login ? `<div style="color:var(--text-secondary); font-size:14px; margin-top:4px;">@${escapeHtml(user.login)}</div>` : ''}
           <div class="last-seen-small ${online?'online-text':''}" style="margin-top:6px; font-size:13px;">${online?'в сети':formatLastSeen(user.lastSeen)}</div>
+          <div style="display:flex; justify-content:center; gap:12px; margin-top:16px;">
+            <button class="profile-action-btn" id="userProfileWriteBtn">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              <span>Написать</span>
+            </button>
+            <button class="profile-action-btn" id="userProfileCallBtn">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+              <span>Звонок</span>
+            </button>
+          </div>
         </div>
         <div style="padding: 0 16px;">
           ${user.bio ? `<div class="profile-info-card"><div class="info-icon">📝</div><div class="info-content"><div class="info-label">О себе</div><div class="info-value">${escapeHtml(user.bio)}</div></div></div>` : ''}
           ${user.phone ? `<div class="profile-info-card"><div class="info-icon">📞</div><div class="info-content"><div class="info-label">Телефон</div><div class="info-value">${escapeHtml(user.phone)}</div></div></div>` : ''}
           ${user.birthday ? `<div class="profile-info-card"><div class="info-icon">🎂</div><div class="info-content"><div class="info-label">Дата рождения</div><div class="info-value">${escapeHtml(user.birthday)}</div></div></div>` : ''}
-        </div>
-        <div style="display:flex; justify-content:center; gap:12px; padding:20px 16px;">
-          <button class="profile-action-btn" id="userProfileWriteBtn">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-            <span>Написать</span>
-          </button>
-          <button class="profile-action-btn" onclick="alert('📞 Звонок — демо')">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-            <span>Звонок</span>
-          </button>
         </div>
       </div>`;
     document.body.appendChild(overlay);
@@ -1349,13 +1374,13 @@
       closePanel();
       await startDirectChat(uid);
     };
+    overlay.querySelector('#userProfileCallBtn').onclick = () => {};
   }
 
   async function startDirectChat(otherUid) {
     const chatId = directChatId(authState.user.uid, otherUid);
     const chatRef = doc(db, "chats", chatId);
     const chatSnap = await getDoc(chatRef);
-    let chatData;
     const me = cacheState.usersCache.get(authState.user.uid) || { username: authState.profile?.displayName || "Без имени", avatar: authState.profile?.photoURL || "" };
     const other = cacheState.usersCache.get(otherUid) || await getUserData(otherUid);
     if (!chatSnap.exists()) {
@@ -1366,12 +1391,11 @@
         createdAt: serverTimestamp(), updatedAt: serverTimestamp(), lastMessage: "", muted: false, pinned: false
       };
       await setDoc(chatRef, newChat);
-      chatData = { id: chatId, ...newChat, title: other.username, avatar: other.avatar, lastSeen: other.lastSeen };
+      openChat({ id: chatId, ...newChat, title: other.username, avatar: other.avatar, lastSeen: other.lastSeen });
     } else {
       const data = chatSnap.data();
-      chatData = { id: chatId, ...data, title: other.username, avatar: other.avatar, lastSeen: other.lastSeen };
+      openChat({ id: chatId, ...data, title: other.username, avatar: other.avatar, lastSeen: other.lastSeen });
     }
-    openChat(chatData);
     refreshChats();
   }
 
@@ -1389,15 +1413,8 @@
         const otherUid = (data.members || []).find(m => m !== authState.user.uid);
         if (otherUid) {
           const cached = cacheState.usersCache.get(otherUid);
-          if (cached) {
-            title = cached.username; avatar = cached.avatar; lastSeen = cached.lastSeen;
-          } else if (data.memberUsernames && data.memberAvatars) {
-            title = data.memberUsernames[otherUid] || "Пользователь";
-            avatar = data.memberAvatars[otherUid] || "";
-          } else {
-            const user = await getUserData(otherUid);
-            if (user) { title = user.username; avatar = user.avatar; lastSeen = user.lastSeen; }
-          }
+          if (cached) { title = cached.username; avatar = cached.avatar; lastSeen = cached.lastSeen; }
+          else if (data.memberUsernames && data.memberAvatars) { title = data.memberUsernames[otherUid] || "Пользователь"; avatar = data.memberAvatars[otherUid] || ""; }
         }
       }
       chats.push({ id: docSnap.id, ...data, title, avatar, lastSeen });
@@ -1637,12 +1654,12 @@
         <h3 style="color:var(--text-heading); font-size:18px;">Настройки</h3>
       </div>
       <div style="flex:1; overflow-y:auto; padding:0 8px;">
-        <div class="profile-row" onclick="alert('Конфиденциальность — демо')">
+        <div class="profile-row" onclick="">
           <span class="profile-row-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
           <div class="profile-row-text"><span class="profile-row-label">Конфиденциальность</span></div>
           <span class="profile-row-arrow">›</span>
         </div>
-        <div class="profile-row" onclick="alert('Безопасность — демо')">
+        <div class="profile-row" onclick="">
           <span class="profile-row-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
           <div class="profile-row-text"><span class="profile-row-label">Безопасность</span></div>
           <span class="profile-row-arrow">›</span>
@@ -1672,9 +1689,7 @@
     }
     let touchStartX = 0;
     container.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; });
-    container.addEventListener('touchend', (e) => {
-      if (e.changedTouches[0].clientX - touchStartX > 80) closeSettings();
-    });
+    container.addEventListener('touchend', (e) => { if (e.changedTouches[0].clientX - touchStartX > 80) closeSettings(); });
   }
 
   function openThemeSelector() {
@@ -1694,9 +1709,7 @@
     container.querySelector('#themeBackBtn').onclick = () => { container.remove(); openSettingsFullscreen(); };
     let touchStartX = 0;
     container.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; });
-    container.addEventListener('touchend', (e) => {
-      if (e.changedTouches[0].clientX - touchStartX > 80) { container.remove(); openSettingsFullscreen(); }
-    });
+    container.addEventListener('touchend', (e) => { if (e.changedTouches[0].clientX - touchStartX > 80) { container.remove(); openSettingsFullscreen(); } });
   }
 
   function switchPage(page) {
@@ -1725,7 +1738,7 @@
     } else if (msg.type === 'audio') {
       div.innerHTML = `<div class="voice-message">
         <button class="voice-play-btn">▶</button>
-        <div class="waveform-bars">${Array(18).fill(0).map(() => `<div class="bar" style="height:${Math.random()*20+4}px;"></div>`).join('')}</div>
+        <div class="waveform-bars">${Array(12).fill(0).map(() => `<div class="bar" style="height:${Math.random()*16+4}px;"></div>`).join('')}</div>
         <audio src="${escapeHtml(msg.audioURL)}" preload="metadata" style="display:none;"></audio>
         <span class="duration">${msg.duration?Math.round(msg.duration)+'с':''}</span>
       </div><div style="font-size:9px;opacity:0.5;margin-top:3px;">${time}</div>`;
@@ -1739,15 +1752,14 @@
     const existingOverlay = document.querySelector('.modal-overlay');
     if (existingOverlay) existingOverlay.remove();
     const otherUid = chat.type === 'direct' ? (chat.members || []).find(m => m !== authState.user?.uid) : null;
-    const otherUser = otherUid ? cacheState.usersCache.get(otherUid) : null;
-    const online = isOnline(otherUser?.lastSeen || chat.lastSeen);
+    const online = isOnline(chat.lastSeen);
     const avatarContent = chat.avatar && chat.avatar.startsWith('http') ? `<img src="${chat.avatar}" class="avatar-img">` : (chat.avatar ? `<span>${escapeHtml(chat.avatar)}</span>` : '');
 
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     overlay.innerHTML = `
       <div class="profile-fullscreen" id="profileFullscreen">
-        <div style="display:flex; justify-content:space-between; alignItems:center; padding:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:16px;">
           <button id="closeProfileFull" style="background:none; border:none; font-size:24px; color:var(--text-secondary); cursor:pointer;">✕</button>
           <span style="font-weight:600; color:var(--text-heading); font-size:16px;">Чат</span>
           <div style="width:24px;"></div>
@@ -1755,10 +1767,10 @@
         <div style="text-align:center; padding:20px 0;">
           <div class="avatar large" style="margin:0 auto; position:relative;">${avatarContent}${online?'<span class="online-dot" style="bottom:4px;right:4px;width:16px;height:16px;border-width:3px;"></span>':''}</div>
           <h3 style="color:var(--text-heading); font-weight:600; font-size:22px; margin-top:14px;">${escapeHtml(chat.title||"Чат")}</h3>
-          <div class="last-seen-small ${online?'online-text':''}" style="margin-top:6px;">${online?'в сети':(otherUser?.lastSeen?formatLastSeen(otherUser.lastSeen):'')}</div>
+          <div class="last-seen-small ${online?'online-text':''}" style="margin-top:6px;">${online?'в сети':formatLastSeen(chat.lastSeen)}</div>
         </div>
         <div style="display:flex; justify-content:space-around; padding:10px 16px 20px; gap:8px;">
-          <button class="profile-action-btn" onclick="alert('📞 Звонок — демо')">
+          <button class="profile-action-btn" id="profileCallBtn">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
             <span>Звонок</span>
           </button>
@@ -1773,14 +1785,14 @@
         </div>
         <div class="divider-thin"></div>
         <div style="padding:0 0 8px;">
-          <div class="profile-row" onclick="alert('📸 Медиа — демо-раздел')"><span class="profile-row-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></span><div class="profile-row-text"><span class="profile-row-label">Медиа</span></div><span class="badge-count">—</span><span class="profile-row-arrow">›</span></div>
-          <div class="profile-row" onclick="alert('📁 Файлы — демо-раздел')"><span class="profile-row-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg></span><div class="profile-row-text"><span class="profile-row-label">Файлы</span></div><span class="badge-count">—</span><span class="profile-row-arrow">›</span></div>
-          <div class="profile-row" onclick="alert('🔗 Ссылки — демо-раздел')"><span class="profile-row-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span><div class="profile-row-text"><span class="profile-row-label">Ссылки</span></div><span class="badge-count">—</span><span class="profile-row-arrow">›</span></div>
+          <div class="profile-row" id="openChatMedia"><span class="profile-row-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></span><div class="profile-row-text"><span class="profile-row-label">Медиа</span></div><span class="badge-count">—</span><span class="profile-row-arrow">›</span></div>
+          <div class="profile-row" id="openChatFiles"><span class="profile-row-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg></span><div class="profile-row-text"><span class="profile-row-label">Файлы</span></div><span class="badge-count">—</span><span class="profile-row-arrow">›</span></div>
+          <div class="profile-row" id="openChatLinks"><span class="profile-row-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span><div class="profile-row-text"><span class="profile-row-label">Ссылки</span></div><span class="badge-count">—</span><span class="profile-row-arrow">›</span></div>
         </div>
         <div class="divider-thin"></div>
         <div style="padding:0 0 8px;">
           <div class="profile-row" id="profileNotifToggle"><span class="profile-row-icon">🔔</span><div class="profile-row-text"><span class="profile-row-label">Уведомления</span></div><label class="toggle-switch"><input type="checkbox" ${!chat.muted?'checked':''}><span class="toggle-slider"></span></label></div>
-          <div class="profile-row" onclick="alert('🔊 Звуки — демо')"><span class="profile-row-icon">🔊</span><div class="profile-row-text"><span class="profile-row-label">Звук уведомлений</span></div><span class="profile-row-arrow">›</span></div>
+          <div class="profile-row" onclick=""><span class="profile-row-icon">🔊</span><div class="profile-row-text"><span class="profile-row-label">Звук уведомлений</span></div><span class="profile-row-arrow">›</span></div>
         </div>
         <div class="divider-thin"></div>
         <div style="padding:0 0 8px;">
@@ -1800,32 +1812,28 @@
 
     let touchStartX = 0;
     overlay.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; });
-    overlay.addEventListener('touchend', (e) => {
-      if (e.changedTouches[0].clientX - touchStartX > 80) closePanel();
-    });
+    overlay.addEventListener('touchend', (e) => { if (e.changedTouches[0].clientX - touchStartX > 80) closePanel(); });
 
+    overlay.querySelector('#profileCallBtn').onclick = () => {};
     overlay.querySelector('#profileMuteBtn').onclick = async () => {
       const newMuted = !chat.muted;
       await updateDoc(doc(db, "chats", chat.id), { muted: newMuted });
       chat.muted = newMuted;
-      const btn = overlay.querySelector('#profileMuteBtn');
-      if (btn) btn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg><span>${newMuted?'Звук':'Без звука'}</span>`;
+      overlay.querySelector('#profileMuteBtn span').textContent = newMuted ? 'Звук' : 'Без звука';
       refreshChats();
     };
     overlay.querySelector('#profilePinBtn').onclick = async () => {
       const newPinned = !chat.pinned;
       await updateDoc(doc(db, "chats", chat.id), { pinned: newPinned });
       chat.pinned = newPinned;
-      const btn = overlay.querySelector('#profilePinBtn');
-      if (btn) btn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/></svg><span>${newPinned?'Откр.':'Закреп.'}</span>`;
+      overlay.querySelector('#profilePinBtn span').textContent = newPinned ? 'Откр.' : 'Закреп.';
       refreshChats();
     };
     overlay.querySelector('#profileNotifToggle input').onchange = async (e) => {
       const muted = !e.target.checked;
       await updateDoc(doc(db, "chats", chat.id), { muted });
       chat.muted = muted;
-      const btn = overlay.querySelector('#profileMuteBtn');
-      if (btn) btn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg><span>${muted?'Звук':'Без звука'}</span>`;
+      overlay.querySelector('#profileMuteBtn span').textContent = muted ? 'Звук' : 'Без звука';
       refreshChats();
     };
     overlay.querySelector('#profileClearChat').onclick = async () => {
@@ -1838,7 +1846,32 @@
         refreshChats();
       }
     };
-    overlay.querySelector('#profileBlockUser').onclick = () => alert('🚫 Блокировка пользователя — демо-функция.');
+    overlay.querySelector('#profileBlockUser').onclick = () => {};
+    overlay.querySelector('#openChatMedia').onclick = () => showChatMedia(chat.id);
+    overlay.querySelector('#openChatFiles').onclick = () => showChatFiles(chat.id);
+    overlay.querySelector('#openChatLinks').onclick = () => showChatLinks(chat.id);
+  }
+
+  async function showChatMedia(chatId) {
+    const msgs = await getDocs(query(collection(db, "chats", chatId, "messages"), where("type", "==", "image"), orderBy("createdAt", "desc")));
+    const images = msgs.docs.map(d => d.data().imageURL).filter(Boolean);
+    alert(`📷 Изображений: ${images.length}\n${images.slice(0,5).join('\n')}${images.length>5?'\n...':''}`);
+  }
+
+  async function showChatFiles(chatId) {
+    const msgs = await getDocs(query(collection(db, "chats", chatId, "messages"), where("type", "==", "file"), orderBy("createdAt", "desc")));
+    alert(`📁 Файлов пока нет`);
+  }
+
+  async function showChatLinks(chatId) {
+    const msgs = await getDocs(query(collection(db, "chats", chatId, "messages"), orderBy("createdAt", "desc")));
+    const links = [];
+    msgs.forEach(d => {
+      const text = d.data().text || "";
+      const urls = text.match(/https?:\/\/[^\s]+/g);
+      if (urls) links.push(...urls);
+    });
+    alert(`🔗 Найдено ссылок: ${links.length}\n${links.slice(0,5).join('\n')}`);
   }
 
   function openChat(chat) {
@@ -1866,10 +1899,10 @@
             </div>
           </div>
           <div style="display:flex; gap:8px; align-items:center;">
-            <button id="chatCallBtn" style="background:none;border:none;cursor:pointer;padding:4px 6px;" title="Звонок">
+            <button id="chatCallBtn" style="background:none;border:none;cursor:pointer;padding:4px 6px;color:var(--gold-light);" title="Звонок">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
             </button>
-            <button id="chatMenuBtn" style="background:none;border:none;cursor:pointer;padding:4px 6px;"><span style="color:var(--text-secondary); font-size:24px;">☰</span></button>
+            <button id="chatMenuBtn" style="background:none;border:none;cursor:pointer;padding:4px 6px;color:var(--gold-light);"><span style="font-size:24px;">☰</span></button>
           </div>
         </div>
         <div class="messages-area" id="chatMessagesArea"></div>
@@ -1878,9 +1911,11 @@
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
           </button>
           <input type="text" id="messageInput" class="input-premium" style="flex:1; margin:0;" placeholder="Сообщение...">
-          <button id="sendMsgBtn" class="send-btn" style="position:relative;">
-            <span id="sendIconMicro">🎤</span>
-            <span id="sendIconArrow" style="display:none;">↑</span>
+          <button id="sendMsgBtn" class="send-btn">
+            <span class="send-icon-wrapper">
+              <svg class="send-icon-mic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+              <svg class="send-icon-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </span>
           </button>
         </div>
         <input type="file" id="imageFileInput" accept="image/*" style="display:none;">
@@ -1896,12 +1931,7 @@
 
     const updateSendButton = () => {
       const hasText = messageInput.value.trim().length > 0;
-      const micro = sendBtn.querySelector('#sendIconMicro');
-      const arrow = sendBtn.querySelector('#sendIconArrow');
-      if (micro && arrow) {
-        micro.style.display = hasText ? 'none' : 'inline';
-        arrow.style.display = hasText ? 'inline' : 'none';
-      }
+      sendBtn.classList.toggle('has-text', hasText);
     };
     messageInput.addEventListener('input', updateSendButton);
     updateSendButton();
@@ -1971,22 +2001,24 @@
       else openChatProfilePanel(chat);
     };
     fullscreen.querySelector('#chatMenuBtn').onclick = () => openChatProfilePanel(chat);
-    fullscreen.querySelector('#chatCallBtn').onclick = () => alert('📞 Звонок — демо');
+    fullscreen.querySelector('#chatCallBtn').onclick = () => {};
 
     const sendMessage = async () => {
       const text = messageInput.value.trim(); if (!text) return;
       await addDoc(messagesRef, { text, userId: authState.user.uid, createdAt: serverTimestamp() });
       await updateDoc(doc(db, "chats", chat.id), { lastMessage: text, lastMessageUserId: authState.user.uid, updatedAt: serverTimestamp() });
-      messageInput.value = ""; updateSendButton(); await updateLastSeen();
+      messageInput.value = ""; updateSendButton(); messageInput.focus(); await updateLastSeen();
     };
-    sendBtn.addEventListener('click', () => { if (messageInput.value.trim()) sendMessage(); else alert('Нет текста'); });
+    sendBtn.addEventListener('click', () => {
+      if (messageInput.value.trim()) sendMessage();
+    });
     sendBtn.addEventListener('pointerdown', (e) => {
       if (messageInput.value.trim() === '') {
         e.preventDefault();
         startVoiceRecording(chat.id, sendBtn);
       }
     });
-    let touchStartY = 0, isLocked = false;
+    let isLocked = false;
     sendBtn.addEventListener('pointermove', (e) => {
       if (voiceState.mediaRecorder?.state === 'recording' && messageInput.value.trim() === '') {
         if (e.clientY < touchStartY - 50) { isLocked = true; sendBtn.classList.add('locked'); }
@@ -1999,39 +2031,31 @@
     });
     messageInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); sendMessage(); } });
 
-    attachBtn.addEventListener('click', () => {
-      const modal = document.createElement('div');
-      modal.className = 'modal-overlay';
-      modal.innerHTML = `
-        <div class="glass-card" style="width:300px; padding:20px;">
-          <h4 style="color:var(--text-heading); text-align:center; margin-bottom:16px;">📷 Прикрепить фото</h4>
-          <button class="btn-primary" style="width:100%; margin-bottom:10px;" id="chooseFromGallery">Выбрать из галереи</button>
-          <button class="btn-ghost" style="width:100%;" id="cancelPhoto">Отмена</button>
-        </div>`;
-      document.body.appendChild(modal);
-      modal.querySelector('#chooseFromGallery').onclick = () => { modal.remove(); imageFileInput.click(); };
-      modal.querySelector('#cancelPhoto').onclick = () => modal.remove();
-      modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
-    });
-
+    attachBtn.addEventListener('click', () => imageFileInput.click());
     imageFileInput.addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
-      const placeholderDiv = document.createElement('div');
-      placeholderDiv.className = 'message out';
-      placeholderDiv.innerHTML = `<div class="image-placeholder">⏳ Загрузка фото...</div>`;
-      messagesContainer.appendChild(placeholderDiv);
+      const placeholder = document.createElement('div');
+      placeholder.className = 'message out';
+      placeholder.innerHTML = `<div class="image-placeholder"><div class="spinner"></div><button class="cancel-upload-btn">✕</button></div>`;
+      messagesContainer.appendChild(placeholder);
       messagesContainer.scrollTop = messagesContainer.scrollHeight;
       const storageRef = ref(storage, `chats/${chat.id}/images/${Date.now()}_${file.name}`);
+      const uploadTask = uploadBytesResumable(storageRef, file);
+      currentUploadTask = uploadTask;
+      const cancelBtn = placeholder.querySelector('.cancel-upload-btn');
+      cancelBtn.onclick = () => { uploadTask.cancel(); placeholder.remove(); };
       try {
-        const uploadTask = uploadBytesResumable(storageRef, file);
         await uploadTask;
         const downloadURL = await getDownloadURL(storageRef);
         await addDoc(messagesRef, { type: 'image', imageURL: downloadURL, userId: authState.user.uid, createdAt: serverTimestamp() });
         await updateDoc(doc(db, "chats", chat.id), { lastMessage: "📷 Фото", lastMessageUserId: authState.user.uid, updatedAt: serverTimestamp() });
-      } catch (err) { alert('Ошибка загрузки'); }
-      placeholderDiv.remove();
+      } catch (err) {
+        if (err.code !== 'storage/canceled') alert('Ошибка загрузки');
+      }
+      placeholder.remove();
       imageFileInput.value = "";
+      currentUploadTask = null;
     });
 
     let touchStartX = 0;
@@ -2058,25 +2082,11 @@
       voiceState.mediaStream = stream;
       voiceState.audioChunks = [];
       voiceState.recordingChatId = chatId;
-      const audioCtx = new AudioContext(); const analyser = audioCtx.createAnalyser();
-      const source = audioCtx.createMediaStreamSource(stream); source.connect(analyser);
-      analyser.fftSize = 64; const dataArray = new Uint8Array(analyser.frequencyBinCount);
-      voiceState.audioCtx = audioCtx; voiceState.analyser = analyser;
-      const waves = voiceBtn.querySelector('.voice-recording-waves');
-      const draw = () => {
-        if (!voiceState.mediaRecorder || voiceState.mediaRecorder.state !== 'recording') return;
-        requestAnimationFrame(draw); analyser.getByteFrequencyData(dataArray);
-        const avg = dataArray.reduce((a,b)=>a+b,0)/dataArray.length;
-        const scale = Math.min(1 + avg/64, 1.35);
-        if (waves) { waves.style.transform = `scale(${scale})`; waves.style.opacity = 0.4 + avg/256; }
-      };
-      draw();
       const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : (MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : (MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : ''));
       const recorder = new MediaRecorder(stream, { mimeType });
       voiceState.mediaRecorder = recorder;
       recorder.ondataavailable = e => { if (e.data.size > 0) voiceState.audioChunks.push(e.data); };
       recorder.onstop = async () => {
-        if (waves) { waves.style.transform = 'scale(1)'; waves.style.opacity = '0'; }
         if (voiceState.audioCtx) { voiceState.audioCtx.close(); voiceState.audioCtx = null; }
         const chunks = [...voiceState.audioChunks]; voiceState.cleanup(); voiceBtn.classList.remove('recording', 'locked');
         if (chunks.length === 0) return;
