@@ -393,7 +393,7 @@
     textarea { resize: vertical; outline: none; }
     button { outline: none; touch-action: manipulation; }
 
-    .send-btn, .voice-btn {
+    .send-btn, .voice-btn, .attach-btn {
       background: var(--input-bg);
       border: 1px solid var(--input-border);
       border-radius: 50%;
@@ -411,7 +411,7 @@
       position: relative;
     }
 
-    .send-btn:active, .voice-btn:active {
+    .send-btn:active, .voice-btn:active, .attach-btn:active {
       transform: scale(0.9);
       background: rgba(201, 168, 108, 0.2);
     }
@@ -457,18 +457,66 @@
       margin: 8px 12px 12px;
     }
 
-    .voice-message audio {
-      width: 180px;
-      max-width: 100%;
-      height: 32px;
-      margin-top: 2px;
+    .voice-message {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255,255,255,0.05);
       border-radius: 20px;
+      padding: 8px 14px;
+      margin: 4px 0;
+    }
+    .voice-message .voice-play-btn {
+      background: none;
+      border: none;
+      color: var(--gold-light);
+      font-size: 18px;
+      cursor: pointer;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .voice-message .waveform-bars {
+      display: flex;
+      align-items: flex-end;
+      gap: 2px;
+      height: 30px;
+    }
+    .voice-message .waveform-bars .bar {
+      width: 3px;
+      background: var(--gold-light);
+      border-radius: 2px;
+      transition: height 0.05s linear;
+      height: 8px;
+    }
+    .voice-message .duration {
+      font-size: 12px;
+      color: var(--text-secondary);
+      min-width: 35px;
+      text-align: right;
     }
 
-    .voice-message .duration {
-      font-size: 11px;
-      opacity: 0.7;
-      margin-left: 6px;
+    .image-placeholder {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 120px;
+      background: rgba(255,255,255,0.03);
+      border-radius: 16px;
+      color: var(--text-secondary);
+      gap: 10px;
+      font-size: 14px;
+    }
+
+    .date-separator {
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-tertiary);
+      margin: 12px 0 6px;
+      opacity: 0.8;
+      letter-spacing: 0.03em;
     }
 
     .theme-switcher {
@@ -615,7 +663,7 @@
       justify-content: center;
     }
 
-    #chatMenuBtn, #chatCallBtn { font-size: 24px; }
+    #chatMenuBtn, #chatCallBtn { font-size: 24px; background: none; border: none; cursor: pointer; padding: 4px 6px; }
 
     .last-seen-small {
       font-size: 11px;
@@ -885,15 +933,6 @@
       font-weight: 500;
       word-break: break-word;
     }
-
-    .date-separator {
-      text-align: center;
-      font-size: 12px;
-      color: var(--text-tertiary);
-      margin: 12px 0 6px;
-      opacity: 0.8;
-      letter-spacing: 0.03em;
-    }
   </style>
 </head>
 <body>
@@ -950,9 +989,9 @@
   const splash = document.getElementById("splash");
   const THEMES = ['premium-gold','deep-noir','forest','plum','ocean','terracotta','slate','rose-gold','lavender','coffee','midnight','arctic'];
   const THEME_LABELS = {
-    'premium-gold':'★ Премиум','deep-noir':'● Глубокий','forest':'♧ Лесной','plum':'◈ Сливовый','ocean':'♆ Океан',
-    'terracotta':'✦ Терракота','slate':'◇ Сланец','rose-gold':'✿ Розовое золото','lavender':'✧ Лаванда',
-    'coffee':'☕ Кофе','midnight':'☾ Полночь','arctic':'❅ Арктика'
+    'premium-gold':'👑 Премиум','deep-noir':'🖤 Глубокий','forest':'🌿 Лесной','plum':'🍇 Сливовый','ocean':'🌊 Океан',
+    'terracotta':'🏺 Терракота','slate':'🪨 Сланец','rose-gold':'🌹 Розовое золото','lavender':'💜 Лаванда',
+    'coffee':'☕ Кофе','midnight':'🌑 Полночь','arctic':'❄️ Арктика'
   };
   const THEME_CSS_VARS = {
     'premium-gold': { '--bg-deep':'#0a0a12','--bg-card':'rgba(18,18,30,0.75)','--bg-card-solid':'#12121e','--gold':'#c9a86c','--gold-light':'#d4b87a','--gold-soft':'#b8945a','--gold-glow':'rgba(201,168,108,0.25)','--gold-border':'rgba(201,168,108,0.2)','--gold-border-strong':'rgba(201,168,108,0.45)','--text-primary':'#e8e6f0','--text-secondary':'#9898a8','--text-tertiary':'#6e6e7c','--text-heading':'#f0ede8','--online':'#4caf84','--online-glow':'rgba(76,175,132,0.5)','--danger':'#e05555','--danger-bg':'rgba(224,85,85,0.1)','--msg-out-bg':'#1e1c26','--msg-out-border':'rgba(201,168,108,0.35)','--msg-out-text':'#e8e6f0','--msg-in-bg':'#15141d','--msg-in-border':'rgba(255,255,255,0.08)','--msg-in-text':'#d0ced8','--input-bg':'rgba(22,22,34,0.8)','--input-border':'rgba(201,168,108,0.3)','--input-focus-glow':'rgba(201,168,108,0.4)','--btn-primary-bg':'#c9a86c','--btn-primary-text':'#0a0a12','--btn-ghost-border':'rgba(255,255,255,0.12)','--btn-ghost-text':'#c9a86c','--nav-bg':'rgba(10,10,18,0.9)','--nav-border':'rgba(255,255,255,0.06)','--avatar-glow':'0 0 18px rgba(201,168,108,0.35)' },
@@ -1037,7 +1076,7 @@
   function renderThemeSwitcher() {
     const current = uiState.currentTheme;
     return `<div style="margin-top:8px;">
-      <p style="color:var(--text-secondary); font-size:12px; margin-bottom:10px; text-align:center; letter-spacing:0.03em;">✦ Тема оформления</p>
+      <p style="color:var(--text-secondary); font-size:12px; margin-bottom:10px; text-align:center; letter-spacing:0.03em;">🎨 Тема оформления</p>
       <div class="theme-switcher">
         ${THEMES.map(t => `<div class="theme-dot ${t} ${t===current?'active-theme':''}" data-theme="${t}" title="${THEME_LABELS[t]||t}" style="cursor:pointer;"></div>`).join('')}
       </div>
@@ -1204,10 +1243,12 @@
     `;
     document.body.appendChild(container);
     document.body.classList.add('no-scroll');
-    const searchInput = container.querySelector('#searchInput');
-    const resultsDiv = container.querySelector('#searchResults');
-    const closeBtn = container.querySelector('#searchCloseBtn');
+    const closeSearch = () => { container.remove(); document.body.classList.remove('no-scroll'); };
+    container.querySelector('#searchCloseBtn').onclick = closeSearch;
+    container.addEventListener('click', (e) => { if (e.target === container) closeSearch(); });
 
+    const resultsDiv = container.querySelector('#searchResults');
+    const searchInput = container.querySelector('#searchInput');
     const filterAndRender = () => {
       const q = searchInput.value.trim().toLowerCase();
       const filtered = cacheState.allUsers.filter(u => 
@@ -1242,13 +1283,6 @@
     searchInput.addEventListener('input', () => { clearTimeout(searchTimeout); searchTimeout = setTimeout(filterAndRender, 300); });
     filterAndRender();
 
-    function closeSearch() {
-      document.body.removeChild(container);
-      document.body.classList.remove('no-scroll');
-    }
-    closeBtn.addEventListener('click', closeSearch);
-    container.addEventListener('click', (e) => { if (e.target === container) closeSearch(); });
-
     let touchStartX = 0;
     container.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; });
     container.addEventListener('touchend', (e) => {
@@ -1268,7 +1302,7 @@
     overlay.className = 'modal-overlay';
     overlay.innerHTML = `
       <div class="profile-fullscreen" id="userProfileFullscreen">
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:16px;">
+        <div style="display:flex; justify-content:space-between; alignItems:center; padding:16px;">
           <button id="closeUserProfileBtn" style="background:none; border:none; font-size:24px; color:var(--text-secondary); cursor:pointer;">✕</button>
           <span style="font-weight:600; color:var(--text-heading); font-size:16px;">Профиль</span>
           <div style="width:24px;"></div>
@@ -1280,16 +1314,16 @@
           <div class="last-seen-small ${online?'online-text':''}" style="margin-top:6px; font-size:13px;">${online?'в сети':formatLastSeen(user.lastSeen)}</div>
         </div>
         <div style="padding: 0 16px;">
-          ${user.bio ? `<div class="profile-info-card"><div class="info-icon">✎</div><div class="info-content"><div class="info-label">О себе</div><div class="info-value">${escapeHtml(user.bio)}</div></div></div>` : ''}
-          ${user.phone ? `<div class="profile-info-card"><div class="info-icon">☎</div><div class="info-content"><div class="info-label">Телефон</div><div class="info-value">${escapeHtml(user.phone)}</div></div></div>` : ''}
-          ${user.birthday ? `<div class="profile-info-card"><div class="info-icon">☗</div><div class="info-content"><div class="info-label">Дата рождения</div><div class="info-value">${escapeHtml(user.birthday)}</div></div></div>` : ''}
+          ${user.bio ? `<div class="profile-info-card"><div class="info-icon">📝</div><div class="info-content"><div class="info-label">О себе</div><div class="info-value">${escapeHtml(user.bio)}</div></div></div>` : ''}
+          ${user.phone ? `<div class="profile-info-card"><div class="info-icon">📞</div><div class="info-content"><div class="info-label">Телефон</div><div class="info-value">${escapeHtml(user.phone)}</div></div></div>` : ''}
+          ${user.birthday ? `<div class="profile-info-card"><div class="info-icon">🎂</div><div class="info-content"><div class="info-label">Дата рождения</div><div class="info-value">${escapeHtml(user.birthday)}</div></div></div>` : ''}
         </div>
         <div style="display:flex; justify-content:center; gap:12px; padding:20px 16px;">
           <button class="profile-action-btn" id="userProfileWriteBtn">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
             <span>Написать</span>
           </button>
-          <button class="profile-action-btn" onclick="alert('☎ Звонок — демо')">
+          <button class="profile-action-btn" onclick="alert('📞 Звонок — демо')">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
             <span>Звонок</span>
           </button>
@@ -1384,16 +1418,16 @@
 
   function renderNav(active) {
     return `<div class="bottom-nav">
-      <button class="nav-item ${active==='chats'?'active':''}" data-page="chats"><span class="nav-icon">✉</span><span>Чаты</span></button>
-      <button class="nav-item ${active==='wall'?'active':''}" data-page="wall"><span class="nav-icon">☷</span><span>Стена</span></button>
-      <button class="nav-item ${active==='profile'?'active':''}" data-page="profile"><span class="nav-icon">☺</span><span>Профиль</span></button>
+      <button class="nav-item ${active==='chats'?'active':''}" data-page="chats"><span class="nav-icon">💬</span><span>Чаты</span></button>
+      <button class="nav-item ${active==='wall'?'active':''}" data-page="wall"><span class="nav-icon">📡</span><span>Стена</span></button>
+      <button class="nav-item ${active==='profile'?'active':''}" data-page="profile"><span class="nav-icon">👤</span><span>Профиль</span></button>
     </div>`;
   }
 
   function renderChatsList(chats, animate = false) {
     const list = document.getElementById("chatsList");
     if (!list) return;
-    if (!chats.length) { list.innerHTML = `<div class="loading">• Нет чатов. Нажмите + чтобы начать.</div>`; return; }
+    if (!chats.length) { list.innerHTML = `<div class="loading">✨ Нет чатов. Нажмите + чтобы начать.</div>`; return; }
     list.innerHTML = chats.map((chat, index) => {
       const online = isOnline(chat.lastSeen);
       const lastMsg = chat.lastMessage || 'Нет сообщений';
@@ -1407,7 +1441,7 @@
           <div style="font-weight:600; color:var(--text-heading); font-size:14px;">${escapeHtml(chat.title||"Чат")}${chat.pinned?' 📌':''}</div>
           <div style="font-size:12px; color:var(--text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${lastMsg}</div>
         </div>
-        ${chat.muted?'<span style="color:var(--text-tertiary); font-size:14px;"> mute </span>':''}
+        ${chat.muted?'<span style="color:var(--text-tertiary); font-size:14px;">🔇</span>':''}
       </div>`;
     }).join("");
     list.querySelectorAll(".chat-item").forEach(el => { el.onclick = () => { const chat = chats.find(c => c.id === el.dataset.chatId); if (chat) openChat(chat); }; });
@@ -1416,7 +1450,7 @@
   function renderWallPostsList(posts) {
     const c = document.getElementById("wallPostsContainer");
     if (!c) return;
-    if (!posts.length) { c.innerHTML = `<div class="loading">☷ Ещё нет постов. Напиши первый!</div>`; return; }
+    if (!posts.length) { c.innerHTML = `<div class="loading">📡 Ещё нет постов. Напиши первый!</div>`; return; }
     c.innerHTML = posts.map(post => {
       const comments = post.comments || [];
       const avatarContent = post.avatar && post.avatar.startsWith('http') ? `<img src="${post.avatar}" class="avatar-img">` : escapeHtml(post.avatar||"");
@@ -1427,10 +1461,10 @@
         </div>
         <div style="white-space:pre-wrap; font-size:14px; line-height:1.5;">${escapeHtml(post.content||"")}</div>
         <div style="display:flex; gap:12px; margin-top:10px;">
-          <button class="like-btn btn-ghost" data-post-id="${post.id}" style="padding:6px 12px; font-size:12px;">♡ ${post.likesCount||0}</button>
-          <button class="comment-btn btn-ghost" data-post-id="${post.id}" style="padding:6px 12px; font-size:12px;">✎ ${comments.length}</button>
+          <button class="like-btn btn-ghost" data-post-id="${post.id}" style="padding:6px 12px; font-size:12px;">❤️ ${post.likesCount||0}</button>
+          <button class="comment-btn btn-ghost" data-post-id="${post.id}" style="padding:6px 12px; font-size:12px;">💬 ${comments.length}</button>
         </div>
-        <div class="comments" style="margin-top:10px;">${comments.map(c => `<div style="background:rgba(255,255,255,0.03); border-radius:14px; padding:5px 10px; margin-top:5px; font-size:12px; color:var(--text-secondary);">✎ ${escapeHtml(c)}</div>`).join("")}</div>
+        <div class="comments" style="margin-top:10px;">${comments.map(c => `<div style="background:rgba(255,255,255,0.03); border-radius:14px; padding:5px 10px; margin-top:5px; font-size:12px; color:var(--text-secondary);">💬 ${escapeHtml(c)}</div>`).join("")}</div>
       </div>`;
     }).join("");
     c.querySelectorAll(".like-btn").forEach(btn => { btn.onclick = async () => { const postId = btn.dataset.postId; if (likingPosts.has(postId)) return; likingPosts.add(postId); btn.disabled = true; try { await updateDoc(doc(db, "wall", postId), { likesCount: increment(1) }); } catch (e) { console.warn(e); } finally { likingPosts.delete(postId); btn.disabled = false; } }; });
@@ -1444,7 +1478,7 @@
         <div id="chatsPage" class="page active-page" style="flex:1; overflow-y:auto; padding:0 0 90px;">
           <div style="padding:14px 12px 0;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; padding:0 6px;">
-              <h2 style="color:var(--text-heading); font-weight:600; font-size:20px; letter-spacing:0.02em;">✉ Чаты</h2>
+              <h2 style="color:var(--text-heading); font-weight:600; font-size:20px; letter-spacing:0.02em;">💬 Чаты</h2>
               <button id="openSearchBtn" style="background:var(--btn-primary-bg); color:var(--btn-primary-text); font-size:20px; border:none; border-radius:50%; width:38px; height:38px; cursor:pointer; font-weight:600; display:inline-flex; align-items:center; justify-content:center;">+</button>
             </div>
             <div id="chatsList"><div class="loading">Загрузка чатов...</div></div>
@@ -1463,7 +1497,7 @@
       <div style="display:flex; flex-direction:column; height: calc(var(--vh, 1vh) * 100);">
         <div id="wallPage" class="page active-page" style="flex:1; overflow-y:auto; padding:14px 14px 90px;">
           <div class="glass-card" style="padding:16px;">
-            <h2 style="color:var(--text-heading); font-weight:600; font-size:18px; margin-bottom:14px; text-align:center; letter-spacing:0.02em;">☷ Стена</h2>
+            <h2 style="color:var(--text-heading); font-weight:600; font-size:18px; margin-bottom:14px; text-align:center; letter-spacing:0.02em;">📡 Стена</h2>
             <textarea id="postContent" rows="2" placeholder="Что нового?" style="width:100%; border-radius:18px; background:var(--input-bg); border:1px solid var(--input-border); color:var(--text-primary); padding:12px; font-size:14px; outline:none;"></textarea>
             <div style="display:flex; justify-content:flex-end; margin-top:8px;"><button id="publishPostBtn" class="btn-primary" style="font-size:13px;">Опубликовать</button></div>
             <div id="wallPostsContainer" style="margin-top:14px;"><div class="loading">Загрузка...</div></div>
@@ -1510,7 +1544,7 @@
           </div>
 
           <div class="profile-info-card" id="editBioRow" style="cursor:pointer;">
-            <div class="info-icon">✎</div>
+            <div class="info-icon">📝</div>
             <div class="info-content">
               <div class="info-label">О себе</div>
               <div class="info-value">${profile.bio || 'Нет описания'}</div>
@@ -1519,7 +1553,7 @@
           </div>
 
           <div class="profile-info-card">
-            <div class="info-icon">☎</div>
+            <div class="info-icon">📞</div>
             <div class="info-content">
               <div class="info-label">Номер телефона</div>
               <div class="info-value">${escapeHtml(profile.phoneNumber||"Не указан")}</div>
@@ -1527,7 +1561,7 @@
           </div>
 
           <div class="profile-info-card" id="editLoginRow" style="cursor:pointer;">
-            <div class="info-icon">☖</div>
+            <div class="info-icon">🔖</div>
             <div class="info-content">
               <div class="info-label">Юзернейм</div>
               <div class="info-value">${profile.login ? '@'+escapeHtml(profile.login) : 'Не задан'}</div>
@@ -1536,7 +1570,7 @@
           </div>
 
           <div class="profile-info-card" id="editBirthdayRow" style="cursor:pointer;">
-            <div class="info-icon">☗</div>
+            <div class="info-icon">🎂</div>
             <div class="info-content">
               <div class="info-label">Дата рождения</div>
               <div class="info-value">${profile.birthday || 'Не задана'}</div>
@@ -1620,18 +1654,15 @@
         </div>
         <div class="divider-thin" style="margin-top:16px;"></div>
         <div style="margin-top:12px;">
-          ${!uiState.isIOS?`<button id="notifSettingsBtn" class="btn-ghost" style="width:100%;">♫ ${Notification.permission==='granted'?'Обновить':'Включить'} уведомления</button>`:'<div style="color:#f0c040; padding:12px;">Уведомления на iOS недоступны</div>'}
+          ${!uiState.isIOS?`<button id="notifSettingsBtn" class="btn-ghost" style="width:100%;">🔔 ${Notification.permission==='granted'?'Обновить':'Включить'} уведомления</button>`:'<div style="color:#f0c040; padding:12px;">Уведомления на iOS недоступны</div>'}
         </div>
       </div>
     `;
     document.body.appendChild(container);
     document.body.classList.add('no-scroll');
-
-    container.querySelector('#settingsCloseBtn').onclick = () => { container.remove(); document.body.classList.remove('no-scroll'); };
-    container.querySelector('#openThemeSettings').onclick = () => {
-      container.remove();
-      openThemeSelector();
-    };
+    const closeSettings = () => { container.remove(); document.body.classList.remove('no-scroll'); };
+    container.querySelector('#settingsCloseBtn').onclick = closeSettings;
+    container.querySelector('#openThemeSettings').onclick = () => { container.remove(); openThemeSelector(); };
     if (!uiState.isIOS) {
       container.querySelector('#notifSettingsBtn').onclick = async () => {
         const token = await requestNotificationPermissionAndGetToken();
@@ -1642,7 +1673,7 @@
     let touchStartX = 0;
     container.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; });
     container.addEventListener('touchend', (e) => {
-      if (e.changedTouches[0].clientX - touchStartX > 80) { container.remove(); document.body.classList.remove('no-scroll'); }
+      if (e.changedTouches[0].clientX - touchStartX > 80) closeSettings();
     });
   }
 
@@ -1660,10 +1691,7 @@
     `;
     document.body.appendChild(container);
     bindThemeSwitcherEvents();
-    container.querySelector('#themeBackBtn').onclick = () => {
-      container.remove();
-      openSettingsFullscreen();
-    };
+    container.querySelector('#themeBackBtn').onclick = () => { container.remove(); openSettingsFullscreen(); };
     let touchStartX = 0;
     container.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; });
     container.addEventListener('touchend', (e) => {
@@ -1684,7 +1712,7 @@
   function switchToChatsPage() { renderChatsPage(); refreshChats(); setupGlobalMessageListener(); }
   function switchToWallPage() { renderWallPage(); loadAndRenderWall(); }
 
-  async function loadAndRenderWall() { const container = document.getElementById("wallPostsContainer"); if (!container) return; container.innerHTML = `<div class="loading">☷ Загрузка...</div>`; chatState.wallPosts = await loadWallPosts(); renderWallPostsList(chatState.wallPosts); setupWallListener(); }
+  async function loadAndRenderWall() { const container = document.getElementById("wallPostsContainer"); if (!container) return; container.innerHTML = `<div class="loading">📡 Загрузка...</div>`; chatState.wallPosts = await loadWallPosts(); renderWallPostsList(chatState.wallPosts); setupWallListener(); }
 
   async function publishPost() { if (postingInProgress) return; const input = document.getElementById("postContent"); if (!input) return; const content = input.value.trim(); if (!content) return; postingInProgress = true; const btn = document.getElementById("publishPostBtn"); if (btn) btn.disabled = true; try { await addDoc(collection(db, "wall"), { author: authState.profile?.displayName || "Без имени", avatar: authState.profile?.photoURL || "", content, likesCount: 0, comments: [], createdAt: serverTimestamp(), userId: authState.user.uid }); input.value = ""; } catch (e) { console.warn(e); } finally { postingInProgress = false; if (btn) btn.disabled = false; } }
 
@@ -1692,10 +1720,15 @@
     const time = msg.createdAt?.toDate ? new Date(msg.createdAt.toDate()).toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" }) : "";
     const div = document.createElement("div");
     div.className = `message ${isOut?"out":"in"}`;
-    if (msg.type === 'audio') {
-      div.innerHTML = `<div style="display:flex;align-items:center;gap:6px;"><audio controls src="${escapeHtml(msg.audioURL)}"></audio><span style="font-size:11px;opacity:0.7;">${msg.duration?Math.round(msg.duration)+'с':''}</span></div><div style="font-size:9px;opacity:0.5;margin-top:3px;">${time}</div>`;
-    } else if (msg.type === 'image') {
+    if (msg.type === 'image') {
       div.innerHTML = `<img src="${escapeHtml(msg.imageURL)}" style="max-width:100%; border-radius:12px; margin-bottom:4px;"><div style="font-size:9px;opacity:0.5;">${time}</div>`;
+    } else if (msg.type === 'audio') {
+      div.innerHTML = `<div class="voice-message">
+        <button class="voice-play-btn">▶</button>
+        <div class="waveform-bars">${Array(18).fill(0).map(() => `<div class="bar" style="height:${Math.random()*20+4}px;"></div>`).join('')}</div>
+        <audio src="${escapeHtml(msg.audioURL)}" preload="metadata" style="display:none;"></audio>
+        <span class="duration">${msg.duration?Math.round(msg.duration)+'с':''}</span>
+      </div><div style="font-size:9px;opacity:0.5;margin-top:3px;">${time}</div>`;
     } else {
       div.innerHTML = `<div>${escapeHtml(msg.text||"")}</div><div style="font-size:9px;opacity:0.5;margin-top:3px;">${time}</div>`;
     }
@@ -1714,7 +1747,7 @@
     overlay.className = 'modal-overlay';
     overlay.innerHTML = `
       <div class="profile-fullscreen" id="profileFullscreen">
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:16px;">
+        <div style="display:flex; justify-content:space-between; alignItems:center; padding:16px;">
           <button id="closeProfileFull" style="background:none; border:none; font-size:24px; color:var(--text-secondary); cursor:pointer;">✕</button>
           <span style="font-weight:600; color:var(--text-heading); font-size:16px;">Чат</span>
           <div style="width:24px;"></div>
@@ -1725,7 +1758,7 @@
           <div class="last-seen-small ${online?'online-text':''}" style="margin-top:6px;">${online?'в сети':(otherUser?.lastSeen?formatLastSeen(otherUser.lastSeen):'')}</div>
         </div>
         <div style="display:flex; justify-content:space-around; padding:10px 16px 20px; gap:8px;">
-          <button class="profile-action-btn" onclick="alert('☎ Звонок — демо')">
+          <button class="profile-action-btn" onclick="alert('📞 Звонок — демо')">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
             <span>Звонок</span>
           </button>
@@ -1740,19 +1773,19 @@
         </div>
         <div class="divider-thin"></div>
         <div style="padding:0 0 8px;">
-          <div class="profile-row" onclick="alert('✎ Медиа — демо-раздел')"><span class="profile-row-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></span><div class="profile-row-text"><span class="profile-row-label">Медиа</span></div><span class="badge-count">—</span><span class="profile-row-arrow">›</span></div>
-          <div class="profile-row" onclick="alert('☰ Файлы — демо-раздел')"><span class="profile-row-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg></span><div class="profile-row-text"><span class="profile-row-label">Файлы</span></div><span class="badge-count">—</span><span class="profile-row-arrow">›</span></div>
-          <div class="profile-row" onclick="alert('☍ Ссылки — демо-раздел')"><span class="profile-row-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span><div class="profile-row-text"><span class="profile-row-label">Ссылки</span></div><span class="badge-count">—</span><span class="profile-row-arrow">›</span></div>
+          <div class="profile-row" onclick="alert('📸 Медиа — демо-раздел')"><span class="profile-row-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></span><div class="profile-row-text"><span class="profile-row-label">Медиа</span></div><span class="badge-count">—</span><span class="profile-row-arrow">›</span></div>
+          <div class="profile-row" onclick="alert('📁 Файлы — демо-раздел')"><span class="profile-row-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg></span><div class="profile-row-text"><span class="profile-row-label">Файлы</span></div><span class="badge-count">—</span><span class="profile-row-arrow">›</span></div>
+          <div class="profile-row" onclick="alert('🔗 Ссылки — демо-раздел')"><span class="profile-row-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span><div class="profile-row-text"><span class="profile-row-label">Ссылки</span></div><span class="badge-count">—</span><span class="profile-row-arrow">›</span></div>
         </div>
         <div class="divider-thin"></div>
         <div style="padding:0 0 8px;">
-          <div class="profile-row" id="profileNotifToggle"><span class="profile-row-icon">♫</span><div class="profile-row-text"><span class="profile-row-label">Уведомления</span></div><label class="toggle-switch"><input type="checkbox" ${!chat.muted?'checked':''}><span class="toggle-slider"></span></label></div>
-          <div class="profile-row" onclick="alert('♫ Звуки — демо')"><span class="profile-row-icon">♫</span><div class="profile-row-text"><span class="profile-row-label">Звук уведомлений</span></div><span class="profile-row-arrow">›</span></div>
+          <div class="profile-row" id="profileNotifToggle"><span class="profile-row-icon">🔔</span><div class="profile-row-text"><span class="profile-row-label">Уведомления</span></div><label class="toggle-switch"><input type="checkbox" ${!chat.muted?'checked':''}><span class="toggle-slider"></span></label></div>
+          <div class="profile-row" onclick="alert('🔊 Звуки — демо')"><span class="profile-row-icon">🔊</span><div class="profile-row-text"><span class="profile-row-label">Звук уведомлений</span></div><span class="profile-row-arrow">›</span></div>
         </div>
         <div class="divider-thin"></div>
         <div style="padding:0 0 8px;">
-          <div class="profile-row danger-row" id="profileClearChat"><span class="profile-row-icon">⌫</span><div class="profile-row-text"><span class="profile-row-label">Очистить чат</span></div></div>
-          <div class="profile-row danger-row" id="profileBlockUser"><span class="profile-row-icon">⃠</span><div class="profile-row-text"><span class="profile-row-label">Заблокировать</span></div></div>
+          <div class="profile-row danger-row" id="profileClearChat"><span class="profile-row-icon">🗑️</span><div class="profile-row-text"><span class="profile-row-label">Очистить чат</span></div></div>
+          <div class="profile-row danger-row" id="profileBlockUser"><span class="profile-row-icon">🚫</span><div class="profile-row-text"><span class="profile-row-label">Заблокировать</span></div></div>
         </div>
       </div>`;
     document.body.appendChild(overlay);
@@ -1805,7 +1838,7 @@
         refreshChats();
       }
     };
-    overlay.querySelector('#profileBlockUser').onclick = () => alert('⃠ Блокировка пользователя — демо-функция.');
+    overlay.querySelector('#profileBlockUser').onclick = () => alert('🚫 Блокировка пользователя — демо-функция.');
   }
 
   function openChat(chat) {
@@ -1841,7 +1874,7 @@
         </div>
         <div class="messages-area" id="chatMessagesArea"></div>
         <div class="chat-input-container">
-          <button id="attachBtn" class="voice-btn" style="margin-right:4px;" title="Прикрепить фото">
+          <button id="attachBtn" class="attach-btn" title="Прикрепить фото">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
           </button>
           <input type="text" id="messageInput" class="input-premium" style="flex:1; margin:0;" placeholder="Сообщение...">
@@ -1860,7 +1893,6 @@
     const attachBtn = fullscreen.querySelector('#attachBtn');
     const imageFileInput = fullscreen.querySelector('#imageFileInput');
     const messagesRef = collection(db, "chats", chat.id, "messages");
-    const messagesQuery = query(messagesRef, orderBy("createdAt", "asc"));
 
     const updateSendButton = () => {
       const hasText = messageInput.value.trim().length > 0;
@@ -1871,7 +1903,6 @@
         arrow.style.display = hasText ? 'inline' : 'none';
       }
     };
-
     messageInput.addEventListener('input', updateSendButton);
     updateSendButton();
 
@@ -1899,7 +1930,7 @@
       messagesContainer.scrollTop = messagesContainer.scrollHeight;
     };
 
-    chatState.chatUnsub = onSnapshot(messagesQuery, snap => {
+    chatState.chatUnsub = onSnapshot(query(messagesRef, orderBy("createdAt", "asc")), snap => {
       const docs = snap.docs;
       if (docs.length === 0) { messagesContainer.innerHTML = ""; renderedSegments = []; return; }
       if (renderedSegments.length === 0 || docs.length < renderedSegments.length) { renderAllMessages(docs); return; }
@@ -1936,14 +1967,11 @@
       uiState.page = "chats"; switchToChatsPage();
     };
     fullscreen.querySelector('#chatHeaderTap').onclick = () => {
-      if (otherUid) {
-        openUserProfile(otherUid);
-      } else {
-        openChatProfilePanel(chat);
-      }
+      if (otherUid) openUserProfile(otherUid);
+      else openChatProfilePanel(chat);
     };
     fullscreen.querySelector('#chatMenuBtn').onclick = () => openChatProfilePanel(chat);
-    fullscreen.querySelector('#chatCallBtn').onclick = () => alert('☎ Звонок — демо');
+    fullscreen.querySelector('#chatCallBtn').onclick = () => alert('📞 Звонок — демо');
 
     const sendMessage = async () => {
       const text = messageInput.value.trim(); if (!text) return;
@@ -1951,63 +1979,75 @@
       await updateDoc(doc(db, "chats", chat.id), { lastMessage: text, lastMessageUserId: authState.user.uid, updatedAt: serverTimestamp() });
       messageInput.value = ""; updateSendButton(); await updateLastSeen();
     };
-    sendBtn.addEventListener('click', () => {
-      if (messageInput.value.trim()) sendMessage();
-    });
-
+    sendBtn.addEventListener('click', () => { if (messageInput.value.trim()) sendMessage(); else alert('Нет текста'); });
     sendBtn.addEventListener('pointerdown', (e) => {
       if (messageInput.value.trim() === '') {
         e.preventDefault();
-        const btn = sendBtn;
-        btn.classList.add('voice-btn');
-        startVoiceRecording(chat.id, btn);
+        startVoiceRecording(chat.id, sendBtn);
       }
     });
-
-    let touchStartY = 0; let isLocked = false;
+    let touchStartY = 0, isLocked = false;
     sendBtn.addEventListener('pointermove', (e) => {
       if (voiceState.mediaRecorder?.state === 'recording' && messageInput.value.trim() === '') {
-        if (e.clientY < touchStartY - 50) {
-          isLocked = true;
-          sendBtn.classList.add('locked');
-        } else {
-          isLocked = false;
-          sendBtn.classList.remove('locked');
-        }
+        if (e.clientY < touchStartY - 50) { isLocked = true; sendBtn.classList.add('locked'); }
+        else { isLocked = false; sendBtn.classList.remove('locked'); }
       }
     });
     sendBtn.addEventListener('pointerup', (e) => {
-      if (voiceState.mediaRecorder?.state === 'recording' && !isLocked) {
-        voiceState.mediaRecorder.stop();
-      }
-      sendBtn.classList.remove('voice-btn', 'locked');
+      if (voiceState.mediaRecorder?.state === 'recording' && !isLocked) voiceState.mediaRecorder.stop();
+      sendBtn.classList.remove('locked');
     });
-
     messageInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); sendMessage(); } });
 
-    attachBtn.addEventListener('click', () => imageFileInput.click());
+    attachBtn.addEventListener('click', () => {
+      const modal = document.createElement('div');
+      modal.className = 'modal-overlay';
+      modal.innerHTML = `
+        <div class="glass-card" style="width:300px; padding:20px;">
+          <h4 style="color:var(--text-heading); text-align:center; margin-bottom:16px;">📷 Прикрепить фото</h4>
+          <button class="btn-primary" style="width:100%; margin-bottom:10px;" id="chooseFromGallery">Выбрать из галереи</button>
+          <button class="btn-ghost" style="width:100%;" id="cancelPhoto">Отмена</button>
+        </div>`;
+      document.body.appendChild(modal);
+      modal.querySelector('#chooseFromGallery').onclick = () => { modal.remove(); imageFileInput.click(); };
+      modal.querySelector('#cancelPhoto').onclick = () => modal.remove();
+      modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+    });
+
     imageFileInput.addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
-      if (!file.type.startsWith('image/')) { alert('Выберите изображение'); return; }
-      const newMsgRef = doc(messagesRef);
-      const storageRef = ref(storage, `chats/${chat.id}/images/${newMsgRef.id}`);
+      const placeholderDiv = document.createElement('div');
+      placeholderDiv.className = 'message out';
+      placeholderDiv.innerHTML = `<div class="image-placeholder">⏳ Загрузка фото...</div>`;
+      messagesContainer.appendChild(placeholderDiv);
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      const storageRef = ref(storage, `chats/${chat.id}/images/${Date.now()}_${file.name}`);
       try {
-        await uploadBytesResumable(storageRef, file);
+        const uploadTask = uploadBytesResumable(storageRef, file);
+        await uploadTask;
         const downloadURL = await getDownloadURL(storageRef);
-        await setDoc(newMsgRef, { type: 'image', imageURL: downloadURL, userId: authState.user.uid, createdAt: serverTimestamp() });
-        await updateDoc(doc(db, "chats", chat.id), { lastMessage: "🖼 Фото", lastMessageUserId: authState.user.uid, updatedAt: serverTimestamp() });
-      } catch (err) { console.error(err); alert('Ошибка загрузки фото'); }
+        await addDoc(messagesRef, { type: 'image', imageURL: downloadURL, userId: authState.user.uid, createdAt: serverTimestamp() });
+        await updateDoc(doc(db, "chats", chat.id), { lastMessage: "📷 Фото", lastMessageUserId: authState.user.uid, updatedAt: serverTimestamp() });
+      } catch (err) { alert('Ошибка загрузки'); }
+      placeholderDiv.remove();
       imageFileInput.value = "";
     });
 
     let touchStartX = 0;
     fullscreen.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; });
     fullscreen.addEventListener('touchend', (e) => {
-      if (e.changedTouches[0].clientX - touchStartX > 80) { fullscreen.querySelector('#backToChatsBtn').click(); }
+      if (e.changedTouches[0].clientX - touchStartX > 80) fullscreen.querySelector('#backToChatsBtn').click();
     });
 
     setTimeout(() => updateLastSeen(), 0);
+    document.addEventListener('click', function bindVoicePlay(e) {
+      const btn = e.target.closest('.voice-play-btn');
+      if (!btn) return;
+      const audio = btn.parentElement.querySelector('audio');
+      if (audio.paused) { audio.play(); btn.textContent = '⏸'; } else { audio.pause(); btn.textContent = '▶'; }
+      audio.onended = () => btn.textContent = '▶';
+    });
   }
 
   async function startVoiceRecording(chatId, voiceBtn) {
@@ -2018,48 +2058,33 @@
       voiceState.mediaStream = stream;
       voiceState.audioChunks = [];
       voiceState.recordingChatId = chatId;
-
-      const audioCtx = new AudioContext();
-      const analyser = audioCtx.createAnalyser();
-      const source = audioCtx.createMediaStreamSource(stream);
-      source.connect(analyser);
-      analyser.fftSize = 64;
-      const dataArray = new Uint8Array(analyser.frequencyBinCount);
-      voiceState.audioCtx = audioCtx;
-      voiceState.analyser = analyser;
-
-      const wavesEl = voiceBtn.querySelector('.voice-recording-waves');
+      const audioCtx = new AudioContext(); const analyser = audioCtx.createAnalyser();
+      const source = audioCtx.createMediaStreamSource(stream); source.connect(analyser);
+      analyser.fftSize = 64; const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      voiceState.audioCtx = audioCtx; voiceState.analyser = analyser;
+      const waves = voiceBtn.querySelector('.voice-recording-waves');
       const draw = () => {
         if (!voiceState.mediaRecorder || voiceState.mediaRecorder.state !== 'recording') return;
-        requestAnimationFrame(draw);
-        analyser.getByteFrequencyData(dataArray);
+        requestAnimationFrame(draw); analyser.getByteFrequencyData(dataArray);
         const avg = dataArray.reduce((a,b)=>a+b,0)/dataArray.length;
         const scale = Math.min(1 + avg/64, 1.35);
-        if (wavesEl) {
-          wavesEl.style.transform = `scale(${scale})`;
-          wavesEl.style.opacity = 0.4 + avg/256;
-        }
+        if (waves) { waves.style.transform = `scale(${scale})`; waves.style.opacity = 0.4 + avg/256; }
       };
       draw();
-
       const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : (MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : (MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : ''));
-      if (!mimeType) throw new Error('Нет поддержки записи аудио');
       const recorder = new MediaRecorder(stream, { mimeType });
       voiceState.mediaRecorder = recorder;
       recorder.ondataavailable = e => { if (e.data.size > 0) voiceState.audioChunks.push(e.data); };
       recorder.onstop = async () => {
-        if (wavesEl) { wavesEl.style.transform = 'scale(1)'; wavesEl.style.opacity = '0'; }
+        if (waves) { waves.style.transform = 'scale(1)'; waves.style.opacity = '0'; }
         if (voiceState.audioCtx) { voiceState.audioCtx.close(); voiceState.audioCtx = null; }
-        const chunks = [...voiceState.audioChunks];
-        voiceState.cleanup();
-        voiceBtn.classList.remove('recording', 'locked');
+        const chunks = [...voiceState.audioChunks]; voiceState.cleanup(); voiceBtn.classList.remove('recording', 'locked');
         if (chunks.length === 0) return;
         const blob = new Blob(chunks, { type: mimeType });
         try { await uploadAudioAndSendMessage(chatId, blob); } catch (e) { console.error(e); }
       };
-      recorder.start();
-      voiceBtn.classList.add('recording');
-    } catch (err) { voiceState.cleanup(); voiceBtn.classList.remove('recording', 'locked'); alert("Ошибка микрофона: " + (err.message || '')); }
+      recorder.start(); voiceBtn.classList.add('recording');
+    } catch (err) { voiceState.cleanup(); voiceBtn.classList.remove('recording', 'locked'); alert("Ошибка микрофона"); }
   }
   window.addEventListener('beforeunload', () => voiceState.cleanup());
 
@@ -2067,14 +2092,12 @@
     const messagesRef = collection(db, "chats", chatId, "messages");
     const newMsgRef = doc(messagesRef);
     const storageRef = ref(storage, `chats/${chatId}/audio/${newMsgRef.id}.webm`);
-    try {
-      await uploadBytesResumable(storageRef, blob);
-      const downloadURL = await getDownloadURL(storageRef);
-      const audioEl = document.createElement('audio'); audioEl.src = downloadURL; let duration = 0;
-      await new Promise((resolve) => { audioEl.addEventListener('loadedmetadata', () => { duration = audioEl.duration; resolve(); }); audioEl.load(); });
-      await setDoc(newMsgRef, { type: 'audio', audioURL: downloadURL, duration, userId: authState.user.uid, createdAt: serverTimestamp() });
-      await updateDoc(doc(db, "chats", chatId), { lastMessage: "♫ Голосовое", lastMessageUserId: authState.user.uid, updatedAt: serverTimestamp() });
-    } catch (error) { console.error(error); alert("Не удалось отправить голосовое."); }
+    await uploadBytesResumable(storageRef, blob);
+    const downloadURL = await getDownloadURL(storageRef);
+    const audioEl = document.createElement('audio'); audioEl.src = downloadURL; let duration = 0;
+    await new Promise((resolve) => { audioEl.addEventListener('loadedmetadata', () => { duration = audioEl.duration; resolve(); }); audioEl.load(); });
+    await setDoc(newMsgRef, { type: 'audio', audioURL: downloadURL, duration, userId: authState.user.uid, createdAt: serverTimestamp() });
+    await updateDoc(doc(db, "chats", chatId), { lastMessage: "🎤 Голосовое", lastMessageUserId: authState.user.uid, updatedAt: serverTimestamp() });
   }
 
   function setupGlobalMessageListener() {
@@ -2085,7 +2108,7 @@
         if (change.type === "modified") {
           const chat = change.doc.data(); const chatId = change.doc.id;
           if (chat.lastMessageUserId && chat.lastMessageUserId !== authState.user.uid && chatState.activeChat?.id !== chatId) {
-            if (Notification.permission === 'granted') { new Notification(`${chat.title||'NEON'} ✉`, { body: chat.lastMessage, icon: '/neon/icon-192x192.png' }).onclick = () => { window.focus(); const c = chatState.chats.find(x => x.id === chatId); if (c) openChat(c); }; }
+            if (Notification.permission === 'granted') new Notification(`${chat.title||'NEON'} 💬`, { body: chat.lastMessage, icon: '/neon/icon-192x192.png' }).onclick = () => { window.focus(); const c = chatState.chats.find(x => x.id === chatId); if (c) openChat(c); };
             refreshChats();
           }
         }
