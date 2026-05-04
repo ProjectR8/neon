@@ -863,6 +863,44 @@
       text-align: center;
       margin-bottom: 16px;
     }
+
+    .profile-info-card {
+      background: var(--bg-card);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-radius: var(--radius-xl);
+      border: 1px solid var(--gold-border);
+      padding: 14px 18px;
+      margin: 8px 0;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+      transition: var(--transition-smooth);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .profile-info-card .info-icon {
+      font-size: 20px;
+      color: var(--gold-light);
+      min-width: 28px;
+      text-align: center;
+    }
+    .profile-info-card .info-content {
+      flex: 1;
+      min-width: 0;
+    }
+    .profile-info-card .info-label {
+      font-size: 12px;
+      color: var(--text-tertiary);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+    .profile-info-card .info-value {
+      font-size: 15px;
+      color: var(--text-heading);
+      font-weight: 500;
+      word-break: break-word;
+    }
   </style>
 </head>
 <body>
@@ -1124,9 +1162,7 @@
         <div id="recaptcha-container"></div>
         <button id="loginBtn" class="btn-primary" style="width:100%; margin-top:14px;">Войти / Регистрация</button>
         <div style="margin-top:10px; font-size:11px; color:var(--text-tertiary); text-align:center;">Phone Auth должен быть настроен в Firebase</div>
-        ${renderThemeSwitcher()}
       </div>`;
-    bindThemeSwitcherEvents();
     document.getElementById("loginBtn").onclick = async () => {
       const btn = document.getElementById("loginBtn");
       const phone = document.getElementById("phone").value.trim();
@@ -1158,7 +1194,7 @@
     container.innerHTML = `
       <div class="search-input-wrap">
         <button class="search-back-btn" id="searchCloseBtn">←</button>
-        <input id="searchInput" class="input-premium" style="flex:1;" placeholder="Поиск..." autofocus>
+        <input id="searchInput" class="input-premium" style="flex:1;" placeholder="Поиск по имени, телефону или @юзернейму..." autofocus>
       </div>
       <div id="searchResults" style="flex:1; overflow-y:auto;"></div>
     `;
@@ -1170,7 +1206,11 @@
 
     const filterAndRender = () => {
       const q = searchInput.value.trim().toLowerCase();
-      const filtered = cacheState.allUsers.filter(u => u.username.toLowerCase().includes(q) || u.phone.includes(q) || (u.login && u.login.toLowerCase().includes(q)));
+      const filtered = cacheState.allUsers.filter(u => 
+        u.username.toLowerCase().includes(q) || 
+        u.phone.includes(q) || 
+        (u.login && u.login.toLowerCase().includes(q))
+      );
       if (filtered.length === 0) {
         resultsDiv.innerHTML = '<div style="color:var(--text-tertiary); text-align:center; padding:40px;">Никого не найдено</div>';
         return;
@@ -1182,15 +1222,15 @@
           <div class="avatar" style="width:44px; height:44px; font-size:20px; position:relative;">${avatarContent}${online?'<span class="online-dot small"></span>':''}</div>
           <div style="flex:1; min-width:0;">
             <div style="font-weight:600; color:var(--text-heading); font-size:15px;">${escapeHtml(u.username)}</div>
+            <div style="font-size:12px; color:var(--text-secondary);">${u.login ? '@'+escapeHtml(u.login) : ''}</div>
             <div class="last-seen-small ${online?'online-text':''}">${online?'в сети':formatLastSeen(u.lastSeen)}</div>
           </div>
-          <button class="btn-ghost" style="padding:8px 14px; font-size:12px;">Написать</button>
         </div>`;
       }).join('');
       resultsDiv.querySelectorAll('.chat-item').forEach(el => {
-        el.addEventListener('click', async () => {
+        el.addEventListener('click', () => {
           const uid = el.dataset.uid;
-          await startDirectChat(uid);
+          openUserProfile(uid);
           closeSearch();
         });
       });
@@ -1204,6 +1244,60 @@
     }
     closeBtn.addEventListener('click', closeSearch);
     container.addEventListener('click', (e) => { if (e.target === container) closeSearch(); });
+  }
+
+  function openUserProfile(uid) {
+    const user = cacheState.usersCache.get(uid);
+    if (!user) return;
+    const online = isOnline(user.lastSeen);
+    const avatarContent = user.avatar && user.avatar.startsWith('http') ? `<img src="${user.avatar}" class="avatar-img">` : (user.avatar ? `<span>${escapeHtml(user.avatar)}</span>` : '');
+    const existingOverlay = document.querySelector('.modal-overlay');
+    if (existingOverlay) existingOverlay.remove();
+
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = `
+      <div class="profile-fullscreen" id="userProfileFullscreen">
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:16px;">
+          <button id="closeUserProfileBtn" style="background:none; border:none; font-size:24px; color:var(--text-secondary); cursor:pointer;">✕</button>
+          <span style="font-weight:600; color:var(--text-heading); font-size:16px;">Профиль</span>
+          <div style="width:24px;"></div>
+        </div>
+        <div style="text-align:center; padding:20px 0;">
+          <div class="avatar large" style="margin:0 auto; position:relative;">${avatarContent}${online?'<span class="online-dot" style="bottom:4px;right:4px;width:16px;height:16px;border-width:3px;"></span>':''}</div>
+          <h3 style="color:var(--text-heading); font-weight:600; font-size:22px; margin-top:14px;">${escapeHtml(user.username)}</h3>
+          ${user.login ? `<div style="color:var(--text-secondary); font-size:14px; margin-top:4px;">@${escapeHtml(user.login)}</div>` : ''}
+          <div class="last-seen-small ${online?'online-text':''}" style="margin-top:6px; font-size:13px;">${online?'в сети':formatLastSeen(user.lastSeen)}</div>
+        </div>
+        <div style="padding: 0 16px;">
+          ${user.bio ? `<div class="profile-info-card"><div class="info-icon">📝</div><div class="info-content"><div class="info-label">О себе</div><div class="info-value">${escapeHtml(user.bio)}</div></div></div>` : ''}
+          ${user.phone ? `<div class="profile-info-card"><div class="info-icon">📞</div><div class="info-content"><div class="info-label">Телефон</div><div class="info-value">${escapeHtml(user.phone)}</div></div></div>` : ''}
+          ${user.birthday ? `<div class="profile-info-card"><div class="info-icon">🎂</div><div class="info-content"><div class="info-label">Дата рождения</div><div class="info-value">${escapeHtml(user.birthday)}</div></div></div>` : ''}
+        </div>
+        <div style="display:flex; justify-content:center; gap:12px; padding:20px 16px;">
+          <button class="profile-action-btn" id="userProfileWriteBtn">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span>Написать</span>
+          </button>
+          <button class="profile-action-btn" onclick="alert('📞 Звонок — демо')">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+            <span>Звонок</span>
+          </button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    document.body.classList.add('no-scroll');
+
+    const closePanel = () => {
+      const panel = document.getElementById('userProfileFullscreen');
+      if (panel) { panel.classList.add('closing'); setTimeout(() => { overlay.remove(); document.body.classList.remove('no-scroll'); }, 260); } else { overlay.remove(); document.body.classList.remove('no-scroll'); }
+    };
+    overlay.querySelector('#closeUserProfileBtn').onclick = closePanel;
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) closePanel(); });
+    overlay.querySelector('#userProfileWriteBtn').onclick = async () => {
+      closePanel();
+      await startDirectChat(uid);
+    };
   }
 
   async function startDirectChat(otherUid) {
@@ -1384,7 +1478,7 @@
     root.innerHTML = `
       <div style="display:flex; flex-direction:column; height: calc(var(--vh, 1vh) * 100);">
         <div id="profilePage" class="page active-page" style="flex:1; overflow-y:auto; padding:14px 14px 90px;">
-          <div class="glass-card" style="padding:16px; position:relative;">
+          <div class="glass-card" style="padding:16px; position:relative; margin-bottom: 10px;">
             <button class="settings-icon" id="openSettingsBtn">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
             </button>
@@ -1396,13 +1490,44 @@
               <div class="profile-name">${escapeHtml(profile.displayName||"Без имени")}</div>
               ${profile.login ? `<div class="profile-username">@${escapeHtml(profile.login)}</div>` : '<div class="profile-username" style="opacity:0.5;">@юзернейм</div>'}
             </div>
-            <div class="profile-row" id="editBioRow"><span class="profile-row-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span><div class="profile-row-text"><span class="profile-row-label">О себе</span><span class="profile-row-sub">${profile.bio || 'Нет описания'}</span></div><span class="profile-row-arrow">›</span></div>
-            <div class="profile-row"><span class="profile-row-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg></span><div class="profile-row-text"><span class="profile-row-label">Номер телефона</span><span class="profile-row-sub">${escapeHtml(profile.phoneNumber||"Не указан")}</span></div></div>
-            <div class="profile-row" id="editLoginRow"><span class="profile-row-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></span><div class="profile-row-text"><span class="profile-row-label">Юзернейм</span><span class="profile-row-sub">${profile.login ? '@'+escapeHtml(profile.login) : 'Не задан'}</span></div><span class="profile-row-arrow">›</span></div>
-            <div class="profile-row" id="editBirthdayRow"><span class="profile-row-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span><div class="profile-row-text"><span class="profile-row-label">Дата рождения</span><span class="profile-row-sub">${profile.birthday || 'Не задана'}</span></div><span class="profile-row-arrow">›</span></div>
-            <div class="divider-thin"></div>
-            <button id="logoutBtn" style="margin:16px; width:calc(100% - 32px); background:var(--danger-bg); border:1px solid var(--danger); color:var(--danger); padding:11px; border-radius:40px; cursor:pointer;">Выйти</button>
           </div>
+
+          <div class="profile-info-card" id="editBioRow" style="cursor:pointer;">
+            <div class="info-icon">📝</div>
+            <div class="info-content">
+              <div class="info-label">О себе</div>
+              <div class="info-value">${profile.bio || 'Нет описания'}</div>
+            </div>
+            <span class="profile-row-arrow">›</span>
+          </div>
+
+          <div class="profile-info-card">
+            <div class="info-icon">📞</div>
+            <div class="info-content">
+              <div class="info-label">Номер телефона</div>
+              <div class="info-value">${escapeHtml(profile.phoneNumber||"Не указан")}</div>
+            </div>
+          </div>
+
+          <div class="profile-info-card" id="editLoginRow" style="cursor:pointer;">
+            <div class="info-icon">🔖</div>
+            <div class="info-content">
+              <div class="info-label">Юзернейм</div>
+              <div class="info-value">${profile.login ? '@'+escapeHtml(profile.login) : 'Не задан'}</div>
+            </div>
+            <span class="profile-row-arrow">›</span>
+          </div>
+
+          <div class="profile-info-card" id="editBirthdayRow" style="cursor:pointer;">
+            <div class="info-icon">🎂</div>
+            <div class="info-content">
+              <div class="info-label">Дата рождения</div>
+              <div class="info-value">${profile.birthday || 'Не задана'}</div>
+            </div>
+            <span class="profile-row-arrow">›</span>
+          </div>
+
+          <button id="logoutBtn" style="margin:16px 0; width:100%; background:var(--danger-bg); border:1px solid var(--danger); color:var(--danger); padding:11px; border-radius:40px; cursor:pointer;">Выйти</button>
         </div>
         ${renderNav("profile")}
       </div>`;
@@ -1568,7 +1693,7 @@
       <div class="profile-fullscreen" id="profileFullscreen">
         <div style="display:flex; justify-content:space-between; align-items:center; padding:16px;">
           <button id="closeProfileFull" style="background:none; border:none; font-size:24px; color:var(--text-secondary); cursor:pointer;">✕</button>
-          <span style="font-weight:600; color:var(--text-heading); font-size:16px;">Профиль</span>
+          <span style="font-weight:600; color:var(--text-heading); font-size:16px;">Чат</span>
           <div style="width:24px;"></div>
         </div>
         <div style="text-align:center; padding:20px 0;">
@@ -1580,10 +1705,6 @@
           <button class="profile-action-btn" onclick="alert('📞 Звонок — демо')">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
             <span>Звонок</span>
-          </button>
-          <button class="profile-action-btn" onclick="alert('💬 Сообщение')">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-            <span>Написать</span>
           </button>
           <button class="profile-action-btn" id="profileMuteBtn">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
@@ -1604,8 +1725,6 @@
         <div style="padding:0 0 8px;">
           <div class="profile-row" id="profileNotifToggle"><span class="profile-row-icon">🔔</span><div class="profile-row-text"><span class="profile-row-label">Уведомления</span></div><label class="toggle-switch"><input type="checkbox" ${!chat.muted?'checked':''}><span class="toggle-slider"></span></label></div>
           <div class="profile-row" onclick="alert('🔊 Звуки — демо')"><span class="profile-row-icon">🔊</span><div class="profile-row-text"><span class="profile-row-label">Звук уведомлений</span></div><span class="profile-row-arrow">›</span></div>
-          <div class="profile-row" onclick="alert('🎨 Тема чата — демо')"><span class="profile-row-icon">🎨</span><div class="profile-row-text"><span class="profile-row-label">Тема чата</span></div><span class="profile-row-arrow">›</span></div>
-          <div class="profile-row" onclick="alert('🖼️ Фон чата — демо')"><span class="profile-row-icon">🖼️</span><div class="profile-row-text"><span class="profile-row-label">Фон чата</span></div><span class="profile-row-arrow">›</span></div>
         </div>
         <div class="divider-thin"></div>
         <div style="padding:0 0 8px;">
@@ -1672,6 +1791,7 @@
     const online = isOnline(chat.lastSeen);
     const statusHtml = online ? '<span class="online-text">в сети</span>' : formatLastSeen(chat.lastSeen);
     const avatarContent = chat.avatar && chat.avatar.startsWith('http') ? `<img src="${chat.avatar}" class="avatar-img">` : (chat.avatar ? `<span>${escapeHtml(chat.avatar)}</span>` : '');
+    const otherUid = chat.type === 'direct' ? (chat.members || []).find(m => m !== authState.user?.uid) : null;
     fullscreen.innerHTML = `
       <div class="glass-card">
         <div class="chat-header">
@@ -1728,7 +1848,13 @@
       chatState.activeChat = null; voiceState.cleanup(); fullscreen.remove(); document.body.classList.remove('no-scroll');
       uiState.page = "chats"; switchToChatsPage();
     };
-    fullscreen.querySelector('#chatHeaderTap').onclick = () => openChatProfilePanel(chat);
+    fullscreen.querySelector('#chatHeaderTap').onclick = () => {
+      if (otherUid) {
+        openUserProfile(otherUid);
+      } else {
+        openChatProfilePanel(chat);
+      }
+    };
     fullscreen.querySelector('#chatMenuBtn').onclick = () => openChatProfilePanel(chat);
 
     const sendMessage = async () => {
