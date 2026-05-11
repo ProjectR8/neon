@@ -490,7 +490,6 @@
       margin: 4px 0;
       max-width: 78%;
     }
-
     .voice-message-wrapper.out { align-self: flex-end; }
     .voice-message-wrapper.in { align-self: flex-start; }
 
@@ -2428,8 +2427,6 @@
   }
 
   async function startVoiceRecording(chatId, voiceBtn, onStop, onFinished) {
-    if (!navigator.mediaDevices?.getUserMedia) { alert("Микрофон не доступен"); if (onFinished) onFinished(); return; }
-    voiceState.cleanup();
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       voiceState.mediaStream = stream;
@@ -2480,7 +2477,13 @@
       const stopRecording = () => { if (recorder.state === 'recording') recorder.stop(); clearInterval(recordingTimer); };
       voiceBtn.addEventListener('pointerup', stopRecording, { once: true });
       voiceBtn.addEventListener('pointerleave', stopRecording, { once: true });
-    } catch (err) { voiceState.cleanup(); if (onFinished) onFinished(); }
+    } catch (e) {
+      if (e.name === 'NotAllowedError') alert("Доступ к микрофону запрещен. Разрешите его в настройках.");
+      else if (e.name === 'NotFoundError') alert("Микрофон не найден.");
+      else alert("Ошибка микрофона: " + e.message);
+      if (onFinished) onFinished();
+      voiceState.cleanup();
+    }
   }
 
   function setupGlobalMessageListener() {
@@ -2568,26 +2571,28 @@
     document.body.classList.remove('no-scroll');
   }
 
-  function startRingtone(audioElem) {
+  function startRingtone() {
     if (callState.ringtoneCtx) return;
-    const ctx = new AudioContext();
-    callState.ringtoneCtx = ctx;
-    let playing = false;
-    callState.ringtoneInterval = setInterval(() => {
-      if (playing) return;
-      playing = true;
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(425, ctx.currentTime);
-      gain.gain.setValueAtTime(0.1, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 1.5);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + 1.5);
-      setTimeout(() => playing = false, 2000);
-    }, 3000);
+    try {
+      const ctx = new AudioContext();
+      callState.ringtoneCtx = ctx;
+      let playing = false;
+      callState.ringtoneInterval = setInterval(() => {
+        if (playing) return;
+        playing = true;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(425, ctx.currentTime);
+        gain.gain.setValueAtTime(0.1, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 1.5);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 1.5);
+        setTimeout(() => playing = false, 2000);
+      }, 3000);
+    } catch(e) {}
   }
 
   function stopRingtone() {
@@ -2609,8 +2614,8 @@
       status: 'ringing',
       createdAt: serverTimestamp()
     });
-    showCallUI('calling', recipientUid, { name: cacheState.usersCache.get(recipientUid)?.username || 'Пользователь', avatar: cacheState.usersCache.get(recipientUid)?.avatar });
-
+    const userInfo = { name: cacheState.usersCache.get(recipientUid)?.username || 'Пользователь', avatar: cacheState.usersCache.get(recipientUid)?.avatar };
+    showCallUI('calling', recipientUid, userInfo);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
       callState.localStream = stream;
@@ -2619,14 +2624,12 @@
       const offer = await callState.peerConnection.createOffer();
       await callState.peerConnection.setLocalDescription(offer);
       await updateDoc(callState.callDocRef, { offer: offer.toJSON(), status: 'ringing' });
-
       let timeoutTimer = setTimeout(() => {
         if (callState.status === 'calling') {
            stopRingtone();
            endCall('noanswer');
         }
       }, 25000);
-
       callState.unsubCall = onSnapshot(callState.callDocRef, (snap) => {
         const data = snap.data();
         if (!data) return;
@@ -2638,14 +2641,19 @@
           callState.status = 'connected';
           callState.startTime = Date.now();
           updateCallTimer();
-          showCallUI('connected', recipientUid, { name: cacheState.usersCache.get(recipientUid)?.username || 'Пользователь', avatar: cacheState.usersCache.get(recipientUid)?.avatar });
+          showCallUI('connected', recipientUid, userInfo);
         }
         if (data.candidates) {
           data.candidates.forEach(c => callState.peerConnection.addIceCandidate(new RTCIceCandidate(c)).catch(console.warn));
         }
       });
       startRingtone();
-    } catch(e) { cleanupCall(); alert("Нет доступа к микрофону"); }
+    } catch(e) {
+      cleanupCall();
+      if (e.name === 'NotAllowedError') alert("Доступ к микрофону запрещен. Разрешите его в настройках.");
+      else if (e.name === 'NotFoundError') alert("Микрофон не найден.");
+      else alert("Ошибка доступа к микрофону");
+    }
   }
 
   async function createPeerConnection() {
@@ -2753,8 +2761,7 @@
       t.textContent = formatCallDuration(sec > 0 ? sec : 0);
     };
     if (callState.timerInterval) {
-      const orig = callState.timerInterval;
-      clearInterval(orig);
+      clearInterval(callState.timerInterval);
     }
     callState.timerInterval = setInterval(() => {
       const el = document.getElementById('pipTimer');
@@ -2800,9 +2807,9 @@
         const devices = await navigator.mediaDevices.enumerateDevices();
         const speaker = devices.find(d => d.kind === 'audiooutput' && d.deviceId !== 'default');
         if (speaker) await audioEl.setSinkId(speaker.deviceId);
-        else await audioEl.setSinkId('');
+        else audioEl.setSinkId('');
       } else {
-        if (audioEl.setSinkId) await audioEl.setSinkId('');
+        if (audioEl.setSinkId) audioEl.setSinkId('');
       }
     } catch(e) {}
     const btn = document.querySelector('#toggleSpeakerBtn');
@@ -2814,15 +2821,16 @@
     callState.status = 'connected';
     callState.startTime = Date.now();
     updateCallTimer();
-    const uid = (await getDoc(callState.callDocRef)).data().initiator;
-    showCallUI('connected', uid, { name: cacheState.usersCache.get(uid)?.username || 'Пользователь', avatar: cacheState.usersCache.get(uid)?.avatar });
+    const snap = await getDoc(callState.callDocRef);
+    const uid = snap.data().initiator;
+    const userInfo = { name: cacheState.usersCache.get(uid)?.username || 'Пользователь', avatar: cacheState.usersCache.get(uid)?.avatar };
+    showCallUI('connected', uid, userInfo);
     stopRingtone();
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
       callState.localStream = stream;
       callState.mute = false;
       await createPeerConnection();
-      const snap = await getDoc(callState.callDocRef);
       const data = snap.data();
       if (data?.offer) {
         await callState.peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
@@ -2836,7 +2844,12 @@
           if (d.candidates) d.candidates.forEach(c => callState.peerConnection.addIceCandidate(new RTCIceCandidate(c)).catch(console.warn));
         });
       }
-    } catch(e) { cleanupCall(); }
+    } catch(e) {
+      cleanupCall();
+      if (e.name === 'NotAllowedError') alert("Доступ к микрофону запрещен. Разрешите его в настройках.");
+      else if (e.name === 'NotFoundError') alert("Микрофон не найден.");
+      else alert("Ошибка доступа к микрофону");
+    }
   }
 
   async function endCall(reason = 'ended') {
@@ -2859,10 +2872,12 @@
           callState.callDocRef = doc(db, "calls", change.doc.id);
           callState.isInitiator = false;
           callState.status = 'incoming';
-          showCallUI('incoming', callData.initiator, { name: cacheState.usersCache.get(callData.initiator)?.username || 'Пользователь', avatar: cacheState.usersCache.get(callData.initiator)?.avatar });
+          const initiatorUid = callData.initiator;
+          const userInfo = { name: cacheState.usersCache.get(initiatorUid)?.username || 'Пользователь', avatar: cacheState.usersCache.get(initiatorUid)?.avatar };
+          showCallUI('incoming', initiatorUid, userInfo);
           startRingtone();
           if (Notification.permission === 'granted') {
-            const name = cacheState.usersCache.get(callData.initiator)?.username || 'Входящий звонок';
+            const name = userInfo.name || 'Входящий звонок';
             const notif = new Notification('📞 Входящий звонок', { body: name, icon: '/neon/icon-192x192.png', requireInteraction: true });
             notif.onclick = () => { window.focus(); if (callState.status === 'incoming') acceptCall(); };
           }
