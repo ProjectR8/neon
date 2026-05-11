@@ -2600,55 +2600,76 @@
     callState.ringtoneInterval = null;
     if (callState.ringtoneCtx) { callState.ringtoneCtx.close().catch(()=>{}); callState.ringtoneCtx = null; }
   }
-
-  async function initiateCall(recipientUid) {
-    if (callState.status !== 'idle' || !authState.user) return;
-    callState.status = 'calling';
-    callState.isInitiator = true;
-    const callId = doc(collection(db, "calls")).id;
-    callState.currentCallId = callId;
-    callState.callDocRef = doc(db, "calls", callId);
-    await setDoc(callState.callDocRef, {
-      initiator: authState.user.uid,
-      recipient: recipientUid,
-      status: 'ringing',
-      createdAt: serverTimestamp()
-    });
-    const userInfo = { name: cacheState.usersCache.get(recipientUid)?.username || 'Пользователь', avatar: cacheState.usersCache.get(recipientUid)?.avatar };
-    showCallUI('calling', recipientUid, userInfo);
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-      callState.localStream = stream;
-      callState.mute = false;
-      await createPeerConnection();
-      const offer = await callState.peerConnection.createOffer();
-      await callState.peerConnection.setLocalDescription(offer);
-      await updateDoc(callState.callDocRef, { offer: offer.toJSON(), status: 'ringing' });
-      let timeoutTimer = setTimeout(() => {
-        if (callState.status === 'calling') {
-           stopRingtone();
-           endCall('noanswer');
-        }
-      }, 25000);
-      callState.unsubCall = onSnapshot(callState.callDocRef, (snap) => {
-        const data = snap.data();
-        if (!data) return;
-        if (data.status === 'ended' || data.status === 'rejected' || data.status === 'noanswer') { clearTimeout(timeoutTimer); stopRingtone(); cleanupCall(); return; }
-        if (data.answer && callState.peerConnection && callState.peerConnection.signalingState !== 'closed') {
-          clearTimeout(timeoutTimer);
-          stopRingtone();
-          callState.peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer)).catch(console.warn);
-          callState.status = 'connected';
-          callState.startTime = Date.now();
-          updateCallTimer();
-          showCallUI('connected', recipientUid, userInfo);
-        }
-        if (data.candidates) {
-          data.candidates.forEach(c => callState.peerConnection.addIceCandidate(new RTCIceCandidate(c)).catch(console.warn));
-        }
-      });
-      startRingtone();
-    } catch(e) {
+async function initiateCall(recipientUid) {
+  if (callState.status !== 'idle' || !authState.user) return;
+  
+  // Сначала запрашиваем микрофон (прямой ответ на жест)
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+  } catch (e) {
+    if (e.name === 'NotAllowedError') alert("Доступ к микрофону запрещен. Разрешите его в настройках.");
+    else if (e.name === 'NotFoundError') alert("Микрофон не найден.");
+    else alert("Ошибка микрофона: " + e.message);
+    return; // прерываем звонок
+  }
+  
+  callState.status = 'calling';
+  callState.isInitiator = true;
+  callState.localStream = stream;
+  callState.mute = false;
+  
+  const callId = doc(collection(db, "calls")).id;
+  callState.currentCallId = callId;
+  callState.callDocRef = doc(db, "calls", callId);
+  await setDoc(callState.callDocRef, {
+    initiator: authState.user.uid,
+    recipient: recipientUid,
+    status: 'ringing',
+    createdAt: serverTimestamp()
+  });
+  
+  const userInfo = { name: cacheState.usersCache.get(recipientUid)?.username || 'Пользователь', avatar: cacheState.usersCache.get(recipientUid)?.avatar };
+  showCallUI('calling', recipientUid, userInfo);
+  
+  await createPeerConnection();
+  const offer = await callState.peerConnection.createOffer();
+  await callState.peerConnection.setLocalDescription(offer);
+  await updateDoc(callState.callDocRef, { offer: offer.toJSON(), status: 'ringing' });
+  
+  let timeoutTimer = setTimeout(() => {
+    if (callState.status === 'calling') {
+      stopRingtone();
+      endCall('noanswer');
+    }
+  }, 25000);
+  
+  callState.unsubCall = onSnapshot(callState.callDocRef, (snap) => {
+    const data = snap.data();
+    if (!data) return;
+    if (data.status === 'ended' || data.status === 'rejected' || data.status === 'noanswer') {
+      clearTimeout(timeoutTimer);
+      stopRingtone();
+      cleanupCall();
+      return;
+    }
+    if (data.answer && callState.peerConnection && callState.peerConnection.signalingState !== 'closed') {
+      clearTimeout(timeoutTimer);
+      stopRingtone();
+      callState.peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer)).catch(console.warn);
+      callState.status = 'connected';
+      callState.startTime = Date.now();
+      updateCallTimer();
+      showCallUI('connected', recipientUid, userInfo);
+    }
+    if (data.candidates) {
+      data.candidates.forEach(c => callState.peerConnection.addIceCandidate(new RTCIceCandidate(c)).catch(console.warn));
+    }
+  });
+  
+  startRingtone();
+}
+   catch(e) {
       cleanupCall();
       if (e.name === 'NotAllowedError') alert("Доступ к микрофону запрещен. Разрешите его в настройках.");
       else if (e.name === 'NotFoundError') alert("Микрофон не найден.");
@@ -2817,33 +2838,46 @@
   }
 
   async function acceptCall() {
-    if (!callState.callDocRef || callState.isInitiator) return;
-    callState.status = 'connected';
-    callState.startTime = Date.now();
-    updateCallTimer();
-    const snap = await getDoc(callState.callDocRef);
-    const uid = snap.data().initiator;
-    const userInfo = { name: cacheState.usersCache.get(uid)?.username || 'Пользователь', avatar: cacheState.usersCache.get(uid)?.avatar };
-    showCallUI('connected', uid, userInfo);
-    stopRingtone();
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-      callState.localStream = stream;
-      callState.mute = false;
-      await createPeerConnection();
-      const data = snap.data();
-      if (data?.offer) {
-        await callState.peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
-        const answer = await callState.peerConnection.createAnswer();
-        await callState.peerConnection.setLocalDescription(answer);
-        await updateDoc(callState.callDocRef, { answer: answer.toJSON(), status: 'in-progress' });
-        callState.unsubCall = onSnapshot(callState.callDocRef, (docSnap) => {
-          const d = docSnap.data();
-          if (!d) return;
-          if (d.status === 'ended' || d.status === 'rejected') { cleanupCall(); return; }
-          if (d.candidates) d.candidates.forEach(c => callState.peerConnection.addIceCandidate(new RTCIceCandidate(c)).catch(console.warn));
-        });
-      }
+  if (!callState.callDocRef || callState.isInitiator) return;
+  
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+  } catch (e) {
+    if (e.name === 'NotAllowedError') alert("Доступ к микрофону запрещен. Разрешите его в настройках.");
+    else if (e.name === 'NotFoundError') alert("Микрофон не найден.");
+    else alert("Ошибка микрофона: " + e.message);
+    endCall('rejected');
+    return;
+  }
+  
+  callState.localStream = stream;
+  callState.mute = false;
+  callState.status = 'connected';
+  callState.startTime = Date.now();
+  updateCallTimer();
+  
+  const snap = await getDoc(callState.callDocRef);
+  const uid = snap.data().initiator;
+  const userInfo = { name: cacheState.usersCache.get(uid)?.username || 'Пользователь', avatar: cacheState.usersCache.get(uid)?.avatar };
+  showCallUI('connected', uid, userInfo);
+  stopRingtone();
+  
+  await createPeerConnection();
+  const data = snap.data();
+  if (data?.offer) {
+    await callState.peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
+    const answer = await callState.peerConnection.createAnswer();
+    await callState.peerConnection.setLocalDescription(answer);
+    await updateDoc(callState.callDocRef, { answer: answer.toJSON(), status: 'in-progress' });
+    callState.unsubCall = onSnapshot(callState.callDocRef, (docSnap) => {
+      const d = docSnap.data();
+      if (!d) return;
+      if (d.status === 'ended' || d.status === 'rejected') { cleanupCall(); return; }
+      if (d.candidates) d.candidates.forEach(c => callState.peerConnection.addIceCandidate(new RTCIceCandidate(c)).catch(console.warn));
+    });
+  }
+}
     } catch(e) {
       cleanupCall();
       if (e.name === 'NotAllowedError') alert("Доступ к микрофону запрещен. Разрешите его в настройках.");
