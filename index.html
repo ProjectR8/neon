@@ -490,6 +490,7 @@
       margin: 4px 0;
       max-width: 78%;
     }
+
     .voice-message-wrapper.out { align-self: flex-end; }
     .voice-message-wrapper.in { align-self: flex-start; }
 
@@ -1135,28 +1136,53 @@
 
     .call-overlay {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.92); z-index: 700;
+      background: #0b0b14; z-index: 700;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       color: #fff;
+      animation: fadeIn 0.3s;
+    }
+    .call-e2e-badge {
+      display: flex; align-items: center; gap: 6px; color: rgba(255,255,255,0.5); font-size: 12px; margin-bottom: 20px;
     }
     .call-avatar-large {
       width: 120px; height: 120px; border-radius: 50%;
-      background: rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.08);
       margin-bottom: 24px;
+      display: flex; align-items: center; justify-content: center; font-size: 56px;
+      overflow: hidden;
     }
-    .call-status {
-      font-size: 18px; opacity: 0.8; margin-bottom: 32px;
+    .call-status-text {
+      font-size: 16px; opacity: 0.8; margin-bottom: 16px; min-height: 24px;
     }
-    .call-buttons {
-      display: flex; gap: 20px;
+    .call-actions {
+      display: flex; gap: 24px; margin-top: 40px;
     }
-    .call-btn {
-      width: 56px; height: 56px; border-radius: 50%;
+    .call-action-btn {
+      width: 64px; height: 64px; border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
-      font-size: 24px; border: none; cursor: pointer;
+      border: none; cursor: pointer; background: rgba(255,255,255,0.12);
+      transition: 0.2s;
     }
-    .call-accept { background: #4caf84; }
-    .call-reject { background: #e05555; }
+    .call-action-btn svg { width: 28px; height: 28px; stroke: #fff; }
+    .call-end-btn { background: #e05555; }
+    .call-accept-btn { background: #4caf84; }
+    .call-minimize-btn {
+      position: absolute; top: 32px; left: 20px;
+      background: none; border: none; color: rgba(255,255,255,0.7); font-size: 24px; cursor: pointer; padding: 8px;
+    }
+    .pip-call-window {
+      position: fixed; bottom: 20px; right: 16px; width: 70px; height: 70px;
+      background: rgba(20,20,30,0.9); border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5); z-index: 800;
+      cursor: move; animation: fadeIn 0.3s;
+    }
+    .pip-call-window .pip-avatar {
+      width: 56px; height: 56px; border-radius: 50%; overflow: hidden; font-size: 28px; display: flex; align-items: center; justify-content: center;
+    }
+    .pip-timer {
+      position: absolute; top: -10px; right: -10px; background: #333; color: #fff; padding: 2px 8px; border-radius: 12px; font-size: 12px;
+    }
   </style>
 </head>
 <body>
@@ -1204,7 +1230,11 @@
       this.audioChunks = []; this.recordingChatId = null;
     }
   };
-  const callState = { currentCallId: null, peerConnection: null, localStream: null, remoteStream: null, callDocRef: null, unsubCall: null, isInitiator: false, status: 'idle' };
+  const callState = {
+    currentCallId: null, peerConnection: null, localStream: null, remoteStream: null,
+    callDocRef: null, unsubCall: null, isInitiator: false, status: 'idle',
+    mute: false, speaker: false, timerInterval: null, ringtoneInterval: null, ringtoneCtx: null, startTime: null
+  };
   const uiState = { page: "chats", currentTheme: 'premium-gold', chatsAnimated: false, splashHidden: false, isIOS: /iPad|iPhone|iPod/.test(navigator.userAgent), isAndroid: /Android/.test(navigator.userAgent) };
   const cacheState = { usersCache: new Map(), allUsers: null, lastSeenCache: new Map(), blockedUsers: new Set() };
   const likingPosts = new Set();
@@ -2517,9 +2547,11 @@
   }
 
   const servers = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
-  let callDocListener = null;
 
   function cleanupCall() {
+    if (callState.timerInterval) { clearInterval(callState.timerInterval); callState.timerInterval = null; }
+    if (callState.ringtoneInterval) { clearInterval(callState.ringtoneInterval); callState.ringtoneInterval = null; }
+    if (callState.ringtoneCtx) { callState.ringtoneCtx.close(); callState.ringtoneCtx = null; }
     if (callState.unsubCall) { callState.unsubCall(); callState.unsubCall = null; }
     if (callState.peerConnection) { callState.peerConnection.close(); callState.peerConnection = null; }
     if (callState.localStream) { callState.localStream.getTracks().forEach(t => t.stop()); callState.localStream = null; }
@@ -2528,13 +2560,44 @@
     callState.callDocRef = null;
     callState.isInitiator = false;
     callState.status = 'idle';
+    callState.startTime = null;
     const existing = document.querySelector('.call-overlay');
     if (existing) existing.remove();
+    const pip = document.querySelector('.pip-call-window');
+    if (pip) pip.remove();
     document.body.classList.remove('no-scroll');
   }
 
+  function startRingtone(audioElem) {
+    if (callState.ringtoneCtx) return;
+    const ctx = new AudioContext();
+    callState.ringtoneCtx = ctx;
+    let playing = false;
+    callState.ringtoneInterval = setInterval(() => {
+      if (playing) return;
+      playing = true;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(425, ctx.currentTime);
+      gain.gain.setValueAtTime(0.1, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 1.5);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 1.5);
+      setTimeout(() => playing = false, 2000);
+    }, 3000);
+  }
+
+  function stopRingtone() {
+    if (callState.ringtoneInterval) clearInterval(callState.ringtoneInterval);
+    callState.ringtoneInterval = null;
+    if (callState.ringtoneCtx) { callState.ringtoneCtx.close().catch(()=>{}); callState.ringtoneCtx = null; }
+  }
+
   async function initiateCall(recipientUid) {
-    if (callState.status !== 'idle') return;
+    if (callState.status !== 'idle' || !authState.user) return;
     callState.status = 'calling';
     callState.isInitiator = true;
     const callId = doc(collection(db, "calls")).id;
@@ -2546,28 +2609,43 @@
       status: 'ringing',
       createdAt: serverTimestamp()
     });
-    showCallUI('calling', recipientUid);
+    showCallUI('calling', recipientUid, { name: cacheState.usersCache.get(recipientUid)?.username || 'Пользователь', avatar: cacheState.usersCache.get(recipientUid)?.avatar });
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
       callState.localStream = stream;
+      callState.mute = false;
       await createPeerConnection();
       const offer = await callState.peerConnection.createOffer();
       await callState.peerConnection.setLocalDescription(offer);
       await updateDoc(callState.callDocRef, { offer: offer.toJSON(), status: 'ringing' });
+
+      let timeoutTimer = setTimeout(() => {
+        if (callState.status === 'calling') {
+           stopRingtone();
+           endCall('noanswer');
+        }
+      }, 25000);
+
       callState.unsubCall = onSnapshot(callState.callDocRef, (snap) => {
         const data = snap.data();
         if (!data) return;
-        if (data.status === 'ended' || data.status === 'rejected') { cleanupCall(); return; }
+        if (data.status === 'ended' || data.status === 'rejected' || data.status === 'noanswer') { clearTimeout(timeoutTimer); stopRingtone(); cleanupCall(); return; }
         if (data.answer && callState.peerConnection && callState.peerConnection.signalingState !== 'closed') {
+          clearTimeout(timeoutTimer);
+          stopRingtone();
           callState.peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer)).catch(console.warn);
           callState.status = 'connected';
-          showCallUI('connected', recipientUid);
+          callState.startTime = Date.now();
+          updateCallTimer();
+          showCallUI('connected', recipientUid, { name: cacheState.usersCache.get(recipientUid)?.username || 'Пользователь', avatar: cacheState.usersCache.get(recipientUid)?.avatar });
         }
         if (data.candidates) {
           data.candidates.forEach(c => callState.peerConnection.addIceCandidate(new RTCIceCandidate(c)).catch(console.warn));
         }
       });
-    } catch (e) { cleanupCall(); alert("Нет доступа к микрофону"); }
+      startRingtone();
+    } catch(e) { cleanupCall(); alert("Нет доступа к микрофону"); }
   }
 
   async function createPeerConnection() {
@@ -2579,7 +2657,7 @@
     };
     callState.peerConnection.ontrack = (event) => {
       callState.remoteStream = event.streams[0];
-      const audioEl = document.getElementById('remoteAudio');
+      const audioEl = document.querySelector('#remoteAudio');
       if (audioEl) audioEl.srcObject = event.streams[0];
     };
     if (callState.localStream) {
@@ -2587,39 +2665,162 @@
     }
   }
 
-  function showCallUI(mode, recipientUid) {
+  function formatCallDuration(sec) {
+    const m = Math.floor(sec/60);
+    const s = sec%60;
+    return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  }
+
+  function updateCallTimer() {
+    if (callState.timerInterval) clearInterval(callState.timerInterval);
+    callState.timerInterval = setInterval(() => {
+      if (callState.status !== 'connected' || !callState.startTime) return;
+      const elapsed = Math.floor((Date.now() - callState.startTime)/1000);
+      const timerEl = document.querySelector('#callTimer');
+      if (timerEl) timerEl.textContent = formatCallDuration(elapsed);
+    }, 500);
+  }
+
+  function showCallUI(mode, recipientUid, userInfo) {
     const existing = document.querySelector('.call-overlay');
     if (existing) existing.remove();
-    const user = cacheState.usersCache.get(recipientUid);
-    const avatar = user?.avatar?.startsWith('http') ? `<img src="${user.avatar}" class="avatar-img">` : (user?.avatar || '👤');
     const overlay = document.createElement('div');
     overlay.className = 'call-overlay';
     overlay.innerHTML = `
-      <div class="call-avatar-large" style="display:flex; align-items:center; justify-content:center; font-size:56px; overflow:hidden;">${avatar}</div>
-      <div class="call-status">${mode==='calling'?'Вызов...':mode==='connected'?'Разговор':'Входящий вызов'}</div>
-      <div style="font-size:24px; font-weight:600; color:#fff; margin-bottom:16px;">${escapeHtml(user?.username||'Собеседник')}</div>
+      <button class="call-minimize-btn" id="minimizeCallBtn">🔽</button>
+      <div class="call-e2e-badge">
+        <span style="font-size:14px;">🔒</span>
+        <span>End-to-end encrypted</span>
+      </div>
+      <div class="call-avatar-large" style="display:flex; align-items:center; justify-content:center; font-size:56px; overflow:hidden; background: transparent;">
+        ${userInfo?.avatar?.startsWith('http') ? `<img src="${userInfo.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : (userInfo?.avatar || '👤')}
+      </div>
+      <div style="font-size:22px; font-weight:600; margin-bottom:4px;">${escapeHtml(userInfo?.name||'Собеседник')}</div>
+      <div class="call-status-text" id="callStatusText">${mode==='calling'?'Вызов...':mode==='connected'?'Разговор':mode==='incoming'?'Входящий вызов':'...'}</div>
+      <div id="callTimer" style="font-size:14px; opacity:0.7;"></div>
       <audio id="remoteAudio" autoplay playsinline></audio>
-      <div class="call-buttons">
-        ${mode==='incoming'?`
-          <button class="call-btn call-accept" id="acceptCallBtn">📞</button>
-        `:''}
-        <button class="call-btn call-reject" id="rejectCallBtn">❌</button>
+      <div class="call-actions">
+        <button class="call-action-btn" id="toggleMuteBtn" title="Микрофон">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+        </button>
+        <button class="call-action-btn" id="toggleSpeakerBtn" title="Громкая связь">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+        </button>
+        ${mode==='incoming'?`<button class="call-action-btn call-accept-btn" id="acceptIncomingCallBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+        </button>`:''}
+        <button class="call-action-btn call-end-btn" id="endCallBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="5 12 12 19 19 12"/></svg>
+        </button>
       </div>
     `;
     document.body.appendChild(overlay);
     document.body.classList.add('no-scroll');
-    overlay.querySelector('#rejectCallBtn').onclick = () => endCall();
-    const acceptBtn = overlay.querySelector('#acceptCallBtn');
+
+    overlay.querySelector('#endCallBtn').onclick = () => endCall();
+    overlay.querySelector('#toggleMuteBtn').onclick = () => toggleMute();
+    overlay.querySelector('#toggleSpeakerBtn').onclick = () => toggleSpeaker();
+    overlay.querySelector('#minimizeCallBtn').onclick = () => minimizeCall(recipientUid, userInfo);
+
+    const acceptBtn = overlay.querySelector('#acceptIncomingCallBtn');
     if (acceptBtn) acceptBtn.onclick = () => acceptCall();
+  }
+
+  function minimizeCall(uid, userInfo) {
+    const existing = document.querySelector('.call-overlay');
+    if (existing) existing.remove();
+    const pip = document.createElement('div');
+    pip.className = 'pip-call-window';
+    pip.id = 'pipCallWindow';
+    pip.innerHTML = `
+      <div class="pip-avatar" style="background:rgba(255,255,255,0.1);">
+        ${userInfo?.avatar?.startsWith('http') ? `<img src="${userInfo.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : (userInfo?.avatar || '👤')}
+      </div>
+      <div class="pip-timer" id="pipTimer">00:00</div>
+    `;
+    document.body.appendChild(pip);
+    document.body.classList.remove('no-scroll');
+    pip.addEventListener('click', () => {
+      pip.remove();
+      showCallUI(callState.status === 'connected' ? 'connected' : 'calling', uid, userInfo);
+    });
+    makeDraggable(pip);
+
+    const updatePipTimer = () => {
+      const t = document.getElementById('pipTimer');
+      if (!t) return;
+      const sec = Math.floor((Date.now() - (callState.startTime||Date.now()))/1000);
+      t.textContent = formatCallDuration(sec > 0 ? sec : 0);
+    };
+    if (callState.timerInterval) {
+      const orig = callState.timerInterval;
+      clearInterval(orig);
+    }
+    callState.timerInterval = setInterval(() => {
+      const el = document.getElementById('pipTimer');
+      if (el) updatePipTimer();
+      const timerEl = document.querySelector('#callTimer');
+      if (timerEl && callState.startTime) timerEl.textContent = formatCallDuration(Math.floor((Date.now()-callState.startTime)/1000));
+    }, 500);
+  }
+
+  function makeDraggable(el) {
+    let offsetX, offsetY, startX, startY;
+    el.addEventListener('touchstart', (e) => {
+      const touch = e.touches[0];
+      startX = touch.clientX;
+      startY = touch.clientY;
+      offsetX = el.offsetLeft;
+      offsetY = el.offsetTop;
+      e.preventDefault();
+    });
+    el.addEventListener('touchmove', (e) => {
+      const touch = e.touches[0];
+      el.style.left = `${offsetX + touch.clientX - startX}px`;
+      el.style.top = `${offsetY + touch.clientY - startY}px`;
+      el.style.bottom = 'auto';
+      el.style.right = 'auto';
+    });
+  }
+
+  function toggleMute() {
+    if (!callState.localStream) return;
+    callState.mute = !callState.mute;
+    callState.localStream.getAudioTracks().forEach(track => track.enabled = !callState.mute);
+    const btn = document.querySelector('#toggleMuteBtn');
+    if (btn) btn.style.background = callState.mute ? '#e05555' : 'rgba(255,255,255,0.12)';
+  }
+
+  async function toggleSpeaker() {
+    callState.speaker = !callState.speaker;
+    const audioEl = document.querySelector('#remoteAudio');
+    if (!audioEl) return;
+    try {
+      if (callState.speaker && audioEl.setSinkId) {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const speaker = devices.find(d => d.kind === 'audiooutput' && d.deviceId !== 'default');
+        if (speaker) await audioEl.setSinkId(speaker.deviceId);
+        else await audioEl.setSinkId('');
+      } else {
+        if (audioEl.setSinkId) await audioEl.setSinkId('');
+      }
+    } catch(e) {}
+    const btn = document.querySelector('#toggleSpeakerBtn');
+    if (btn) btn.style.background = callState.speaker ? '#e05555' : 'rgba(255,255,255,0.12)';
   }
 
   async function acceptCall() {
     if (!callState.callDocRef || callState.isInitiator) return;
     callState.status = 'connected';
-    showCallUI('connected', callState.callDocRef.id);
+    callState.startTime = Date.now();
+    updateCallTimer();
+    const uid = (await getDoc(callState.callDocRef)).data().initiator;
+    showCallUI('connected', uid, { name: cacheState.usersCache.get(uid)?.username || 'Пользователь', avatar: cacheState.usersCache.get(uid)?.avatar });
+    stopRingtone();
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
       callState.localStream = stream;
+      callState.mute = false;
       await createPeerConnection();
       const snap = await getDoc(callState.callDocRef);
       const data = snap.data();
@@ -2635,11 +2836,14 @@
           if (d.candidates) d.candidates.forEach(c => callState.peerConnection.addIceCandidate(new RTCIceCandidate(c)).catch(console.warn));
         });
       }
-    } catch (e) { cleanupCall(); }
+    } catch(e) { cleanupCall(); }
   }
 
-  async function endCall() {
-    if (callState.callDocRef) await updateDoc(callState.callDocRef, { status: 'ended' }).catch(()=>{});
+  async function endCall(reason = 'ended') {
+    stopRingtone();
+    if (callState.callDocRef) {
+      await updateDoc(callState.callDocRef, { status: reason }).catch(()=>{});
+    }
     cleanupCall();
   }
 
@@ -2655,12 +2859,16 @@
           callState.callDocRef = doc(db, "calls", change.doc.id);
           callState.isInitiator = false;
           callState.status = 'incoming';
-          showCallUI('incoming', callData.initiator);
+          showCallUI('incoming', callData.initiator, { name: cacheState.usersCache.get(callData.initiator)?.username || 'Пользователь', avatar: cacheState.usersCache.get(callData.initiator)?.avatar });
+          startRingtone();
           if (Notification.permission === 'granted') {
             const name = cacheState.usersCache.get(callData.initiator)?.username || 'Входящий звонок';
             const notif = new Notification('📞 Входящий звонок', { body: name, icon: '/neon/icon-192x192.png', requireInteraction: true });
             notif.onclick = () => { window.focus(); if (callState.status === 'incoming') acceptCall(); };
           }
+          setTimeout(() => {
+            if (callState.status === 'incoming') endCall('noanswer');
+          }, 25000);
         }
       });
     });
