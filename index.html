@@ -318,19 +318,31 @@
 
     .message {
       max-width: 78%;
-      padding: 10px 16px;
-      border-radius: 20px;
       margin-bottom: 6px;
       word-break: break-word;
-      animation: messageIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) both;
+      animation: msgBubbleIn 0.3s cubic-bezier(0.22, 0.61, 0.36, 1) both;
       font-size: 14px;
       line-height: 1.45;
       position: relative;
     }
 
-    @keyframes messageIn {
-      from { opacity: 0; transform: translateY(8px); }
-      to { opacity: 1; transform: translateY(0); }
+    .message.image-msg {
+      max-width: 280px;
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none;
+      padding: 0;
+    }
+
+    .message.image-msg img {
+      border-radius: 16px;
+      width: 100%;
+      display: block;
+    }
+
+    @keyframes msgBubbleIn {
+      from { opacity: 0; transform: scale(0.85); }
+      to { opacity: 1; transform: scale(1); }
     }
 
     .message.out {
@@ -339,6 +351,8 @@
       border: 1px solid var(--msg-out-border);
       color: var(--msg-out-text);
       border-bottom-right-radius: 6px;
+      padding: 10px 16px;
+      border-radius: 20px 20px 6px 20px;
     }
 
     .message.in {
@@ -347,6 +361,8 @@
       border: 1px solid var(--msg-in-border);
       color: var(--msg-in-text);
       border-bottom-left-radius: 6px;
+      padding: 10px 16px;
+      border-radius: 20px 20px 20px 6px;
     }
 
     .message .msg-check {
@@ -468,42 +484,50 @@
       margin: 8px 12px 12px;
     }
 
-    .voice-message {
+    .voice-message-wrapper {
       display: flex;
       align-items: center;
-      gap: 8px;
-      background: rgba(255,255,255,0.05);
-      border-radius: 20px;
-      padding: 6px 12px;
       margin: 4px 0;
-      max-width: 240px;
+      max-width: 78%;
     }
-    .voice-message .voice-play-btn {
+    .voice-message-wrapper.out { align-self: flex-end; }
+    .voice-message-wrapper.in { align-self: flex-start; }
+
+    .voice-message-bar {
+      background: rgba(255,255,255,0.07);
+      border-radius: 20px;
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      backdrop-filter: blur(8px);
+    }
+    .voice-message-bar .voice-play-btn {
       background: none;
       border: none;
       color: var(--gold-light);
-      font-size: 18px;
+      font-size: 20px;
       cursor: pointer;
-      width: 28px;
-      height: 28px;
+      width: 32px;
+      height: 32px;
       display: flex;
       align-items: center;
       justify-content: center;
     }
-    .voice-message .waveform-bars {
+    .voice-message-bar .waveform-bars {
       display: flex;
       align-items: flex-end;
       gap: 2px;
       height: 24px;
     }
-    .voice-message .waveform-bars .bar {
+    .voice-message-bar .waveform-bars .bar {
       width: 3px;
       background: var(--gold-light);
       border-radius: 2px;
       transition: height 0.05s linear;
       height: 8px;
     }
-    .voice-message .duration {
+    .voice-message-bar .duration {
       font-size: 12px;
       color: var(--text-secondary);
       min-width: 35px;
@@ -537,9 +561,6 @@
     }
 
     .cancel-upload-btn {
-      position: absolute;
-      top: 8px;
-      right: 8px;
       width: 28px;
       height: 28px;
       background: rgba(0,0,0,0.6);
@@ -1064,12 +1085,12 @@
     .image-uploading-wrapper {
       position: relative;
       display: inline-block;
-      width: 100%;
+      max-width: 280px;
     }
     .image-uploading-preview {
-      filter: blur(10px) brightness(0.7);
+      filter: blur(12px) brightness(0.7);
       max-width: 100%;
-      border-radius: 12px;
+      border-radius: 16px;
     }
     .upload-cancel-overlay {
       position: absolute;
@@ -1085,13 +1106,30 @@
       width: 32px;
       height: 32px;
       font-size: 18px;
-      background: rgba(0,0,0,0.6);
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+    }
+
+    .fullscreen-img-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.92); z-index: 600;
+      display: flex; align-items: center; justify-content: center;
+      animation: fadeIn 0.2s;
+    }
+    .fullscreen-img-overlay img {
+      max-width: 95%;
+      max-height: 90vh;
+      object-fit: contain;
+      border-radius: 12px;
+    }
+    .fullscreen-img-overlay .close-img-btn {
+      position: absolute;
+      top: 20px; right: 20px;
+      background: rgba(255,255,255,0.15);
       border: none;
       color: #fff;
+      font-size: 28px;
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
       cursor: pointer;
     }
   </style>
@@ -1107,7 +1145,7 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
   import { getAuth, onAuthStateChanged, signOut, RecaptchaVerifier, signInWithPhoneNumber } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-  import { initializeFirestore, enableIndexedDbPersistence, collection, doc, getDoc, getDocs, setDoc, updateDoc, addDoc, deleteDoc, query, where, orderBy, onSnapshot, serverTimestamp, increment, arrayUnion, writeBatch, Timestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+  import { initializeFirestore, enableIndexedDbPersistence, collection, doc, getDoc, getDocs, setDoc, updateDoc, addDoc, deleteDoc, query, where, orderBy, onSnapshot, serverTimestamp, increment, arrayUnion, arrayRemove, writeBatch, Timestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
   import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
   import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
@@ -1142,7 +1180,7 @@
     }
   };
   const uiState = { page: "chats", currentTheme: 'premium-gold', chatsAnimated: false, splashHidden: false, isIOS: /iPad|iPhone|iPod/.test(navigator.userAgent), isAndroid: /Android/.test(navigator.userAgent) };
-  const cacheState = { usersCache: new Map(), allUsers: null, lastSeenCache: new Map() };
+  const cacheState = { usersCache: new Map(), allUsers: null, lastSeenCache: new Map(), blockedUsers: new Set() };
   const likingPosts = new Set();
   let postingInProgress = false;
   let currentUploadTask = null;
@@ -1269,9 +1307,10 @@
     const snap = await getDoc(doc(db, "users", uid));
     if (!snap.exists()) return null;
     const d = snap.data();
-    const user = { uid, username: d.username || "Без имени", avatar: d.avatar || "", phone: d.phone || "", lastSeen: d.lastSeen || null, bio: d.bio || "", birthday: d.birthday || "", login: d.login || "" };
+    const user = { uid, username: d.username || "Без имени", avatar: d.avatar || "", phone: d.phone || "", lastSeen: d.lastSeen || null, bio: d.bio || "", birthday: d.birthday || "", login: d.login || "", blocked: d.blocked || [] };
     cacheState.usersCache.set(uid, user);
     if (d.lastSeen) cacheState.lastSeenCache.set(uid, d.lastSeen);
+    if (d.blocked) d.blocked.forEach(id => cacheState.blockedUsers.add(id));
     return user;
   }
 
@@ -1280,9 +1319,10 @@
     cacheState.allUsers = [];
     snap.forEach(docSnap => {
       const d = docSnap.data();
-      const user = { uid: docSnap.id, username: d.username || "Пользователь", avatar: d.avatar || "", phone: d.phone || "", lastSeen: d.lastSeen || null, bio: d.bio || "", birthday: d.birthday || "", login: d.login || "" };
+      const user = { uid: docSnap.id, username: d.username || "Пользователь", avatar: d.avatar || "", phone: d.phone || "", lastSeen: d.lastSeen || null, bio: d.bio || "", birthday: d.birthday || "", login: d.login || "", blocked: d.blocked || [] };
       cacheState.usersCache.set(user.uid, user);
       if (d.lastSeen) cacheState.lastSeenCache.set(user.uid, d.lastSeen);
+      if (d.blocked) d.blocked.forEach(id => cacheState.blockedUsers.add(id));
       if (user.uid !== authState.user?.uid) cacheState.allUsers.push(user);
     });
   }
@@ -1297,12 +1337,13 @@
       updatedAt: serverTimestamp(),
       lastSeen: serverTimestamp()
     };
-    if (!snap.exists()) await setDoc(ref, { ...baseData, createdAt: serverTimestamp(), fcmTokens: [], login: "", bio: "", birthday: "" });
+    if (!snap.exists()) await setDoc(ref, { ...baseData, createdAt: serverTimestamp(), fcmTokens: [], login: "", bio: "", birthday: "", blocked: [] });
     else await updateDoc(ref, baseData);
     const fresh = await getDoc(ref);
     const d = fresh.data() || {};
-    const profile = { uid: user.uid, phoneNumber: user.phoneNumber || d.phone || "", displayName: d.username || "Без имени", photoURL: d.avatar || "", login: d.login || "", bio: d.bio || "", birthday: d.birthday || "" };
-    cacheState.usersCache.set(user.uid, { uid: user.uid, username: profile.displayName, avatar: profile.photoURL, phone: profile.phoneNumber, lastSeen: d.lastSeen || null, login: profile.login, bio: profile.bio, birthday: profile.birthday });
+    const profile = { uid: user.uid, phoneNumber: user.phoneNumber || d.phone || "", displayName: d.username || "Без имени", photoURL: d.avatar || "", login: d.login || "", bio: d.bio || "", birthday: d.birthday || "", blocked: d.blocked || [] };
+    cacheState.usersCache.set(user.uid, { uid: user.uid, username: profile.displayName, avatar: profile.photoURL, phone: profile.phoneNumber, lastSeen: d.lastSeen || null, login: profile.login, bio: profile.bio, birthday: profile.birthday, blocked: profile.blocked });
+    if (profile.blocked) profile.blocked.forEach(id => cacheState.blockedUsers.add(id));
     await updateProfileInChats(user.uid, profile.displayName, profile.photoURL);
     return profile;
   }
@@ -1415,9 +1456,10 @@
     const filterAndRender = () => {
       const q = searchInput.value.trim().toLowerCase();
       const filtered = cacheState.allUsers.filter(u => 
-        u.username.toLowerCase().includes(q) || 
+        !cacheState.blockedUsers.has(u.uid) &&
+        (u.username.toLowerCase().includes(q) || 
         u.phone.includes(q) || 
-        (u.login && u.login.toLowerCase().includes(q))
+        (u.login && u.login.toLowerCase().includes(q)))
       );
       if (filtered.length === 0) {
         resultsDiv.innerHTML = '<div style="color:var(--text-tertiary); text-align:center; padding:40px;">Никого не найдено</div>';
@@ -1509,6 +1551,7 @@
     });
 
     overlay.querySelector('#userProfileWriteBtn').onclick = async () => {
+      if (cacheState.blockedUsers.has(uid)) { alert("Пользователь заблокирован"); return; }
       closePanel();
       await startDirectChat(uid);
     };
@@ -1516,6 +1559,7 @@
   }
 
   async function startDirectChat(otherUid) {
+    if (cacheState.blockedUsers.has(otherUid)) { alert("Пользователь заблокирован"); return; }
     const chatId = directChatId(authState.user.uid, otherUid);
     const chatRef = doc(db, "chats", chatId);
     const chatSnap = await getDoc(chatRef);
@@ -1547,15 +1591,17 @@
       let title = data.title || "Чат";
       let avatar = "";
       let lastSeen = null;
+      let otherUid = null;
       if (data.type === "direct") {
-        const otherUid = (data.members || []).find(m => m !== authState.user.uid);
+        otherUid = (data.members || []).find(m => m !== authState.user.uid);
         if (otherUid) {
+          if (cacheState.blockedUsers.has(otherUid)) continue;
           const cached = cacheState.usersCache.get(otherUid);
           if (cached) { title = cached.username; avatar = cached.avatar; lastSeen = cached.lastSeen; }
           else if (data.memberUsernames && data.memberAvatars) { title = data.memberUsernames[otherUid] || "Пользователь"; avatar = data.memberAvatars[otherUid] || ""; }
         }
       }
-      chats.push({ id: docSnap.id, ...data, title, avatar, lastSeen });
+      chats.push({ id: docSnap.id, ...data, title, avatar, lastSeen, otherUid });
     }
     chats.sort((a, b) => (b.updatedAt?.toMillis() || 0) - (a.updatedAt?.toMillis() || 0));
     return chats;
@@ -1776,7 +1822,7 @@
     };
 
     document.getElementById('openSettingsBtn').onclick = () => openSettingsFullscreen();
-    document.getElementById("logoutBtn").onclick = async () => { await signOut(auth); voiceState.cleanup(); authState.user = null; authState.profile = null; chatState.chats = []; chatState.wallPosts = []; uiState.chatsAnimated = false; cacheState.usersCache.clear(); cacheState.allUsers = null; cacheState.lastSeenCache.clear(); if (chatState.chatUnsub) chatState.chatUnsub(); if (chatState.globalChatsUnsub) chatState.globalChatsUnsub(); if (chatState.wallUnsub) chatState.wallUnsub(); showLogin(); };
+    document.getElementById("logoutBtn").onclick = async () => { await signOut(auth); voiceState.cleanup(); authState.user = null; authState.profile = null; chatState.chats = []; chatState.wallPosts = []; uiState.chatsAnimated = false; cacheState.usersCache.clear(); cacheState.allUsers = null; cacheState.lastSeenCache.clear(); cacheState.blockedUsers.clear(); if (chatState.chatUnsub) chatState.chatUnsub(); if (chatState.globalChatsUnsub) chatState.globalChatsUnsub(); if (chatState.wallUnsub) chatState.wallUnsub(); showLogin(); };
     document.querySelectorAll(".nav-item").forEach(btn => btn.onclick = () => switchPage(btn.dataset.page));
     setupSwipeNavigation();
   }
@@ -1876,9 +1922,18 @@
       else if (msg.status === 'read') checkStatus = '<span class="msg-check check-read">✓✓</span>';
     }
     const div = document.createElement("div");
-    div.className = `message ${isOut?"out":"in"}`;
-    if (msg.type === 'image') {
+    if (msg.type === 'audio') {
+      div.className = `voice-message-wrapper ${isOut ? "out" : "in"}`;
+      div.innerHTML = `<div class="voice-message-bar">
+        <button class="voice-play-btn">▶</button>
+        <div class="waveform-bars">${Array(12).fill(0).map(() => `<div class="bar" style="height:${Math.random()*16+4}px;"></div>`).join('')}</div>
+        <audio src="${escapeHtml(msg.audioURL)}" preload="metadata" style="display:none;"></audio>
+        <span class="duration">${msg.duration?Math.round(msg.duration)+'с':''}</span>
+      </div>
+      <div style="font-size:9px;opacity:0.5;margin-top:2px;padding-left:8px;">${time} ${checkStatus}</div>`;
+    } else if (msg.type === 'image') {
       if (msg.uploading) {
+        div.className = `message image-msg ${isOut?"out":"in"}`;
         div.innerHTML = `<div class="image-uploading-wrapper">
           <img src="${escapeHtml(msg.thumbnailURL||'')}" class="image-uploading-preview" style="max-width:100%; border-radius:12px;">
           <div class="upload-cancel-overlay">
@@ -1888,19 +1943,26 @@
         </div>`;
         div.innerHTML += `<div style="font-size:9px;opacity:0.5;margin-top:4px;">${time} ${checkStatus}</div>`;
       } else {
-        div.innerHTML = `<img src="${escapeHtml(msg.imageURL)}" style="max-width:100%; border-radius:12px; margin-bottom:4px;"><div style="font-size:9px;opacity:0.5;">${time} ${checkStatus}</div>`;
+        div.className = `message image-msg ${isOut?"out":"in"}`;
+        div.innerHTML = `<img src="${escapeHtml(msg.imageURL)}" style="max-width:100%; border-radius:12px; cursor:pointer;" data-full-img="${escapeHtml(msg.imageURL)}"><div style="font-size:9px;opacity:0.5;margin-top:2px;">${time} ${checkStatus}</div>`;
       }
-    } else if (msg.type === 'audio') {
-      div.innerHTML = `<div class="voice-message">
-        <button class="voice-play-btn">▶</button>
-        <div class="waveform-bars">${Array(12).fill(0).map(() => `<div class="bar" style="height:${Math.random()*16+4}px;"></div>`).join('')}</div>
-        <audio src="${escapeHtml(msg.audioURL)}" preload="metadata" style="display:none;"></audio>
-        <span class="duration">${msg.duration?Math.round(msg.duration)+'с':''}</span>
-      </div><div style="font-size:9px;opacity:0.5;margin-top:3px;">${time} ${checkStatus}</div>`;
     } else {
+      div.className = `message ${isOut ? "out" : "in"}`;
       div.innerHTML = `<div>${escapeHtml(msg.text||"")}</div><div style="font-size:9px;opacity:0.5;margin-top:3px;">${time} ${checkStatus}</div>`;
     }
+    div.dataset.docId = msg._id;
     return div;
+  }
+
+  function showFullscreenImage(src) {
+    const overlay = document.createElement('div');
+    overlay.className = 'fullscreen-img-overlay';
+    overlay.innerHTML = `<button class="close-img-btn">✕</button><img src="${src}">`;
+    document.body.appendChild(overlay);
+    document.body.classList.add('no-scroll');
+    const close = () => { overlay.remove(); document.body.classList.remove('no-scroll'); };
+    overlay.querySelector('.close-img-btn').onclick = close;
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
   }
 
   async function generateThumbnail(file) {
@@ -1988,61 +2050,35 @@
     messageInput.addEventListener('input', updateSendButton);
     updateSendButton();
 
-    let renderedSegments = [];
-    const renderAllMessages = (docs) => {
-      messagesContainer.innerHTML = "";
-      renderedSegments = [];
-      const frag = document.createDocumentFragment();
-      let lastDate = null;
-      docs.forEach(docSnap => {
-        const msg = docSnap.data();
-        msg._id = docSnap.id;
-        const msgDate = msg.createdAt?.toDate ? new Date(msg.createdAt.toDate()) : new Date();
-        const dayLabel = getDaySeparator(msgDate);
-        if (dayLabel !== lastDate) {
-          const sep = document.createElement('div');
-          sep.className = 'date-separator';
-          sep.textContent = dayLabel;
-          frag.appendChild(sep);
-          lastDate = dayLabel;
-        }
-        frag.appendChild(createMessageElement(msg, msg.userId === authState.user.uid));
-        renderedSegments.push({ dayLabel, docId: docSnap.id });
-      });
-      messagesContainer.appendChild(frag);
-      messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    };
-
-    chatState.chatUnsub = onSnapshot(query(messagesRef, orderBy("createdAt", "asc")), snap => {
-      const docs = snap.docs;
-      if (docs.length === 0) { messagesContainer.innerHTML = ""; renderedSegments = []; return; }
-      if (renderedSegments.length === 0 || docs.length < renderedSegments.length) { renderAllMessages(docs); return; }
-      let mismatch = false;
-      for (let i = 0; i < renderedSegments.length; i++) {
-        if (i >= docs.length || docs[i].id !== renderedSegments[i].docId) { mismatch = true; break; }
-      }
-      if (mismatch) { renderAllMessages(docs); return; }
-      if (docs.length > renderedSegments.length) {
-        const frag = document.createDocumentFragment();
-        let lastDay = renderedSegments.length ? renderedSegments[renderedSegments.length-1].dayLabel : null;
-        for (let i = renderedSegments.length; i < docs.length; i++) {
-          const msg = docs[i].data();
-          msg._id = docs[i].id;
+    chatState.chatUnsub = onSnapshot(messagesRef, (snap) => {
+      const changes = snap.docChanges();
+      for (const change of changes) {
+        const msg = change.doc.data();
+        msg._id = change.doc.id;
+        if (change.type === 'added') {
+          const el = createMessageElement(msg, msg.userId === authState.user.uid);
+          const lastDateEl = [...messagesContainer.querySelectorAll('.date-separator')].pop();
           const msgDate = msg.createdAt?.toDate ? new Date(msg.createdAt.toDate()) : new Date();
           const dayLabel = getDaySeparator(msgDate);
-          if (dayLabel !== lastDay) {
+          if (!lastDateEl || lastDateEl.textContent !== dayLabel) {
             const sep = document.createElement('div');
             sep.className = 'date-separator';
             sep.textContent = dayLabel;
-            frag.appendChild(sep);
-            lastDay = dayLabel;
+            messagesContainer.appendChild(sep);
           }
-          frag.appendChild(createMessageElement(msg, msg.userId === authState.user.uid));
-          renderedSegments.push({ dayLabel: lastDay, docId: docs[i].id });
+          messagesContainer.appendChild(el);
+        } else if (change.type === 'modified') {
+          const oldEl = messagesContainer.querySelector(`[data-doc-id="${change.doc.id}"]`);
+          if (oldEl) {
+            const newEl = createMessageElement(msg, msg.userId === authState.user.uid);
+            oldEl.replaceWith(newEl);
+          }
+        } else if (change.type === 'removed') {
+          const oldEl = messagesContainer.querySelector(`[data-doc-id="${change.doc.id}"]`);
+          if (oldEl) oldEl.remove();
         }
-        messagesContainer.appendChild(frag);
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
       }
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
     });
 
     fullscreen.querySelector('#backToChatsBtn').onclick = () => {
@@ -2091,6 +2127,19 @@
       if (e.changedTouches[0].clientX - touchStartX > 80) fullscreen.querySelector('#backToChatsBtn').click();
     });
 
+    messagesContainer.addEventListener('click', (e) => {
+      const img = e.target.closest('img[data-full-img]');
+      if (img) {
+        showFullscreenImage(img.dataset.fullImg);
+        return;
+      }
+      const cancelBtn = e.target.closest('.upload-cancel-btn');
+      if (cancelBtn) {
+        const msgId = cancelBtn.dataset.msgId;
+        cancelImageUpload(msgId, messagesRef);
+      }
+    });
+
     attachBtn.addEventListener('click', () => {
       const fileInput = document.createElement('input');
       fileInput.type = 'file';
@@ -2127,13 +2176,6 @@
         delete localUploadTasks[msgRef.id];
       });
     }
-
-    messagesContainer.addEventListener('click', (e) => {
-      const cancelBtn = e.target.closest('.upload-cancel-btn');
-      if (!cancelBtn) return;
-      const msgId = cancelBtn.dataset.msgId;
-      cancelImageUpload(msgId, messagesRef);
-    });
 
     async function cancelImageUpload(msgId, messagesRef) {
       if (localUploadTasks[msgId]) {
@@ -2202,7 +2244,7 @@
         <div class="divider-thin"></div>
         <div style="padding:0 0 8px;">
           <div class="profile-row danger-row" id="profileClearChat"><span class="profile-row-icon">🗑️</span><div class="profile-row-text"><span class="profile-row-label">Очистить чат</span></div></div>
-          <div class="profile-row danger-row" id="profileBlockUser"><span class="profile-row-icon">🚫</span><div class="profile-row-text"><span class="profile-row-label">Заблокировать</span></div></div>
+          <div class="profile-row danger-row" id="profileBlockUser"><span class="profile-row-icon">🚫</span><div class="profile-row-text"><span class="profile-row-label">${otherUid && cacheState.blockedUsers.has(otherUid) ? 'Разблокировать' : 'Заблокировать'}</span></div></div>
         </div>
       </div>`;
     document.body.appendChild(overlay);
@@ -2251,7 +2293,32 @@
         refreshChats();
       }
     };
-    overlay.querySelector('#profileBlockUser').onclick = () => {};
+    overlay.querySelector('#profileBlockUser').onclick = async () => {
+      if (!otherUid) return;
+      const isBlocked = cacheState.blockedUsers.has(otherUid);
+      try {
+        if (isBlocked) {
+          await updateDoc(doc(db, "users", authState.user.uid), { blocked: arrayRemove(otherUid) });
+          cacheState.blockedUsers.delete(otherUid);
+          if (cacheState.usersCache.has(authState.user.uid)) {
+            const u = cacheState.usersCache.get(authState.user.uid);
+            u.blocked = u.blocked.filter(id => id !== otherUid);
+          }
+        } else {
+          await updateDoc(doc(db, "users", authState.user.uid), { blocked: arrayUnion(otherUid) });
+          cacheState.blockedUsers.add(otherUid);
+        }
+        closePanel();
+        await refreshChats();
+        if (chatState.activeChat && chatState.activeChat.id === chat.id) {
+          document.getElementById('chatFullscreen')?.remove();
+          chatState.activeChat = null;
+          if (chatState.chatUnsub) { chatState.chatUnsub(); chatState.chatUnsub = null; }
+          document.body.classList.remove('no-scroll');
+          switchToChatsPage();
+        }
+      } catch (e) { console.error(e); }
+    };
     overlay.querySelector('#openChatMedia').onclick = () => showChatMedia(chat.id);
     overlay.querySelector('#openChatFiles').onclick = () => showChatFiles(chat.id);
     overlay.querySelector('#openChatLinks').onclick = () => showChatLinks(chat.id);
@@ -2263,9 +2330,10 @@
     if (images.length === 0) { alert('📷 Нет изображений'); return; }
     const container = document.createElement('div');
     container.className = 'search-fullscreen';
-    container.innerHTML = `<div class="search-input-wrap"><button class="search-back-btn" id="mediaBackBtn">←</button><h3 style="color:var(--text-heading)">Медиа</h3></div><div style="flex:1; overflow-y:auto; display:flex; flex-wrap:wrap; gap:8px; padding:8px;">${images.map(u => `<img src="${u}" style="width:30%; border-radius:12px; object-fit:cover;">`).join('')}</div>`;
+    container.innerHTML = `<div class="search-input-wrap"><button class="search-back-btn" id="mediaBackBtn">←</button><h3 style="color:var(--text-heading)">Медиа</h3></div><div style="flex:1; overflow-y:auto; display:flex; flex-wrap:wrap; gap:8px; padding:8px;">${images.map(u => `<img src="${u}" style="width:30%; border-radius:12px; object-fit:cover; cursor:pointer;" data-full-img="${u}">`).join('')}</div>`;
     document.body.appendChild(container);
     container.querySelector('#mediaBackBtn').onclick = () => container.remove();
+    container.querySelectorAll('img[data-full-img]').forEach(img => img.addEventListener('click', (e) => showFullscreenImage(e.target.dataset.fullImg)));
   }
 
   async function showChatFiles(chatId) {
@@ -2419,11 +2487,12 @@
     setInterval(() => { if (authState.user && document.visibilityState === 'visible') updateLastSeen(); }, 4*60*1000);
     onAuthStateChanged(auth, async (user) => {
       if (!uiState.splashHidden) { setTimeout(hideSplash, 1500); }
-      if (!user) { authState.user = null; authState.profile = null; chatState.chats = []; chatState.wallPosts = []; uiState.chatsAnimated = false; cacheState.usersCache.clear(); cacheState.allUsers = null; cacheState.lastSeenCache.clear(); if (chatState.chatUnsub) chatState.chatUnsub(); if (chatState.globalChatsUnsub) chatState.globalChatsUnsub(); if (chatState.wallUnsub) chatState.wallUnsub(); showLogin(); return; }
+      if (!user) { authState.user = null; authState.profile = null; chatState.chats = []; chatState.wallPosts = []; uiState.chatsAnimated = false; cacheState.usersCache.clear(); cacheState.allUsers = null; cacheState.lastSeenCache.clear(); cacheState.blockedUsers.clear(); if (chatState.chatUnsub) chatState.chatUnsub(); if (chatState.globalChatsUnsub) chatState.globalChatsUnsub(); if (chatState.wallUnsub) chatState.wallUnsub(); showLogin(); return; }
       let profile = await getUserData(user.uid);
       if (!profile) profile = await ensureProfile(user, user.displayName || "Без имени", user.photoURL || "");
       authState.user = { uid: user.uid, phoneNumber: user.phoneNumber || profile.phoneNumber, displayName: profile.displayName, photoURL: profile.photoURL };
       authState.profile = profile;
+      if (profile.blocked) profile.blocked.forEach(id => cacheState.blockedUsers.add(id));
       await updateLastSeen();
       await preloadAllUsers();
       if (uiState.page === 'profile') renderProfilePage();
