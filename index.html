@@ -6,7 +6,7 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="theme-color" content="#0a0a12" />
-  <title>NEON MESSENGER | чаты + стена</title>
+  <title>NEON MESSENGER | звонки, чаты, стена</title>
   <style>
     :root {
       --vh: 1vh;
@@ -1132,6 +1132,31 @@
       display: flex; align-items: center; justify-content: center;
       cursor: pointer;
     }
+
+    .call-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.92); z-index: 700;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      color: #fff;
+    }
+    .call-avatar-large {
+      width: 120px; height: 120px; border-radius: 50%;
+      background: rgba(255,255,255,0.1);
+      margin-bottom: 24px;
+    }
+    .call-status {
+      font-size: 18px; opacity: 0.8; margin-bottom: 32px;
+    }
+    .call-buttons {
+      display: flex; gap: 20px;
+    }
+    .call-btn {
+      width: 56px; height: 56px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px; border: none; cursor: pointer;
+    }
+    .call-accept { background: #4caf84; }
+    .call-reject { background: #e05555; }
   </style>
 </head>
 <body>
@@ -1179,6 +1204,7 @@
       this.audioChunks = []; this.recordingChatId = null;
     }
   };
+  const callState = { currentCallId: null, peerConnection: null, localStream: null, remoteStream: null, callDocRef: null, unsubCall: null, isInitiator: false, status: 'idle' };
   const uiState = { page: "chats", currentTheme: 'premium-gold', chatsAnimated: false, splashHidden: false, isIOS: /iPad|iPhone|iPod/.test(navigator.userAgent), isAndroid: /Android/.test(navigator.userAgent) };
   const cacheState = { usersCache: new Map(), allUsers: null, lastSeenCache: new Map(), blockedUsers: new Set() };
   const likingPosts = new Set();
@@ -1555,7 +1581,10 @@
       closePanel();
       await startDirectChat(uid);
     };
-    overlay.querySelector('#userProfileCallBtn').onclick = () => {};
+    overlay.querySelector('#userProfileCallBtn').onclick = () => {
+      closePanel();
+      initiateCall(uid);
+    };
   }
 
   async function startDirectChat(otherUid) {
@@ -1822,7 +1851,7 @@
     };
 
     document.getElementById('openSettingsBtn').onclick = () => openSettingsFullscreen();
-    document.getElementById("logoutBtn").onclick = async () => { await signOut(auth); voiceState.cleanup(); authState.user = null; authState.profile = null; chatState.chats = []; chatState.wallPosts = []; uiState.chatsAnimated = false; cacheState.usersCache.clear(); cacheState.allUsers = null; cacheState.lastSeenCache.clear(); cacheState.blockedUsers.clear(); if (chatState.chatUnsub) chatState.chatUnsub(); if (chatState.globalChatsUnsub) chatState.globalChatsUnsub(); if (chatState.wallUnsub) chatState.wallUnsub(); showLogin(); };
+    document.getElementById("logoutBtn").onclick = async () => { await signOut(auth); cleanupCall(); voiceState.cleanup(); authState.user = null; authState.profile = null; chatState.chats = []; chatState.wallPosts = []; uiState.chatsAnimated = false; cacheState.usersCache.clear(); cacheState.allUsers = null; cacheState.lastSeenCache.clear(); cacheState.blockedUsers.clear(); if (chatState.chatUnsub) chatState.chatUnsub(); if (chatState.globalChatsUnsub) chatState.globalChatsUnsub(); if (chatState.wallUnsub) chatState.wallUnsub(); showLogin(); };
     document.querySelectorAll(".nav-item").forEach(btn => btn.onclick = () => switchPage(btn.dataset.page));
     setupSwipeNavigation();
   }
@@ -2091,7 +2120,10 @@
       else openChatProfilePanel(chat);
     };
     fullscreen.querySelector('#chatMenuBtn').onclick = () => openChatProfilePanel(chat);
-    fullscreen.querySelector('#chatCallBtn').onclick = () => {};
+    fullscreen.querySelector('#chatCallBtn').onclick = () => {
+      if (otherUid) initiateCall(otherUid);
+      else alert("Звонок недоступен");
+    };
 
     const sendMessage = async () => {
       const text = messageInput.value.trim(); if (!text) return;
@@ -2261,7 +2293,9 @@
     overlay.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; });
     overlay.addEventListener('touchend', (e) => { if (e.changedTouches[0].clientX - touchStartX > 80) closePanel(); });
 
-    overlay.querySelector('#profileCallBtn').onclick = () => {};
+    overlay.querySelector('#profileCallBtn').onclick = () => {
+      if (otherUid) { closePanel(); initiateCall(otherUid); }
+    };
     overlay.querySelector('#profileMuteBtn').onclick = async () => {
       const newMuted = !chat.muted;
       await updateDoc(doc(db, "chats", chat.id), { muted: newMuted });
@@ -2482,12 +2516,162 @@
     root.addEventListener('touchend', handler);
   }
 
+  const servers = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+  let callDocListener = null;
+
+  function cleanupCall() {
+    if (callState.unsubCall) { callState.unsubCall(); callState.unsubCall = null; }
+    if (callState.peerConnection) { callState.peerConnection.close(); callState.peerConnection = null; }
+    if (callState.localStream) { callState.localStream.getTracks().forEach(t => t.stop()); callState.localStream = null; }
+    callState.remoteStream = null;
+    callState.currentCallId = null;
+    callState.callDocRef = null;
+    callState.isInitiator = false;
+    callState.status = 'idle';
+    const existing = document.querySelector('.call-overlay');
+    if (existing) existing.remove();
+    document.body.classList.remove('no-scroll');
+  }
+
+  async function initiateCall(recipientUid) {
+    if (callState.status !== 'idle') return;
+    callState.status = 'calling';
+    callState.isInitiator = true;
+    const callId = doc(collection(db, "calls")).id;
+    callState.currentCallId = callId;
+    callState.callDocRef = doc(db, "calls", callId);
+    await setDoc(callState.callDocRef, {
+      initiator: authState.user.uid,
+      recipient: recipientUid,
+      status: 'ringing',
+      createdAt: serverTimestamp()
+    });
+    showCallUI('calling', recipientUid);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      callState.localStream = stream;
+      await createPeerConnection();
+      const offer = await callState.peerConnection.createOffer();
+      await callState.peerConnection.setLocalDescription(offer);
+      await updateDoc(callState.callDocRef, { offer: offer.toJSON(), status: 'ringing' });
+      callState.unsubCall = onSnapshot(callState.callDocRef, (snap) => {
+        const data = snap.data();
+        if (!data) return;
+        if (data.status === 'ended' || data.status === 'rejected') { cleanupCall(); return; }
+        if (data.answer && callState.peerConnection && callState.peerConnection.signalingState !== 'closed') {
+          callState.peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer)).catch(console.warn);
+          callState.status = 'connected';
+          showCallUI('connected', recipientUid);
+        }
+        if (data.candidates) {
+          data.candidates.forEach(c => callState.peerConnection.addIceCandidate(new RTCIceCandidate(c)).catch(console.warn));
+        }
+      });
+    } catch (e) { cleanupCall(); alert("Нет доступа к микрофону"); }
+  }
+
+  async function createPeerConnection() {
+    callState.peerConnection = new RTCPeerConnection(servers);
+    callState.peerConnection.onicecandidate = (event) => {
+      if (event.candidate && callState.callDocRef) {
+         updateDoc(callState.callDocRef, { candidates: arrayUnion(event.candidate.toJSON()) }).catch(()=>{});
+      }
+    };
+    callState.peerConnection.ontrack = (event) => {
+      callState.remoteStream = event.streams[0];
+      const audioEl = document.getElementById('remoteAudio');
+      if (audioEl) audioEl.srcObject = event.streams[0];
+    };
+    if (callState.localStream) {
+      callState.localStream.getTracks().forEach(track => callState.peerConnection.addTrack(track, callState.localStream));
+    }
+  }
+
+  function showCallUI(mode, recipientUid) {
+    const existing = document.querySelector('.call-overlay');
+    if (existing) existing.remove();
+    const user = cacheState.usersCache.get(recipientUid);
+    const avatar = user?.avatar?.startsWith('http') ? `<img src="${user.avatar}" class="avatar-img">` : (user?.avatar || '👤');
+    const overlay = document.createElement('div');
+    overlay.className = 'call-overlay';
+    overlay.innerHTML = `
+      <div class="call-avatar-large" style="display:flex; align-items:center; justify-content:center; font-size:56px; overflow:hidden;">${avatar}</div>
+      <div class="call-status">${mode==='calling'?'Вызов...':mode==='connected'?'Разговор':'Входящий вызов'}</div>
+      <div style="font-size:24px; font-weight:600; color:#fff; margin-bottom:16px;">${escapeHtml(user?.username||'Собеседник')}</div>
+      <audio id="remoteAudio" autoplay playsinline></audio>
+      <div class="call-buttons">
+        ${mode==='incoming'?`
+          <button class="call-btn call-accept" id="acceptCallBtn">📞</button>
+        `:''}
+        <button class="call-btn call-reject" id="rejectCallBtn">❌</button>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    document.body.classList.add('no-scroll');
+    overlay.querySelector('#rejectCallBtn').onclick = () => endCall();
+    const acceptBtn = overlay.querySelector('#acceptCallBtn');
+    if (acceptBtn) acceptBtn.onclick = () => acceptCall();
+  }
+
+  async function acceptCall() {
+    if (!callState.callDocRef || callState.isInitiator) return;
+    callState.status = 'connected';
+    showCallUI('connected', callState.callDocRef.id);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      callState.localStream = stream;
+      await createPeerConnection();
+      const snap = await getDoc(callState.callDocRef);
+      const data = snap.data();
+      if (data?.offer) {
+        await callState.peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
+        const answer = await callState.peerConnection.createAnswer();
+        await callState.peerConnection.setLocalDescription(answer);
+        await updateDoc(callState.callDocRef, { answer: answer.toJSON(), status: 'in-progress' });
+        callState.unsubCall = onSnapshot(callState.callDocRef, (docSnap) => {
+          const d = docSnap.data();
+          if (!d) return;
+          if (d.status === 'ended' || d.status === 'rejected') { cleanupCall(); return; }
+          if (d.candidates) d.candidates.forEach(c => callState.peerConnection.addIceCandidate(new RTCIceCandidate(c)).catch(console.warn));
+        });
+      }
+    } catch (e) { cleanupCall(); }
+  }
+
+  async function endCall() {
+    if (callState.callDocRef) await updateDoc(callState.callDocRef, { status: 'ended' }).catch(()=>{});
+    cleanupCall();
+  }
+
+  function listenForIncomingCalls() {
+    if (!authState.user) return;
+    const callsQuery = query(collection(db, "calls"), where("recipient", "==", authState.user.uid), where("status", "==", "ringing"));
+    onSnapshot(callsQuery, (snap) => {
+      snap.docChanges().forEach(change => {
+        if (change.type === 'added') {
+          const callData = change.doc.data();
+          if (callState.status !== 'idle') return;
+          callState.currentCallId = change.doc.id;
+          callState.callDocRef = doc(db, "calls", change.doc.id);
+          callState.isInitiator = false;
+          callState.status = 'incoming';
+          showCallUI('incoming', callData.initiator);
+          if (Notification.permission === 'granted') {
+            const name = cacheState.usersCache.get(callData.initiator)?.username || 'Входящий звонок';
+            const notif = new Notification('📞 Входящий звонок', { body: name, icon: '/neon/icon-192x192.png', requireInteraction: true });
+            notif.onclick = () => { window.focus(); if (callState.status === 'incoming') acceptCall(); };
+          }
+        }
+      });
+    });
+  }
+
   function boot() {
     loadTheme();
     setInterval(() => { if (authState.user && document.visibilityState === 'visible') updateLastSeen(); }, 4*60*1000);
     onAuthStateChanged(auth, async (user) => {
       if (!uiState.splashHidden) { setTimeout(hideSplash, 1500); }
-      if (!user) { authState.user = null; authState.profile = null; chatState.chats = []; chatState.wallPosts = []; uiState.chatsAnimated = false; cacheState.usersCache.clear(); cacheState.allUsers = null; cacheState.lastSeenCache.clear(); cacheState.blockedUsers.clear(); if (chatState.chatUnsub) chatState.chatUnsub(); if (chatState.globalChatsUnsub) chatState.globalChatsUnsub(); if (chatState.wallUnsub) chatState.wallUnsub(); showLogin(); return; }
+      if (!user) { authState.user = null; authState.profile = null; chatState.chats = []; chatState.wallPosts = []; uiState.chatsAnimated = false; cacheState.usersCache.clear(); cacheState.allUsers = null; cacheState.lastSeenCache.clear(); cacheState.blockedUsers.clear(); if (chatState.chatUnsub) chatState.chatUnsub(); if (chatState.globalChatsUnsub) chatState.globalChatsUnsub(); if (chatState.wallUnsub) chatState.wallUnsub(); cleanupCall(); showLogin(); return; }
       let profile = await getUserData(user.uid);
       if (!profile) profile = await ensureProfile(user, user.displayName || "Без имени", user.photoURL || "");
       authState.user = { uid: user.uid, phoneNumber: user.phoneNumber || profile.phoneNumber, displayName: profile.displayName, photoURL: profile.photoURL };
@@ -2498,6 +2682,7 @@
       if (uiState.page === 'profile') renderProfilePage();
       else switchToChatsPage();
       if (!uiState.isIOS) { const token = await requestNotificationPermissionAndGetToken(); if (token) await saveFCMTokenToFirestore(authState.user.uid, token); }
+      listenForIncomingCalls();
     });
   }
   boot();
